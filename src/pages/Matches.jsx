@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect } from "react";
 import { useApp } from "../context/AppContext";
-import { Send, ArrowLeft, Phone, Video, MoreHorizontal, Image, Smile, Mic, MicOff, Play, Pause } from "lucide-react";
+import { Send, ArrowLeft, Phone, Video, Image, Smile, Mic, MicOff, Play } from "lucide-react";
 
 export default function Matches() {
-  const { state, dispatch } = useApp();
+  const { state, dispatch, actions } = useApp();
   const [activeChat, setActiveChat] = useState(null);
   const [messageText, setMessageText] = useState("");
   const [isRecording, setIsRecording] = useState(false);
@@ -11,23 +11,34 @@ export default function Matches() {
   const recordingInterval = useRef(null);
   const messagesEndRef = useRef(null);
 
-  const activeChatProfile = activeChat
-    ? state.profiles.find((p) => p.id === activeChat)
+  const activeMatch = activeChat
+    ? state.matches.find((m) => m.id === activeChat)
     : null;
+  const activeChatProfile = activeMatch?.profile;
 
   const conversation = activeChat ? state.conversations[activeChat] : null;
+
+  useEffect(() => {
+    if (activeChat) {
+      actions.loadMessages(activeChat).catch(console.error);
+    }
+  }, [activeChat]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [conversation?.messages?.length]);
 
-  const handleSend = () => {
+  const currentUserId = state.currentUser?._id || state.currentUser?.id;
+
+  const handleSend = async () => {
     if (!messageText.trim() || !activeChat) return;
-    dispatch({
-      type: "SEND_MESSAGE",
-      payload: { profileId: activeChat, text: messageText.trim() },
-    });
+    const text = messageText.trim();
     setMessageText("");
+    try {
+      await actions.sendMessage(activeChat, text);
+    } catch (err) {
+      console.error("Send failed:", err);
+    }
   };
 
   const handleKeyDown = (e) => {
@@ -45,16 +56,17 @@ export default function Matches() {
     }, 1000);
   };
 
-  const stopRecording = () => {
+  const stopRecording = async () => {
     setIsRecording(false);
     clearInterval(recordingInterval.current);
     const duration = recordingTime;
     setRecordingTime(0);
     if (duration > 0 && activeChat) {
-      dispatch({
-        type: "SEND_MESSAGE",
-        payload: { profileId: activeChat, text: `🎙️ Voice message (0:${String(duration).padStart(2, "0")})` },
-      });
+      try {
+        await actions.sendMessage(activeChat, `🎙️ Voice message (0:${String(duration).padStart(2, "0")})`);
+      } catch (err) {
+        console.error("Voice send failed:", err);
+      }
     }
   };
 
@@ -105,21 +117,17 @@ export default function Matches() {
               }}
             />
             <p>You matched with {activeChatProfile.name}</p>
-            <span className="match-date">
-              {new Date(
-                state.matches.find((m) => m.profileId === activeChat)?.timestamp || Date.now()
-              ).toLocaleDateString()}
-            </span>
           </div>
 
           {conversation?.messages.map((msg) => {
+            const isMine = msg.sender === currentUserId;
             const isVoice = msg.text.startsWith("🎙️");
             return (
               <div
                 key={msg.id}
-                className={`chat-message ${msg.sender === "me" ? "sent" : "received"}`}
+                className={`chat-message ${isMine ? "sent" : "received"}`}
               >
-                {msg.sender !== "me" && (
+                {!isMine && (
                   <img
                     src={activeChatProfile.photos[0]}
                     alt=""
@@ -206,18 +214,18 @@ export default function Matches() {
   }
 
   const sortedMatches = [...state.matches].sort((a, b) => {
-    const aConvo = state.conversations[a.profileId];
-    const bConvo = state.conversations[b.profileId];
+    const aConvo = state.conversations[a.id];
+    const bConvo = state.conversations[b.id];
     const aTime = aConvo?.lastActivity || a.timestamp;
     const bTime = bConvo?.lastActivity || b.timestamp;
     return bTime - aTime;
   });
 
   const newMatches = sortedMatches.filter(
-    (m) => !state.conversations[m.profileId]?.messages?.length
+    (m) => !state.conversations[m.id]?.messages?.length
   );
   const activeConversations = sortedMatches.filter(
-    (m) => state.conversations[m.profileId]?.messages?.length > 0
+    (m) => state.conversations[m.id]?.messages?.length > 0
   );
 
   return (
@@ -237,9 +245,9 @@ export default function Matches() {
               <div className="new-matches-row">
                 {newMatches.map((match) => (
                   <button
-                    key={match.profileId}
+                    key={match.id}
                     className="new-match-card"
-                    onClick={() => setActiveChat(match.profileId)}
+                    onClick={() => setActiveChat(match.id)}
                   >
                     <img
                       src={match.profile.photos[0]}
@@ -261,13 +269,13 @@ export default function Matches() {
               <h3 className="section-label">Messages</h3>
               <div className="conversations-list">
                 {activeConversations.map((match) => {
-                  const convo = state.conversations[match.profileId];
+                  const convo = state.conversations[match.id];
                   const lastMsg = convo?.messages[convo.messages.length - 1];
                   return (
                     <button
-                      key={match.profileId}
+                      key={match.id}
                       className="conversation-row"
-                      onClick={() => setActiveChat(match.profileId)}
+                      onClick={() => setActiveChat(match.id)}
                     >
                       <img
                         src={match.profile.photos[0]}
@@ -286,7 +294,7 @@ export default function Matches() {
                         </div>
                         <p className="convo-preview">
                           {lastMsg
-                            ? `${lastMsg.sender === "me" ? "You: " : ""}${lastMsg.text}`
+                            ? `${lastMsg.sender === currentUserId ? "You: " : ""}${lastMsg.text}`
                             : "Start the conversation!"}
                         </p>
                       </div>

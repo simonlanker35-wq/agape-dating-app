@@ -45,7 +45,7 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-userSchema.index({ "location.type": "2dsphere" });
+userSchema.index({ location: "2dsphere" });
 userSchema.index({ gender: 1, age: 1 });
 userSchema.index({ isActive: 1, lastActive: -1 });
 

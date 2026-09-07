@@ -35,8 +35,7 @@ router.get("/", auth, async (req, res) => {
       user.location?.coordinates?.[1] &&
       user.filters.maxDistance
     ) {
-      query["location.type"] = "Point";
-      query["location.coordinates"] = {
+      query.location = {
         $nearSphere: {
           $geometry: {
             type: "Point",

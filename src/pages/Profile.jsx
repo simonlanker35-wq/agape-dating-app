@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 
 export default function Profile() {
-  const { state } = useApp();
+  const { state, dispatch } = useApp();
   const { currentUser } = state;
   const [showSettings, setShowSettings] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
@@ -125,7 +125,7 @@ export default function Profile() {
           <span>Help & Support</span>
           <ChevronRight size={16} />
         </button>
-        <button className="menu-item logout">
+        <button className="menu-item logout" onClick={() => dispatch({ type: "LOGOUT" })}>
           <LogOut size={18} />
           <span>Log Out</span>
         </button>

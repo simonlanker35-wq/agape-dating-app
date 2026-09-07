@@ -1,12 +1,14 @@
 import { useState, useEffect, useRef } from "react";
 import { useApp } from "../context/AppContext";
 import { PROMPT_CATEGORIES, INTERESTS_POOL, DENOMINATIONS } from "../data/profiles";
-import { Camera, ChevronRight, Sparkles, Church, X, Check } from "lucide-react";
+import { Camera, ChevronRight, Sparkles, Church, X, Check, LogIn } from "lucide-react";
 import AgapeCross from "../components/AgapeCross";
 
 const STEPS = [
   "welcome",
   "name",
+  "email",
+  "password",
   "age",
   "height",
   "gender",
@@ -21,11 +23,19 @@ const STEPS = [
 ];
 
 export default function Onboarding() {
-  const { dispatch } = useApp();
+  const { actions } = useApp();
   const [step, setStep] = useState(0);
+  const [mode, setMode] = useState("signup");
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [loginError, setLoginError] = useState("");
+  const [signupError, setSignupError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const inputRef = useRef(null);
   const [form, setForm] = useState({
     name: "",
+    email: "",
+    password: "",
     age: 25,
     height: 170,
     gender: "",
@@ -60,28 +70,68 @@ export default function Onboarding() {
     }
   };
 
-  const finishOnboarding = () => {
-    const g = form.gender === "female" ? "women" : "men";
-    const demoPhotos = [
-      `https://randomuser.me/api/portraits/${g}/75.jpg`,
-      `https://randomuser.me/api/portraits/${g}/76.jpg`,
-      `https://randomuser.me/api/portraits/${g}/77.jpg`,
-    ];
+  const finishOnboarding = async () => {
+    setSubmitting(true);
+    setSignupError("");
+    try {
+      const g = form.gender === "female" ? "women" : "men";
+      const demoPhotos = [
+        `https://randomuser.me/api/portraits/${g}/75.jpg`,
+        `https://randomuser.me/api/portraits/${g}/76.jpg`,
+        `https://randomuser.me/api/portraits/${g}/77.jpg`,
+      ];
 
-    dispatch({
-      type: "COMPLETE_ONBOARDING",
-      payload: {
-        ...form,
+      await actions.register({
+        email: form.email,
+        password: form.password,
+        name: form.name,
+        age: form.age,
+        gender: form.gender,
+        denomination: form.denomination,
+      });
+
+      await actions.updateProfile({
+        height: form.height,
+        job: form.job || undefined,
+        school: form.school || undefined,
+        location: form.location
+          ? { type: "Point", coordinates: [8.65, 47.02], city: form.location }
+          : undefined,
         photos: form.photos.length > 0 ? form.photos : demoPhotos,
-        id: "current_user",
-        height: `${form.height} cm`,
-      },
-    });
+        prompts: form.prompts.filter((p) => p.prompt && p.answer),
+        interests: form.interests,
+        filters: {
+          maxAge: form.maxAge,
+          minAge: 18,
+          maxDistance: form.maxDistance,
+        },
+      });
+    } catch (err) {
+      setSignupError(err.message);
+      setSubmitting(false);
+    }
+  };
+
+  const handleLogin = async () => {
+    setSubmitting(true);
+    setLoginError("");
+    try {
+      await actions.login(loginEmail, loginPassword);
+    } catch (err) {
+      setLoginError(err.message);
+      setSubmitting(false);
+    }
   };
 
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && canProceed()) {
       goNext();
+    }
+  };
+
+  const handleLoginKeyDown = (e) => {
+    if (e.key === "Enter" && loginEmail && loginPassword) {
+      handleLogin();
     }
   };
 
@@ -99,6 +149,8 @@ export default function Onboarding() {
     switch (currentStep) {
       case "welcome": return true;
       case "name": return form.name.trim().length > 0;
+      case "email": return form.email.includes("@") && form.email.includes(".");
+      case "password": return form.password.length >= 6;
       case "age": return form.age >= 18;
       case "height": return form.height >= 100 && form.height <= 250;
       case "gender": return form.gender !== "";
@@ -152,8 +204,51 @@ export default function Onboarding() {
   };
 
   const usedPrompts = form.prompts.map((p) => p.prompt).filter(Boolean);
-
   const progress = ((step) / (STEPS.length - 1)) * 100;
+
+  if (mode === "login") {
+    return (
+      <div className="onboarding">
+        <div className="onboarding-content">
+          <div className="onboarding-step single-question" key="login">
+            <div className="welcome-icon">
+              <AgapeCross size={56} strokeWidth={1.2} />
+            </div>
+            <h2>Welcome back</h2>
+            <input
+              type="email"
+              value={loginEmail}
+              onChange={(e) => setLoginEmail(e.target.value)}
+              onKeyDown={handleLoginKeyDown}
+              placeholder="Email"
+              className="onboarding-input"
+              autoFocus
+            />
+            <input
+              type="password"
+              value={loginPassword}
+              onChange={(e) => setLoginPassword(e.target.value)}
+              onKeyDown={handleLoginKeyDown}
+              placeholder="Password"
+              className="onboarding-input"
+              style={{ marginTop: 12 }}
+            />
+            {loginError && <p className="onboarding-error">{loginError}</p>}
+            <button
+              className="onboarding-cta"
+              onClick={handleLogin}
+              disabled={submitting || !loginEmail || !loginPassword}
+            >
+              {submitting ? "Signing in..." : "Sign In"}
+            </button>
+            <button className="skip-btn-text" onClick={() => setMode("signup")} style={{ marginTop: 16 }}>
+              Create an account instead
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="onboarding">
@@ -175,6 +270,10 @@ export default function Onboarding() {
             <button className="onboarding-cta" onClick={goNext}>
               Get Started
             </button>
+            <button className="skip-btn-text" onClick={() => setMode("login")} style={{ marginTop: 16 }}>
+              <LogIn size={14} style={{ marginRight: 6 }} />
+              I already have an account
+            </button>
           </div>
         )}
 
@@ -192,6 +291,48 @@ export default function Onboarding() {
               autoFocus
             />
             {form.name.trim() && (
+              <button className="onboarding-cta" onClick={goNext}>
+                Continue <ChevronRight size={18} />
+              </button>
+            )}
+          </div>
+        )}
+
+        {currentStep === "email" && (
+          <div className="onboarding-step single-question" key="email">
+            <h2>What's your email?</h2>
+            <input
+              ref={inputRef}
+              type="email"
+              value={form.email}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
+              onKeyDown={handleKeyDown}
+              placeholder="your@email.com"
+              className="onboarding-input"
+              autoFocus
+            />
+            {canProceed() && (
+              <button className="onboarding-cta" onClick={goNext}>
+                Continue <ChevronRight size={18} />
+              </button>
+            )}
+          </div>
+        )}
+
+        {currentStep === "password" && (
+          <div className="onboarding-step single-question" key="password">
+            <h2>Create a password</h2>
+            <input
+              ref={inputRef}
+              type="password"
+              value={form.password}
+              onChange={(e) => setForm({ ...form, password: e.target.value })}
+              onKeyDown={handleKeyDown}
+              placeholder="At least 6 characters"
+              className="onboarding-input"
+              autoFocus
+            />
+            {canProceed() && (
               <button className="onboarding-cta" onClick={goNext}>
                 Continue <ChevronRight size={18} />
               </button>
@@ -369,7 +510,6 @@ export default function Onboarding() {
               <p className="step-hint">Answer at least one prompt</p>
             </div>
 
-            {/* Selected prompts */}
             {form.prompts.some((p) => p.prompt) && (
               <div className="selected-prompts">
                 {form.prompts.map((p, i) => p.prompt && (
@@ -407,7 +547,6 @@ export default function Onboarding() {
               </div>
             )}
 
-            {/* Category tabs */}
             {usedPrompts.length < 3 && (
               <>
                 <div className="prompt-category-tabs">
@@ -422,7 +561,6 @@ export default function Onboarding() {
                   ))}
                 </div>
 
-                {/* Prompt list */}
                 <div className="prompt-list">
                   {PROMPT_CATEGORIES[promptCategory]
                     ?.filter((p) => !usedPrompts.includes(p))
@@ -494,8 +632,9 @@ export default function Onboarding() {
                 onChange={(e) => setForm({ ...form, maxDistance: parseInt(e.target.value) })}
               />
             </div>
-            <button className="onboarding-cta" onClick={finishOnboarding}>
-              Start Matching <Sparkles size={18} />
+            {signupError && <p className="onboarding-error">{signupError}</p>}
+            <button className="onboarding-cta" onClick={finishOnboarding} disabled={submitting}>
+              {submitting ? "Creating account..." : "Start Matching"} {!submitting && <Sparkles size={18} />}
             </button>
           </div>
         )}

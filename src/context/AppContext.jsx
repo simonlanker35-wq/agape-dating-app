@@ -1,5 +1,5 @@
-import { createContext, useContext, useReducer, useEffect } from "react";
-import { generateProfiles } from "../data/profiles";
+import { createContext, useContext, useReducer, useEffect, useCallback } from "react";
+import * as api from "../services/api";
 
 const AppContext = createContext();
 
@@ -18,87 +18,44 @@ const initialState = {
   },
   onboardingComplete: false,
   activeTab: "discover",
+  loading: false,
+  error: null,
 };
-
-function generateLikesReceived(profiles, currentUser) {
-  if (!currentUser) return [];
-  const pool = profiles.filter((p) => p.gender !== currentUser.gender);
-  const count = 6 + Math.floor(Math.random() * 6);
-  const shuffled = [...pool].sort(() => Math.random() - 0.5);
-  const comments = [
-    "Love this!", "You seem amazing!", "This made me smile 😊",
-    "We'd get along so well!", "Tell me more about this!",
-    "Your faith journey is inspiring!", "I love your vibe ✨",
-    "We have so much in common!", "This is exactly my type of person 🙏",
-  ];
-  return shuffled.slice(0, count).map((p) => ({
-    fromId: p.id,
-    type: Math.random() > 0.3 ? "like" : "comment",
-    targetType: Math.random() > 0.5 ? "photo" : "prompt",
-    targetIndex: 0,
-    comment:
-      Math.random() > 0.25
-        ? comments[Math.floor(Math.random() * comments.length)]
-        : null,
-    timestamp: Date.now() - Math.floor(Math.random() * 86400000),
-    isDove: Math.random() < 0.15,
-  }));
-}
 
 function reducer(state, action) {
   switch (action.type) {
+    case "SET_USER":
+      return {
+        ...state,
+        currentUser: action.payload,
+        onboardingComplete: !!action.payload,
+      };
+
     case "COMPLETE_ONBOARDING":
       return {
         ...state,
         currentUser: action.payload,
         onboardingComplete: true,
-        likesReceived: generateLikesReceived(state.profiles, action.payload),
       };
 
     case "SET_PROFILES":
-      return { ...state, profiles: action.payload };
+      return { ...state, profiles: action.payload, currentProfileIndex: 0 };
+
+    case "SET_LIKES_RECEIVED":
+      return { ...state, likesReceived: action.payload };
+
+    case "SET_MATCHES":
+      return { ...state, matches: action.payload };
+
+    case "NEXT_PROFILE":
+      return { ...state, currentProfileIndex: state.currentProfileIndex + 1 };
 
     case "LIKE_PROFILE": {
-      const { profileId, targetType, targetIndex, comment, isDove } = action.payload;
-      const newLike = {
-        profileId,
-        targetType,
-        targetIndex,
-        comment,
-        isDove,
-        timestamp: Date.now(),
-      };
-
-      const isMatch = state.likesReceived.some((l) => l.fromId === profileId);
-      let newMatches = state.matches;
-      let newConversations = state.conversations;
-
-      if (isMatch) {
-        const profile = state.profiles.find((p) => p.id === profileId);
-        newMatches = [
-          ...state.matches,
-          {
-            profileId,
-            timestamp: Date.now(),
-            profile,
-          },
-        ];
-        newConversations = {
-          ...state.conversations,
-          [profileId]: {
-            messages: [],
-            lastActivity: Date.now(),
-          },
-        };
-      }
-
       return {
         ...state,
-        likes: [...state.likes, newLike],
-        matches: newMatches,
-        conversations: newConversations,
+        likes: [...state.likes, { profileId: action.payload.profileId, timestamp: Date.now() }],
         currentProfileIndex: state.currentProfileIndex + 1,
-        doves: isDove ? state.doves - 1 : state.doves,
+        doves: action.payload.isDove ? state.doves - 1 : state.doves,
       };
     }
 
@@ -106,78 +63,34 @@ function reducer(state, action) {
       return { ...state, currentProfileIndex: state.currentProfileIndex + 1 };
 
     case "MATCH_FROM_LIKES": {
-      const { profileId } = action.payload;
-      const profile = state.profiles.find((p) => p.id === profileId);
+      const { like } = action.payload;
       return {
         ...state,
-        matches: [...state.matches, { profileId, timestamp: Date.now(), profile }],
-        conversations: {
-          ...state.conversations,
-          [profileId]: { messages: [], lastActivity: Date.now() },
-        },
-        likesReceived: state.likesReceived.filter((l) => l.fromId !== profileId),
+        likesReceived: state.likesReceived.filter((l) => l.id !== like.id),
       };
     }
 
     case "DISMISS_LIKE":
       return {
         ...state,
-        likesReceived: state.likesReceived.filter((l) => l.fromId !== action.payload),
+        likesReceived: state.likesReceived.filter((l) => l.id !== action.payload),
       };
 
-    case "SEND_MESSAGE": {
-      const { profileId, text } = action.payload;
-      const convo = state.conversations[profileId] || { messages: [] };
-      const newMessage = {
-        id: `msg_${Date.now()}`,
-        text,
-        sender: "me",
-        timestamp: Date.now(),
-      };
-      const updatedConvo = {
-        messages: [...convo.messages, newMessage],
-        lastActivity: Date.now(),
-      };
-
-      setTimeout(() => {
-        const replies = [
-          "Haha that's so sweet! 😊",
-          "I was just thinking about you!",
-          "Omg yes! When are you free?",
-          "That sounds amazing, tell me more!",
-          "You're making me blush 🙈",
-          "I'd love that! What about this weekend?",
-          "Aww you're too kind 💕",
-          "That's exactly what I was hoping you'd say!",
-        ];
-        const reply = replies[Math.floor(Math.random() * replies.length)];
-        action.dispatch({
-          type: "RECEIVE_MESSAGE",
-          payload: { profileId, text: reply },
-        });
-      }, 1500 + Math.random() * 3000);
-
+    case "SET_CONVERSATIONS":
       return {
         ...state,
-        conversations: { ...state.conversations, [profileId]: updatedConvo },
+        conversations: { ...state.conversations, ...action.payload },
       };
-    }
 
-    case "RECEIVE_MESSAGE": {
-      const { profileId, text } = action.payload;
-      const convo = state.conversations[profileId] || { messages: [] };
-      const newMessage = {
-        id: `msg_${Date.now()}`,
-        text,
-        sender: profileId,
-        timestamp: Date.now(),
-      };
+    case "ADD_MESSAGE": {
+      const { matchId, message } = action.payload;
+      const convo = state.conversations[matchId] || { messages: [] };
       return {
         ...state,
         conversations: {
           ...state.conversations,
-          [profileId]: {
-            messages: [...convo.messages, newMessage],
+          [matchId]: {
+            messages: [...convo.messages, message],
             lastActivity: Date.now(),
           },
         },
@@ -190,6 +103,22 @@ function reducer(state, action) {
     case "UPDATE_FILTERS":
       return { ...state, filters: { ...state.filters, ...action.payload } };
 
+    case "SET_LOADING":
+      return { ...state, loading: action.payload };
+
+    case "SET_ERROR":
+      return { ...state, error: action.payload };
+
+    case "LOGOUT":
+      api.clearToken();
+      return { ...initialState };
+
+    case "REMOVE_MATCH":
+      return {
+        ...state,
+        matches: state.matches.filter((m) => m.id !== action.payload),
+      };
+
     default:
       return state;
   }
@@ -199,20 +128,134 @@ export function AppProvider({ children }) {
   const [state, dispatch] = useReducer(reducer, initialState);
 
   useEffect(() => {
-    const profiles = generateProfiles(40);
-    dispatch({ type: "SET_PROFILES", payload: profiles });
+    const token = api.getToken();
+    if (token) {
+      api.getMe()
+        .then((user) => {
+          dispatch({ type: "SET_USER", payload: user });
+        })
+        .catch(() => {
+          api.clearToken();
+        });
+    }
   }, []);
 
-  const wrappedDispatch = (action) => {
-    if (action.type === "SEND_MESSAGE") {
-      dispatch({ ...action, payload: { ...action.payload, dispatch: wrappedDispatch } });
-    } else {
-      dispatch(action);
+  useEffect(() => {
+    if (state.onboardingComplete && state.currentUser) {
+      loadDiscover();
+      loadLikesReceived();
+      loadMatches();
     }
+  }, [state.onboardingComplete, state.currentUser]);
+
+  const loadDiscover = useCallback(async () => {
+    try {
+      const profiles = await api.getDiscover();
+      dispatch({ type: "SET_PROFILES", payload: profiles });
+    } catch (err) {
+      console.error("Failed to load discover:", err);
+    }
+  }, []);
+
+  const loadLikesReceived = useCallback(async () => {
+    try {
+      const likes = await api.getLikesReceived();
+      dispatch({ type: "SET_LIKES_RECEIVED", payload: likes });
+    } catch (err) {
+      console.error("Failed to load likes:", err);
+    }
+  }, []);
+
+  const loadMatches = useCallback(async () => {
+    try {
+      const matches = await api.getMatches();
+      dispatch({ type: "SET_MATCHES", payload: matches });
+    } catch (err) {
+      console.error("Failed to load matches:", err);
+    }
+  }, []);
+
+  const actions = {
+    register: async (data) => {
+      const user = await api.register(data);
+      dispatch({ type: "COMPLETE_ONBOARDING", payload: user });
+      return user;
+    },
+
+    login: async (email, password) => {
+      const user = await api.login(email, password);
+      dispatch({ type: "SET_USER", payload: user });
+      return user;
+    },
+
+    updateProfile: async (data) => {
+      const profile = await api.updateProfile(data);
+      dispatch({ type: "SET_USER", payload: profile });
+      return profile;
+    },
+
+    likeProfile: async (profileId, targetType, targetIndex, comment, isDove) => {
+      const res = await api.sendLike(profileId, targetType, targetIndex, comment, isDove);
+      let matchData = null;
+      if (res.matched) {
+        const matches = await api.getMatches();
+        dispatch({ type: "SET_MATCHES", payload: matches });
+        matchData = matches.find((m) => m.profileId === profileId) || null;
+      }
+      dispatch({
+        type: "LIKE_PROFILE",
+        payload: { profileId, matched: res.matched, matchData, isDove },
+      });
+      return res;
+    },
+
+    skipProfile: async (profileId) => {
+      await api.skipProfile(profileId);
+      dispatch({ type: "SKIP_PROFILE" });
+    },
+
+    matchFromLike: async (like) => {
+      const res = await api.sendLike(like.fromId, "profile", 0);
+      if (res.matched) {
+        const matches = await api.getMatches();
+        dispatch({ type: "SET_MATCHES", payload: matches });
+        const matchData = matches.find((m) => m.profileId === like.fromId);
+        dispatch({ type: "MATCH_FROM_LIKES", payload: { like, matchData } });
+      }
+      return res;
+    },
+
+    dismissLike: async (likeId) => {
+      await api.dismissLike(likeId);
+      dispatch({ type: "DISMISS_LIKE", payload: likeId });
+    },
+
+    loadMessages: async (matchId) => {
+      const messages = await api.getMessages(matchId);
+      dispatch({
+        type: "SET_CONVERSATIONS",
+        payload: { [matchId]: { messages, lastActivity: Date.now() } },
+      });
+    },
+
+    sendMessage: async (matchId, text) => {
+      const message = await api.sendMessage(matchId, text);
+      dispatch({ type: "ADD_MESSAGE", payload: { matchId, message } });
+      return message;
+    },
+
+    unmatch: async (matchId) => {
+      await api.unmatch(matchId);
+      dispatch({ type: "REMOVE_MATCH", payload: matchId });
+    },
+
+    refreshDiscover: loadDiscover,
+    refreshLikes: loadLikesReceived,
+    refreshMatches: loadMatches,
   };
 
   return (
-    <AppContext.Provider value={{ state, dispatch: wrappedDispatch }}>
+    <AppContext.Provider value={{ state, dispatch, actions }}>
       {children}
     </AppContext.Provider>
   );

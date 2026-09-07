@@ -1,38 +1,37 @@
 import { useApp } from "../context/AppContext";
 import { Heart, X, MessageCircle, MapPin, Briefcase, GraduationCap, Church, ChevronDown } from "lucide-react";
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef } from "react";
 import DoveIcon from "../components/DoveIcon";
-import { scoreLikeQuality } from "../utils/algorithm";
 
 export default function LikesYou() {
-  const { state, dispatch } = useApp();
+  const { state, actions } = useApp();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [photoIndex, setPhotoIndex] = useState(0);
   const cardRef = useRef(null);
 
-  const likesWithProfiles = useMemo(() => {
-    return state.likesReceived
-      .map((like) => {
-        const profile = state.profiles.find((p) => p.id === like.fromId);
-        return profile ? { ...like, profile, quality: scoreLikeQuality(like) } : null;
-      })
-      .filter(Boolean)
-      .sort((a, b) => b.quality - a.quality);
-  }, [state.likesReceived, state.profiles]);
+  const likesWithProfiles = state.likesReceived.filter((l) => l.profile);
 
-  const handleMatch = (profileId) => {
-    dispatch({ type: "MATCH_FROM_LIKES", payload: { profileId } });
-    setPhotoIndex(0);
-    if (currentIndex >= likesWithProfiles.length - 1) {
-      setCurrentIndex(Math.max(0, likesWithProfiles.length - 2));
+  const handleMatch = async (like) => {
+    try {
+      await actions.matchFromLike(like);
+      setPhotoIndex(0);
+      if (currentIndex >= likesWithProfiles.length - 1) {
+        setCurrentIndex(Math.max(0, likesWithProfiles.length - 2));
+      }
+    } catch (err) {
+      console.error("Match failed:", err);
     }
   };
 
-  const handleDismiss = (profileId) => {
-    dispatch({ type: "DISMISS_LIKE", payload: profileId });
-    setPhotoIndex(0);
-    if (currentIndex >= likesWithProfiles.length - 1) {
-      setCurrentIndex(Math.max(0, likesWithProfiles.length - 2));
+  const handleDismiss = async (like) => {
+    try {
+      await actions.dismissLike(like.id);
+      setPhotoIndex(0);
+      if (currentIndex >= likesWithProfiles.length - 1) {
+        setCurrentIndex(Math.max(0, likesWithProfiles.length - 2));
+      }
+    } catch (err) {
+      console.error("Dismiss failed:", err);
     }
   };
 
@@ -69,7 +68,6 @@ export default function LikesYou() {
       </div>
 
       <div className="likes-feed-card" ref={cardRef}>
-        {/* Comment / Dove badge */}
         {(currentLike.comment || currentLike.isDove) && (
           <div className="likes-feed-badge">
             {currentLike.isDove && <DoveIcon size={14} color="#b8860b" />}
@@ -84,7 +82,6 @@ export default function LikesYou() {
           </div>
         )}
 
-        {/* Photo with tap navigation */}
         <div className="likes-feed-photo-container" onClick={handlePhotoTap}>
           <div className="likes-feed-photo-dots">
             {profile.photos.map((_, i) => (
@@ -107,13 +104,12 @@ export default function LikesYou() {
             <h3>{profile.name}, {profile.age}</h3>
             {profile.location && (
               <span className="likes-feed-location">
-                <MapPin size={13} /> {profile.distance} km away
+                <MapPin size={13} /> {profile.location}
               </span>
             )}
           </div>
         </div>
 
-        {/* Profile details */}
         <div className="likes-feed-details">
           {profile.denomination && (
             <div className="likes-feed-detail-row">
@@ -133,15 +129,8 @@ export default function LikesYou() {
               <span>{profile.school}</span>
             </div>
           )}
-          {profile.location && (
-            <div className="likes-feed-detail-row">
-              <MapPin size={15} className="detail-icon" />
-              <span>{profile.location}</span>
-            </div>
-          )}
         </div>
 
-        {/* Prompts */}
         {profile.prompts?.filter(p => p.prompt && p.answer).length > 0 && (
           <div className="likes-feed-prompts">
             {profile.prompts.filter(p => p.prompt && p.answer).map((p, i) => (
@@ -153,7 +142,6 @@ export default function LikesYou() {
           </div>
         )}
 
-        {/* Interests */}
         {profile.interests?.length > 0 && (
           <div className="likes-feed-interests">
             {profile.interests.map((interest) => (
@@ -162,24 +150,22 @@ export default function LikesYou() {
           </div>
         )}
 
-        {/* Actions */}
         <div className="likes-feed-actions">
           <button
             className="likes-feed-dismiss-btn"
-            onClick={() => handleDismiss(currentLike.fromId)}
+            onClick={() => handleDismiss(currentLike)}
           >
             <X size={28} />
           </button>
           <button
             className="likes-feed-match-btn"
-            onClick={() => handleMatch(currentLike.fromId)}
+            onClick={() => handleMatch(currentLike)}
           >
             <Heart size={20} />
             Match with {profile.name}
           </button>
         </div>
 
-        {/* Navigation hint */}
         {likesWithProfiles.length > 1 && (
           <div className="likes-feed-nav">
             <span>{currentIndex + 1} of {likesWithProfiles.length}</span>

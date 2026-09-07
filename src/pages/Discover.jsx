@@ -1,14 +1,13 @@
-import { useState, useRef, useMemo, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useApp } from "../context/AppContext";
 import {
   Heart, X, MessageCircle, Star, MapPin, Briefcase,
   GraduationCap, Church, Ruler,
 } from "lucide-react";
 import DoveIcon from "../components/DoveIcon";
-import { rankProfiles } from "../utils/algorithm";
 
 export default function Discover() {
-  const { state, dispatch } = useApp();
+  const { state, dispatch, actions } = useApp();
   const [commentTarget, setCommentTarget] = useState(null);
   const [commentText, setCommentText] = useState("");
   const [showDove, setShowDove] = useState(false);
@@ -18,22 +17,7 @@ export default function Discover() {
   const [cardEnter, setCardEnter] = useState(true);
   const cardRef = useRef(null);
 
-  const rankedProfiles = useMemo(() => {
-    const filtered = state.profiles.filter((p) => {
-      if (p.id === "current_user") return false;
-      if (state.likes.some((l) => l.profileId === p.id)) return false;
-      const { maxAge, maxDistance } = state.filters;
-      if (p.age > maxAge) return false;
-      if (p.distance > maxDistance) return false;
-      const userGender = state.currentUser?.gender;
-      if (userGender === "male" && p.gender !== "female") return false;
-      if (userGender === "female" && p.gender !== "male") return false;
-      return true;
-    });
-    return rankProfiles(filtered, state.currentUser, state);
-  }, [state.profiles, state.likes, state.filters, state.currentUser]);
-
-  const profile = rankedProfiles[state.currentProfileIndex % Math.max(rankedProfiles.length, 1)];
+  const profile = state.profiles[state.currentProfileIndex];
 
   useEffect(() => {
     setCardEnter(true);
@@ -51,35 +35,38 @@ export default function Discover() {
     );
   }
 
-  const handleLike = (targetType, targetIndex, comment = null, isDove = false) => {
-    const willMatch = state.likesReceived.some((l) => l.fromId === profile.id);
-
+  const handleLike = async (targetType, targetIndex, comment = null, isDove = false) => {
     setLikeFlash(isDove ? "dove" : "heart");
     setTimeout(() => setLikeFlash(null), 600);
 
     setExitAnimation("like");
-    setTimeout(() => {
-      dispatch({
-        type: "LIKE_PROFILE",
-        payload: { profileId: profile.id, targetType, targetIndex, comment, isDove },
-      });
-      setExitAnimation(null);
-      setCommentTarget(null);
-      setCommentText("");
-      setShowDove(false);
+    setTimeout(async () => {
+      try {
+        const res = await actions.likeProfile(profile.id, targetType, targetIndex, comment, isDove);
+        setExitAnimation(null);
+        setCommentTarget(null);
+        setCommentText("");
+        setShowDove(false);
 
-      if (willMatch) {
-        const matchedProfile = profile;
-        setMatchCelebration(matchedProfile);
-        setTimeout(() => setMatchCelebration(null), 3000);
+        if (res.matched) {
+          setMatchCelebration(profile);
+          setTimeout(() => setMatchCelebration(null), 3000);
+        }
+      } catch (err) {
+        console.error("Like failed:", err);
+        setExitAnimation(null);
       }
     }, 400);
   };
 
-  const handleSkip = () => {
+  const handleSkip = async () => {
     setExitAnimation("skip");
-    setTimeout(() => {
-      dispatch({ type: "SKIP_PROFILE" });
+    setTimeout(async () => {
+      try {
+        await actions.skipProfile(profile.id);
+      } catch (err) {
+        console.error("Skip failed:", err);
+      }
       setExitAnimation(null);
     }, 350);
   };
@@ -124,13 +111,14 @@ export default function Discover() {
               <div key="info" className="profile-info-section">
                 <div className="profile-name-age">
                   <h2>{profile.name}, {profile.age}</h2>
-                  {profile.lastActive === "Just now" && <span className="online-dot" />}
                 </div>
                 <div className="profile-vitals">
                   {profile.height && (
                     <span className="vital-chip"><Ruler size={13} /> {profile.height}</span>
                   )}
-                  <span className="vital-chip"><MapPin size={13} /> {profile.location}</span>
+                  {profile.location && (
+                    <span className="vital-chip"><MapPin size={13} /> {profile.location}</span>
+                  )}
                   {profile.denomination && (
                     <span className="vital-chip"><Church size={13} /> {profile.denomination}</span>
                   )}

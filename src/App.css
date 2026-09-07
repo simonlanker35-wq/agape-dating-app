@@ -458,6 +458,18 @@ a {
   background: var(--primary-dark);
 }
 
+.onboarding-error {
+  color: #e53e3e;
+  font-size: 14px;
+  margin-top: 8px;
+  text-align: center;
+}
+
+.onboarding-cta:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .onboarding-cta.small {
   padding: 12px 28px;
   font-size: 15px;
