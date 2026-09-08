@@ -55,8 +55,8 @@ export default function Standouts() {
         isDove: true,
       },
     });
-    setTimeout(() => setDovePhase("sent"), 500);
-    setTimeout(() => advance(), 1600);
+    setTimeout(() => setDovePhase("sent"), 800);
+    setTimeout(() => advance(), 2200);
   };
 
   return (
@@ -73,22 +73,23 @@ export default function Standouts() {
             justifyContent: "center",
             pointerEvents: "none",
             zIndex: 50,
+            background: "radial-gradient(circle at 50% 45%, rgba(184,145,42,0.3) 0%, rgba(0,0,0,0.4) 70%)",
           }}
         >
-          <div style={{ animation: "bigDoveIn 0.5s cubic-bezier(.34,1.56,.64,1) forwards" }}>
-            <span style={{ fontSize: 96, lineHeight: 1, filter: "drop-shadow(0 8px 24px rgba(0,0,0,0.3))" }}>
+          <div style={{ animation: "bigDoveIn 0.8s cubic-bezier(.34,1.56,.64,1) forwards" }}>
+            <span style={{ fontSize: 130, lineHeight: 1, filter: "drop-shadow(0 8px 24px rgba(0,0,0,0.3))" }}>
               🕊️
             </span>
           </div>
           <p
             style={{
-              marginTop: 12,
-              fontSize: 14,
+              marginTop: 16,
+              fontSize: 18,
               fontWeight: 700,
               color: "white",
               letterSpacing: "0.04em",
-              animation: "bigDoveIn 0.5s 0.1s cubic-bezier(.34,1.56,.64,1) both",
-              textShadow: "0 2px 8px rgba(0,0,0,0.5)",
+              animation: "bigDoveIn 0.8s 0.15s cubic-bezier(.34,1.56,.64,1) both",
+              textShadow: "0 2px 12px rgba(0,0,0,0.6)",
             }}
           >
             Dove sent to {profile.name}

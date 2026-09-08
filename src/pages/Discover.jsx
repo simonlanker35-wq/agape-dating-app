@@ -39,7 +39,7 @@ export default function Discover() {
   const handleLike = async (targetType, targetIndex, comment = null, isDove = false) => {
     const flashType = comment ? "comment" : isDove ? "dove" : "heart";
     setLikeFlash(flashType);
-    setTimeout(() => setLikeFlash(null), 900);
+    setTimeout(() => setLikeFlash(null), 1500);
 
     setExitAnimation("like");
     setTimeout(async () => {
@@ -84,15 +84,14 @@ export default function Discover() {
 
   return (
     <div className="discover">
+      {likeFlash && (
+        <div className={`like-flash-overlay ${likeFlash}`}>
+          <span className="flash-emoji">
+            {likeFlash === "dove" ? "🕊️" : likeFlash === "comment" ? "💬" : "❤️"}
+          </span>
+        </div>
+      )}
       <div className={`profile-card ${exitAnimation || ""} ${cardEnter ? "enter" : ""}`} ref={cardRef}>
-        {likeFlash && (
-          <div className={`like-flash-overlay ${likeFlash}`}>
-            <span className="flash-emoji">
-              {likeFlash === "dove" ? "🕊️" : likeFlash === "comment" ? "💬" : "❤️"}
-            </span>
-          </div>
-        )}
-
         {/* Hero photo — full bleed with overlay */}
         <div className="hero-section">
           <div className="hero-photo-block">
