@@ -30,21 +30,7 @@ router.get("/", auth, async (req, res) => {
       },
     };
 
-    if (
-      user.location?.coordinates?.[0] &&
-      user.location?.coordinates?.[1] &&
-      user.filters.maxDistance
-    ) {
-      query.location = {
-        $nearSphere: {
-          $geometry: {
-            type: "Point",
-            coordinates: user.location.coordinates,
-          },
-          $maxDistance: user.filters.maxDistance * 1000,
-        },
-      };
-    }
+    // Geo filtering disabled for demo (requires 2dsphere index)
 
     let profiles = await User.find(query).limit(limit).lean();
 
