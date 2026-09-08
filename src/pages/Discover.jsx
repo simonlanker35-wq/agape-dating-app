@@ -38,14 +38,14 @@ export default function Discover() {
 
   const handleLike = async (targetType, targetIndex, comment = null, isDove = false) => {
     const flashType = comment ? "comment" : isDove ? "dove" : "heart";
+    setCommentTarget(null);
+    setCommentText("");
+    setShowDove(false);
     setLikeFlash(flashType);
 
     setTimeout(async () => {
       try {
         const res = await actions.likeProfile(profile.id, targetType, targetIndex, comment, isDove);
-        setCommentTarget(null);
-        setCommentText("");
-        setShowDove(false);
         setLikeFlash(null);
 
         if (res.matched) {
@@ -56,7 +56,7 @@ export default function Discover() {
         console.error("Like failed:", err);
         setLikeFlash(null);
       }
-    }, 1400);
+    }, 900);
   };
 
   const handleSkip = async () => {
