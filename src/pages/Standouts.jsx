@@ -99,14 +99,15 @@ export default function Standouts() {
       <div style={{ flex: 1, overflowY: "auto", position: "relative" }}>
         {/* Hero photo */}
         <div style={{ position: "relative", background: "#ddd" }}>
-          <div style={{ aspectRatio: "3/4", maxHeight: "56vh", position: "relative" }}>
+          <div style={{ width: "100%", maxHeight: "56vh", overflow: "hidden", position: "relative" }}>
             <img
               src={photos[photoIdx] || photos[0]}
               alt={profile.name}
               style={{
                 width: "100%",
-                height: "100%",
+                maxHeight: "56vh",
                 objectFit: "cover",
+                display: "block",
                 opacity: dovePhase === "sent" ? 0.3 : 1,
                 transition: "opacity 0.3s",
               }}

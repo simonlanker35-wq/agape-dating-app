@@ -97,12 +97,13 @@ function SettingsRow({ icon, label, sub, onPress, danger, toggle }) {
   );
 }
 
-function SettingsScreen({ onBack }) {
-  const { dispatch } = useApp();
+function SettingsScreen({ onBack, initialSection = null }) {
+  const { state, dispatch } = useApp();
+  const { currentUser } = state;
   const [notifs, setNotifs] = useState({ matches: true, likes: true, messages: true, doves: true, prompts: false });
   const [privacy, setPrivacy] = useState({ activeStatus: true, readReceipts: true, showDistance: true, incognito: false });
   const [faithPref, setFaithPref] = useState({ sameOnly: false, openToAll: true });
-  const [section, setSection] = useState(null);
+  const [section, setSection] = useState(initialSection);
 
   const toggle = (obj, key, setter) => setter((p) => ({ ...p, [key]: !p[key] }));
 
@@ -198,6 +199,39 @@ function SettingsScreen({ onBack }) {
               </div>
             </>
           )}
+          {section === "location" && (
+            <>
+              <div>
+                <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: C.sub, padding: "0 4px", marginBottom: 8 }}>Distance</p>
+                <div style={{ borderRadius: 16, overflow: "hidden", background: C.card, padding: 16 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
+                    <span style={{ fontSize: 14, fontWeight: 500, color: C.text }}>Maximum distance</span>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: C.primary }}>80 km</span>
+                  </div>
+                  <input type="range" min={5} max={200} defaultValue={80} style={{ width: "100%", accentColor: C.primary }} />
+                </div>
+              </div>
+              <div>
+                <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: C.sub, padding: "0 4px", marginBottom: 8 }}>My location</p>
+                <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
+                  <SettingsRow icon="📍" label="Current location" sub="Using device location" />
+                </div>
+              </div>
+            </>
+          )}
+          {section === "account" && (
+            <>
+              <div>
+                <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: C.sub, padding: "0 4px", marginBottom: 8 }}>Personal details</p>
+                <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
+                  <SettingsRow icon="👤" label="Name" sub={currentUser?.name || "Not set"} />
+                  <SettingsRow icon="📧" label="Email" sub={currentUser?.email || "Not set"} />
+                  <SettingsRow icon="🎂" label="Age" sub={currentUser?.age ? `${currentUser.age} years old` : "Not set"} />
+                  <SettingsRow icon="✝️" label="Denomination" sub={currentUser?.denomination || "Not set"} />
+                </div>
+              </div>
+            </>
+          )}
           {section === "subscription" && (
             <>
               <div style={{ borderRadius: 16, overflow: "hidden" }}>
@@ -205,10 +239,48 @@ function SettingsScreen({ onBack }) {
                   <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(255,255,255,0.6)", marginBottom: 4 }}>Agape+</p>
                   <p style={{ color: "white", fontWeight: 700, fontSize: 20, lineHeight: 1.3, marginBottom: 4 }}>Unlimited likes, see who likes you</p>
                   <p style={{ color: "rgba(255,255,255,0.7)", fontSize: 14 }}>From $14.99/month</p>
-                  <button style={{ marginTop: 16, padding: "12px 24px", borderRadius: 12, fontSize: 14, fontWeight: 700, background: "white", color: C.primary, border: "none", cursor: "pointer" }}>
-                    See plans
-                  </button>
                 </div>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 4 }}>
+                {[
+                  { name: "Monthly", price: "$14.99", period: "/month", popular: false },
+                  { name: "6 Months", price: "$9.99", period: "/month", popular: true },
+                  { name: "12 Months", price: "$6.99", period: "/month", popular: false },
+                ].map((plan) => (
+                  <div
+                    key={plan.name}
+                    style={{
+                      borderRadius: 16,
+                      padding: 16,
+                      background: C.card,
+                      border: plan.popular ? `2px solid ${C.primary}` : `1px solid ${C.border}`,
+                      position: "relative",
+                    }}
+                  >
+                    {plan.popular && (
+                      <span style={{ position: "absolute", top: -10, right: 16, fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 9999, background: C.primary, color: "white", textTransform: "uppercase", letterSpacing: "0.05em" }}>Most popular</span>
+                    )}
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <div>
+                        <p style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{plan.name}</p>
+                        <p style={{ fontSize: 12, color: C.sub, marginTop: 2 }}>Billed {plan.name === "Monthly" ? "monthly" : plan.name === "6 Months" ? "every 6 months" : "annually"}</p>
+                      </div>
+                      <div style={{ textAlign: "right" }}>
+                        <span style={{ fontSize: 20, fontWeight: 700, color: C.primary }}>{plan.price}</span>
+                        <span style={{ fontSize: 12, color: C.sub }}>{plan.period}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div style={{ padding: "8px 0" }}>
+                <p style={{ fontSize: 10, fontWeight: 600, color: C.sub, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>What you get</p>
+                {["Unlimited likes", "See who likes you", "5 Doves per day", "Priority visibility", "Advanced filters"].map((feat) => (
+                  <div key={feat} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0" }}>
+                    <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={C.primary} strokeWidth={2.5}><path d="M20 6L9 17l-5-5" /></svg>
+                    <span style={{ fontSize: 13, color: C.text }}>{feat}</span>
+                  </div>
+                ))}
               </div>
             </>
           )}
@@ -281,19 +353,54 @@ function SettingsScreen({ onBack }) {
 }
 
 export default function Profile() {
-  const { state, dispatch } = useApp();
+  const { state, dispatch, actions } = useApp();
   const { currentUser } = state;
   const [section, setSection] = useState("profile");
   const [showSettings, setShowSettings] = useState(false);
+  const [settingsSection, setSettingsSection] = useState(null);
+  const [editMode, setEditMode] = useState(false);
+  const [editPrompts, setEditPrompts] = useState([]);
+  const [saving, setSaving] = useState(false);
 
   if (!currentUser) return null;
 
   if (showSettings) {
-    return <SettingsScreen onBack={() => setShowSettings(false)} />;
+    return <SettingsScreen onBack={() => { setShowSettings(false); setSettingsSection(null); }} initialSection={settingsSection} />;
   }
 
   const prompts = (currentUser.prompts || []).filter(p => p.prompt && p.answer);
   const interests = currentUser.interests || [];
+
+  const startEdit = () => {
+    setEditPrompts(prompts.map(p => ({ ...p })));
+    setEditMode(true);
+  };
+
+  const cancelEdit = () => {
+    setEditMode(false);
+    setEditPrompts([]);
+  };
+
+  const saveEdit = async () => {
+    setSaving(true);
+    try {
+      const allPrompts = (currentUser.prompts || []).map(p => {
+        const edited = editPrompts.find(e => e.prompt === p.prompt);
+        return edited ? { ...p, answer: edited.answer } : p;
+      });
+      await actions.updateProfile({ prompts: allPrompts });
+      setEditMode(false);
+      setEditPrompts([]);
+    } catch (err) {
+      console.error("Save failed:", err);
+    }
+    setSaving(false);
+  };
+
+  const openSettings = (sec) => {
+    setSettingsSection(sec);
+    setShowSettings(true);
+  };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: C.surface }}>
@@ -361,26 +468,65 @@ export default function Profile() {
               {currentUser.denomination}{currentUser.location?.city ? ` · ${currentUser.location.city}` : ""}
             </p>
           </div>
-          <button
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              padding: "8px 16px",
-              borderRadius: 9999,
-              fontSize: 12,
-              fontWeight: 700,
-              background: C.primary,
-              color: "white",
-              border: "none",
-              cursor: "pointer",
-            }}
-          >
-            <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2.5}>
-              <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
-            </svg>
-            Edit
-          </button>
+          {editMode ? (
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                onClick={cancelEdit}
+                style={{
+                  padding: "8px 16px",
+                  borderRadius: 9999,
+                  fontSize: 12,
+                  fontWeight: 700,
+                  background: "rgba(255,255,255,0.2)",
+                  backdropFilter: "blur(10px)",
+                  color: "white",
+                  border: "none",
+                  cursor: "pointer",
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveEdit}
+                disabled={saving}
+                style={{
+                  padding: "8px 16px",
+                  borderRadius: 9999,
+                  fontSize: 12,
+                  fontWeight: 700,
+                  background: "white",
+                  color: C.primary,
+                  border: "none",
+                  cursor: "pointer",
+                  opacity: saving ? 0.6 : 1,
+                }}
+              >
+                {saving ? "Saving..." : "Save"}
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={startEdit}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "8px 16px",
+                borderRadius: 9999,
+                fontSize: 12,
+                fontWeight: 700,
+                background: C.primary,
+                color: "white",
+                border: "none",
+                cursor: "pointer",
+              }}
+            >
+              <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2.5}>
+                <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+              </svg>
+              Edit
+            </button>
+          )}
         </div>
       </div>
 
@@ -446,6 +592,7 @@ export default function Profile() {
               <p style={{ color: "white", fontWeight: 700, fontSize: 14, lineHeight: 1.3 }}>Be seen 3x faster</p>
             </div>
             <button
+              onClick={() => openSettings("subscription")}
               style={{
                 padding: "8px 16px",
                 borderRadius: 9999,
@@ -481,14 +628,14 @@ export default function Profile() {
           </div>
 
           {/* Prompts */}
-          {prompts.map((p, i) => (
+          {(editMode ? editPrompts : prompts).map((p, i) => (
             <div
               key={i}
               style={{
                 borderRadius: 16,
                 overflow: "hidden",
                 background: C.primarySoft,
-                border: "none",
+                border: editMode ? `2px solid ${C.primary}44` : "none",
               }}
             >
               <div style={{ display: "flex" }}>
@@ -506,30 +653,59 @@ export default function Profile() {
                   >
                     {p.prompt}
                   </p>
-                  <p style={{ fontSize: 16, fontWeight: 600, lineHeight: 1.3, color: C.text, fontFamily: FONT }}>
-                    {p.answer}
-                  </p>
-                  <button
-                    style={{
-                      marginTop: 12,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 6,
-                      fontSize: 12,
-                      fontWeight: 600,
-                      padding: "6px 12px",
-                      borderRadius: 9999,
-                      background: C.surface,
-                      color: C.sub,
-                      border: "none",
-                      cursor: "pointer",
-                    }}
-                  >
-                    <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
-                      <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
-                    </svg>
-                    Edit answer
-                  </button>
+                  {editMode ? (
+                    <textarea
+                      value={editPrompts[i]?.answer || ""}
+                      onChange={(e) => {
+                        const updated = [...editPrompts];
+                        updated[i] = { ...updated[i], answer: e.target.value };
+                        setEditPrompts(updated);
+                      }}
+                      style={{
+                        width: "100%",
+                        minHeight: 60,
+                        fontSize: 16,
+                        fontWeight: 600,
+                        lineHeight: 1.3,
+                        color: C.text,
+                        fontFamily: FONT,
+                        background: "white",
+                        border: `1.5px solid ${C.border}`,
+                        borderRadius: 12,
+                        padding: "10px 12px",
+                        resize: "vertical",
+                        outline: "none",
+                      }}
+                    />
+                  ) : (
+                    <>
+                      <p style={{ fontSize: 16, fontWeight: 600, lineHeight: 1.3, color: C.text, fontFamily: FONT }}>
+                        {p.answer}
+                      </p>
+                      <button
+                        onClick={startEdit}
+                        style={{
+                          marginTop: 12,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                          fontSize: 12,
+                          fontWeight: 600,
+                          padding: "6px 12px",
+                          borderRadius: 9999,
+                          background: C.surface,
+                          color: C.sub,
+                          border: "none",
+                          cursor: "pointer",
+                        }}
+                      >
+                        <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                          <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                        </svg>
+                        Edit answer
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
@@ -595,13 +771,14 @@ export default function Profile() {
           <div style={{ marginTop: 4 }}>
             <p style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em", color: C.sub, padding: "0 4px", marginBottom: 8 }}>Account</p>
             {[
-              { icon: "🔔", label: "Notifications" },
-              { icon: "🙏", label: "Faith Preferences" },
-              { icon: "📍", label: "Location & Distance" },
-              { icon: "💳", label: "Subscription" },
+              { icon: "🔔", label: "Notifications", section: "notifications" },
+              { icon: "🙏", label: "Faith Preferences", section: "faith" },
+              { icon: "📍", label: "Location & Distance", section: "location" },
+              { icon: "💳", label: "Subscription", section: "subscription" },
             ].map((item) => (
               <div
                 key={item.label}
+                onClick={() => openSettings(item.section)}
                 style={{
                   borderRadius: 16,
                   overflow: "hidden",
@@ -610,6 +787,7 @@ export default function Profile() {
                   justifyContent: "space-between",
                   background: C.card,
                   marginBottom: 8,
+                  cursor: "pointer",
                 }}
               >
                 <div style={{ width: 4, alignSelf: "stretch", background: C.primary, flexShrink: 0 }} />
@@ -640,12 +818,13 @@ export default function Profile() {
           <div>
             <p style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em", color: C.sub, padding: "0 4px", marginBottom: 8 }}>Safety & Privacy</p>
             {[
-              { icon: "🛡️", label: "Safety Centre" },
-              { icon: "🔒", label: "Privacy" },
-              { icon: "🚫", label: "Blocked Profiles" },
+              { icon: "🛡️", label: "Safety Centre", section: "safety" },
+              { icon: "🔒", label: "Privacy", section: "privacy" },
+              { icon: "🚫", label: "Blocked Profiles", section: "safety" },
             ].map((item) => (
               <div
                 key={item.label}
+                onClick={() => openSettings(item.section)}
                 style={{
                   borderRadius: 16,
                   overflow: "hidden",
@@ -654,6 +833,7 @@ export default function Profile() {
                   justifyContent: "space-between",
                   background: C.card,
                   marginBottom: 8,
+                  cursor: "pointer",
                 }}
               >
                 <div style={{ width: 4, alignSelf: "stretch", background: C.primary, flexShrink: 0 }} />
