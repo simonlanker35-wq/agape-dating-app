@@ -13,10 +13,11 @@ function HeartIcon({ filled, size = 10 }) {
 }
 
 export default function LikesYou() {
-  const { state, actions } = useApp();
+  const { state, actions, dispatch } = useApp();
   const [open, setOpen] = useState(null);
   const [likedBack, setLikedBack] = useState(new Set());
   const [bouncing, setBouncing] = useState(null);
+  const [viewProfile, setViewProfile] = useState(null);
 
   const likesWithProfiles = state.likesReceived.filter((l) => l.profile);
 
@@ -207,6 +208,7 @@ export default function LikesYou() {
                     {likedBack.has(like.id) ? "✓ Matched!" : "Like Back"}
                   </button>
                   <button
+                    onClick={() => setViewProfile(like.profile)}
                     style={{
                       flex: 1,
                       padding: "12px 0",
@@ -228,6 +230,64 @@ export default function LikesYou() {
           );
         })}
       </div>
+
+      {viewProfile && (
+        <div
+          style={{
+            position: "fixed", inset: 0, maxWidth: 430, margin: "0 auto",
+            zIndex: 200, background: C.bg, overflowY: "auto",
+          }}
+        >
+          <div style={{ position: "relative" }}>
+            <img
+              src={viewProfile.photos?.[0]}
+              alt={viewProfile.name}
+              style={{ width: "100%", aspectRatio: "3/4", maxHeight: "56vh", objectFit: "cover" }}
+              onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${viewProfile.name}&size=600&background=random`; }}
+            />
+            <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 50%)", pointerEvents: "none" }} />
+            <button
+              onClick={() => setViewProfile(null)}
+              style={{
+                position: "absolute", top: 44, left: 16, width: 36, height: 36, borderRadius: "50%",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                background: "rgba(0,0,0,0.4)", backdropFilter: "blur(10px)", border: "none", cursor: "pointer",
+              }}
+            >
+              <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2.5}><polyline points="15 18 9 12 15 6" /></svg>
+            </button>
+            <div style={{ position: "absolute", bottom: 20, left: 16 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ color: "white", fontSize: 28, fontWeight: 700 }}>{viewProfile.name}</span>
+                <span style={{ color: "rgba(255,255,255,0.8)", fontSize: 22, fontWeight: 300 }}>{viewProfile.age}</span>
+              </div>
+              <p style={{ color: "rgba(255,255,255,0.7)", fontSize: 12, marginTop: 4 }}>
+                {viewProfile.denomination}{viewProfile.location ? ` · ${viewProfile.location}` : ""}
+              </p>
+            </div>
+          </div>
+          <div style={{ padding: "20px 16px", display: "flex", flexDirection: "column", gap: 12 }}>
+            {(viewProfile.prompts || []).filter(p => p.prompt && p.answer).map((p, i) => (
+              <div key={i} style={{ borderRadius: 16, overflow: "hidden", background: C.primarySoft }}>
+                <div style={{ display: "flex" }}>
+                  <div style={{ width: 4, flexShrink: 0, background: C.primary }} />
+                  <div style={{ flex: 1, padding: "14px" }}>
+                    <p style={{ fontSize: 10, fontWeight: 600, color: C.primary, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>{p.prompt}</p>
+                    <p style={{ fontSize: 16, fontWeight: 600, color: C.text }}>{p.answer}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+            {viewProfile.interests?.length > 0 && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, padding: "8px 0" }}>
+                {viewProfile.interests.map((v) => (
+                  <span key={v} style={{ fontSize: 12, fontWeight: 600, padding: "6px 12px", borderRadius: 9999, background: C.surface, color: C.sub }}>{v}</span>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

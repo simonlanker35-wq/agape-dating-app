@@ -487,8 +487,8 @@ export default function Profile() {
               style={{
                 borderRadius: 16,
                 overflow: "hidden",
-                background: C.card,
-                border: `1px solid ${C.border}`,
+                background: C.primarySoft,
+                border: "none",
               }}
             >
               <div style={{ display: "flex" }}>

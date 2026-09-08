@@ -99,7 +99,7 @@ export default function Standouts() {
       <div style={{ flex: 1, overflowY: "auto", position: "relative" }}>
         {/* Hero photo */}
         <div style={{ position: "relative", background: "#ddd" }}>
-          <div style={{ aspectRatio: "3/4", position: "relative" }}>
+          <div style={{ aspectRatio: "3/4", maxHeight: "56vh", position: "relative" }}>
             <img
               src={photos[photoIdx] || photos[0]}
               alt={profile.name}
@@ -392,8 +392,8 @@ export default function Standouts() {
                 style={{
                   borderRadius: 16,
                   overflow: "hidden",
-                  background: C.card,
-                  border: `1px solid ${C.border}`,
+                  background: C.primarySoft,
+                  border: "none",
                 }}
               >
                 <div style={{ display: "flex" }}>
