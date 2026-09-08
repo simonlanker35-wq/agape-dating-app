@@ -10,7 +10,7 @@ export default function Discover() {
   const [commentTarget, setCommentTarget] = useState(null);
   const [commentText, setCommentText] = useState("");
   const [showDove, setShowDove] = useState(false);
-  const [exitAnimation, setExitAnimation] = useState(null);
+  const exitAnimation = null;
   const [likeFlash, setLikeFlash] = useState(null);
   const [matchCelebration, setMatchCelebration] = useState(null);
   const [cardEnter, setCardEnter] = useState(true);
@@ -39,16 +39,14 @@ export default function Discover() {
   const handleLike = async (targetType, targetIndex, comment = null, isDove = false) => {
     const flashType = comment ? "comment" : isDove ? "dove" : "heart";
     setLikeFlash(flashType);
-    setTimeout(() => setLikeFlash(null), 1500);
 
-    setExitAnimation("like");
     setTimeout(async () => {
       try {
         const res = await actions.likeProfile(profile.id, targetType, targetIndex, comment, isDove);
-        setExitAnimation(null);
         setCommentTarget(null);
         setCommentText("");
         setShowDove(false);
+        setLikeFlash(null);
 
         if (res.matched) {
           setMatchCelebration(profile);
@@ -56,21 +54,17 @@ export default function Discover() {
         }
       } catch (err) {
         console.error("Like failed:", err);
-        setExitAnimation(null);
+        setLikeFlash(null);
       }
-    }, 400);
+    }, 1400);
   };
 
   const handleSkip = async () => {
-    setExitAnimation("skip");
-    setTimeout(async () => {
-      try {
-        await actions.skipProfile(profile.id);
-      } catch (err) {
-        console.error("Skip failed:", err);
-      }
-      setExitAnimation(null);
-    }, 350);
+    try {
+      await actions.skipProfile(profile.id);
+    } catch (err) {
+      console.error("Skip failed:", err);
+    }
   };
 
   const handleComment = () => {

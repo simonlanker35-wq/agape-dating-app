@@ -14,7 +14,6 @@ function HeartIcon({ filled, size = 10 }) {
 
 export default function LikesYou() {
   const { state, actions, dispatch } = useApp();
-  const [open, setOpen] = useState(null);
   const [likedBack, setLikedBack] = useState(new Set());
   const [bouncing, setBouncing] = useState(null);
   const [viewProfile, setViewProfile] = useState(null);
@@ -67,7 +66,6 @@ export default function LikesYou() {
         {likesWithProfiles.map((like) => {
           const profile = like.profile;
           const likedPrompt = like.targetType === "prompt" && profile.prompts?.[like.targetIndex];
-          const isOpen = open === like.id;
 
           return (
             <div
@@ -81,7 +79,7 @@ export default function LikesYou() {
                   padding: 16,
                   cursor: "pointer",
                 }}
-                onClick={() => setOpen(isOpen ? null : like.id)}
+                onClick={() => setViewProfile(like.profile)}
               >
                 <div style={{ position: "relative", flexShrink: 0 }}>
                   <img
@@ -188,44 +186,42 @@ export default function LikesYou() {
                   )}
                 </div>
               </div>
-              {isOpen && (
-                <div style={{ padding: "0 16px 16px", display: "flex", gap: 8 }}>
-                  <button
-                    onClick={() => handleLikeBack(like)}
-                    style={{
-                      flex: 1,
-                      padding: "12px 0",
-                      borderRadius: 12,
-                      fontSize: 14,
-                      fontWeight: 700,
-                      color: "white",
-                      border: "none",
-                      cursor: "pointer",
-                      transition: "all 0.2s",
-                      background: likedBack.has(like.id) ? "#444" : C.primary,
-                    }}
-                  >
-                    {likedBack.has(like.id) ? "✓ Matched!" : "Like Back"}
-                  </button>
-                  <button
-                    onClick={() => setViewProfile(like.profile)}
-                    style={{
-                      flex: 1,
-                      padding: "12px 0",
-                      borderRadius: 12,
-                      fontSize: 14,
-                      fontWeight: 700,
-                      background: C.surface,
-                      color: C.text,
-                      border: "none",
-                      cursor: "pointer",
-                      transition: "all 0.2s",
-                    }}
-                  >
-                    View Profile
-                  </button>
-                </div>
-              )}
+              <div style={{ padding: "0 16px 16px", display: "flex", gap: 8 }}>
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleLikeBack(like); }}
+                  style={{
+                    flex: 1,
+                    padding: "12px 0",
+                    borderRadius: 12,
+                    fontSize: 14,
+                    fontWeight: 700,
+                    color: "white",
+                    border: "none",
+                    cursor: "pointer",
+                    transition: "all 0.2s",
+                    background: likedBack.has(like.id) ? "#444" : C.primary,
+                  }}
+                >
+                  {likedBack.has(like.id) ? "Matched!" : "Like Back"}
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setViewProfile(like.profile); }}
+                  style={{
+                    flex: 1,
+                    padding: "12px 0",
+                    borderRadius: 12,
+                    fontSize: 14,
+                    fontWeight: 700,
+                    background: C.surface,
+                    color: C.text,
+                    border: "none",
+                    cursor: "pointer",
+                    transition: "all 0.2s",
+                  }}
+                >
+                  View Profile
+                </button>
+              </div>
             </div>
           );
         })}
