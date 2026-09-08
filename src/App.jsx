@@ -6,7 +6,6 @@ import LikesYou from "./pages/LikesYou";
 import Matches from "./pages/Matches";
 import Standouts from "./pages/Standouts";
 import Profile from "./pages/Profile";
-import AgapeCross from "./components/AgapeCross";
 import "./App.css";
 
 function AppContent() {
@@ -35,13 +34,7 @@ function AppContent() {
 
   return (
     <div className="app-container">
-      <header className="app-header">
-        <div className="app-logo">
-          <AgapeCross size={18} strokeWidth={1.5} />
-          <span>agape</span>
-        </div>
-      </header>
-      <main className="app-main">{renderPage()}</main>
+      <main className="app-main no-header">{renderPage()}</main>
       <Navigation />
     </div>
   );

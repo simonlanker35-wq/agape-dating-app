@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 
 const promptSchema = new mongoose.Schema(
-  { prompt: String, answer: String },
+  { prompt: String, answer: String, voice: { duration: String } },
   { _id: false }
 );
 

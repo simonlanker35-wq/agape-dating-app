@@ -2,6 +2,8 @@ import { useState, useRef, useEffect } from "react";
 import { useApp } from "../context/AppContext";
 import { Heart, X, MessageCircle, MapPin, Church } from "lucide-react";
 import DoveIcon from "../components/DoveIcon";
+import AgapeCross from "../components/AgapeCross";
+import WaveformBar from "../components/WaveformBar";
 
 export default function Discover() {
   const { state, dispatch, actions } = useApp();
@@ -12,12 +14,14 @@ export default function Discover() {
   const [likeFlash, setLikeFlash] = useState(null);
   const [matchCelebration, setMatchCelebration] = useState(null);
   const [cardEnter, setCardEnter] = useState(true);
+  const [photoIdx, setPhotoIdx] = useState(0);
   const cardRef = useRef(null);
 
   const profile = state.profiles[state.currentProfileIndex];
 
   useEffect(() => {
     setCardEnter(true);
+    setPhotoIdx(0);
     const t = setTimeout(() => setCardEnter(false), 400);
     return () => clearTimeout(t);
   }, [state.currentProfileIndex]);
@@ -33,8 +37,9 @@ export default function Discover() {
   }
 
   const handleLike = async (targetType, targetIndex, comment = null, isDove = false) => {
-    setLikeFlash(isDove ? "dove" : "heart");
-    setTimeout(() => setLikeFlash(null), 600);
+    const flashType = comment ? "comment" : isDove ? "dove" : "heart";
+    setLikeFlash(flashType);
+    setTimeout(() => setLikeFlash(null), 900);
 
     setExitAnimation("like");
     setTimeout(async () => {
@@ -74,117 +79,179 @@ export default function Discover() {
     }
   };
 
-  const contentBlocks = buildContentBlocks(profile);
+  const photos = profile.photos || [];
+  const prompts = (profile.prompts || []).filter(p => p.prompt && p.answer);
 
   return (
     <div className="discover">
       <div className={`profile-card ${exitAnimation || ""} ${cardEnter ? "enter" : ""}`} ref={cardRef}>
         {likeFlash && (
           <div className={`like-flash-overlay ${likeFlash}`}>
-            {likeFlash === "dove" ? (
-              <DoveIcon size={80} color="white" strokeWidth={1} />
-            ) : (
-              <Heart size={80} fill="white" stroke="white" />
-            )}
+            <span className="flash-emoji">
+              {likeFlash === "dove" ? "🕊️" : likeFlash === "comment" ? "💬" : "❤️"}
+            </span>
           </div>
         )}
 
-        {contentBlocks.map((block, i) => {
-          if (block.type === "photo") {
-            if (block.index === 0) {
-              return (
-                <div key="hero" className="hero-section">
-                  <div className="hero-photo-block">
-                    <img
-                      src={profile.photos[0]}
-                      alt={`${profile.name}'s photo`}
-                      className="hero-photo"
-                      onError={(e) => {
-                        e.target.src = `https://ui-avatars.com/api/?name=${profile.name}&size=400&background=random`;
-                      }}
-                    />
-                    {profile.photos.length > 1 && (
-                      <div className="photo-indicators">
-                        {profile.photos.map((_, idx) => (
-                          <div key={idx} className={`photo-indicator ${idx === 0 ? "active" : ""}`} />
-                        ))}
-                      </div>
-                    )}
+        {/* Hero photo — full bleed with overlay */}
+        <div className="hero-section">
+          <div className="hero-photo-block">
+            <img
+              src={photos[photoIdx] || photos[0]}
+              alt={`${profile.name}'s photo`}
+              className="hero-photo"
+              onError={(e) => {
+                e.target.src = `https://ui-avatars.com/api/?name=${profile.name}&size=400&background=random`;
+              }}
+            />
+
+            {/* Top gradient */}
+            <div className="hero-top-gradient" />
+
+            {/* Photo progress dots */}
+            {photos.length > 1 && (
+              <div className="photo-indicators">
+                {photos.map((_, i) => (
+                  <div
+                    key={i}
+                    className={`photo-indicator ${i === photoIdx ? "active" : ""}`}
+                    onClick={() => setPhotoIdx(i)}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* Shield + filter icons */}
+            <div className="photo-overlay-icons">
+              <button className="photo-overlay-btn">
+                <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2.5}>
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                </svg>
+              </button>
+              <button className="photo-overlay-btn">
+                <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2}>
+                  <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Tap zones for photo navigation */}
+            <div className="hero-tap-zones">
+              <div className="hero-tap-zone" onClick={() => setPhotoIdx(p => Math.max(0, p - 1))} />
+              <div className="hero-tap-zone" onClick={() => setPhotoIdx(p => Math.min(photos.length - 1, p + 1))} />
+            </div>
+
+            {/* Bottom gradient overlay — name + buttons ON photo */}
+            <div className="hero-overlay">
+              <div className="hero-name-row">
+                <span className="hero-name">{profile.name}</span>
+                <span className="hero-age">{profile.age}</span>
+                {/* Verified badge — gold circle with checkmark */}
+                <span className="verified-badge">
+                  <svg width={16} height={16} viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="10" fill="#B8912A" />
+                    <path d="M9 12l2 2 4-4" stroke="white" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+                  </svg>
+                </span>
+                {profile.location && (
+                  <>
+                    <span className="hero-sep">·</span>
+                    <span className="hero-detail">
+                      <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth={2}>
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                        <circle cx="12" cy="10" r="3" />
+                      </svg>
+                      <span>{profile.location}</span>
+                    </span>
+                  </>
+                )}
+                {profile.denomination && (
+                  <>
+                    <span className="hero-sep">·</span>
+                    <span className="hero-detail">
+                      <span style={{ color: "rgba(255,255,255,0.6)", fontSize: 11 }}>✝</span>
+                      <span>{profile.denomination}</span>
+                    </span>
+                  </>
+                )}
+              </div>
+
+              {/* Glass-morphism action buttons */}
+              <div className="hero-actions">
+                <button className="action-btn skip-btn" onClick={handleSkip}>
+                  <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2.5} strokeLinecap="round">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+                <button className="action-btn like-btn" onClick={() => handleLike("profile", 0)}>
+                  <Heart size={24} fill="white" stroke="white" />
+                </button>
+                <button className="action-btn comment-btn" onClick={() => setCommentTarget({ type: "photo", index: 0 })}>
+                  <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2} strokeLinecap="round">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Prompts — white sheet with rounded top overlapping photo */}
+        <div className="prompts-sheet">
+          {prompts.map((p, i) => (
+            <div key={`prompt-${i}`} className="hinge-prompt-card">
+              <div className="hinge-prompt-inner">
+                <div className="hinge-prompt-accent" />
+                <div className="hinge-prompt-content">
+                  <div className="hinge-prompt-label">{p.prompt}</div>
+                  {p.voice ? (
+                    <WaveformBar duration={p.voice.duration} color="#B8912A" />
+                  ) : (
+                    <div className="hinge-prompt-answer">{p.answer}</div>
+                  )}
+                  <div className="hinge-prompt-actions">
+                    <button className="hinge-action-btn" onClick={() => handleLike("prompt", i)}>
+                      <Heart size={12} /> Like
+                    </button>
+                    <button className="hinge-action-btn" onClick={() => setCommentTarget({ type: "prompt", index: i })}>
+                      <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                      </svg>
+                      Comment
+                    </button>
                   </div>
-                  <div className="hero-info">
-                    <div className="hero-name-line">
-                      <h2>{profile.name} <span className="hero-age">{profile.age}</span></h2>
-                      <div className="hero-details">
-                        {profile.location && (
-                          <span className="hero-detail"><MapPin size={12} /> {profile.location}</span>
-                        )}
-                        {profile.denomination && (
-                          <span className="hero-detail"><Church size={12} /> {profile.denomination}</span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="hero-actions">
-                      <button className="action-btn skip-btn" onClick={handleSkip}>
-                        <X size={24} />
-                      </button>
-                      <button
-                        className="action-btn like-btn"
-                        onClick={() => handleLike("profile", 0)}
-                      >
-                        <Heart size={24} />
-                      </button>
-                      <button
-                        className="action-btn comment-btn"
-                        onClick={() => setCommentTarget({ type: "photo", index: 0 })}
-                      >
-                        <MessageCircle size={24} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              );
-            }
-            return (
-              <ProfilePhoto
-                key={`photo-${block.index}`}
-                profile={profile}
-                photoIndex={block.index}
-                totalPhotos={profile.photos.length}
-                onLike={() => handleLike("photo", block.index)}
-                onComment={() => setCommentTarget({ type: "photo", index: block.index })}
-              />
-            );
-          }
-          if (block.type === "prompt") {
-            return (
-              <div key={`prompt-${block.index}`} className="hinge-prompt-card">
-                <div className="hinge-prompt-label">{block.prompt}</div>
-                <div className="hinge-prompt-answer">{block.answer}</div>
-                <div className="hinge-prompt-actions">
-                  <button className="hinge-action-btn" onClick={() => handleLike("prompt", block.index)}>
-                    <Heart size={14} /> Like
-                  </button>
-                  <button className="hinge-action-btn" onClick={() => setCommentTarget({ type: "prompt", index: block.index })}>
-                    <MessageCircle size={14} /> Comment
-                  </button>
                 </div>
               </div>
-            );
-          }
-          if (block.type === "interests") {
-            return (
-              <div key="interests" className="profile-interests-section">
-                <div className="interests-label">Interests</div>
-                <div className="interests-wrap">
-                  {profile.interests.map((interest) => (
-                    <span key={interest} className="interest-chip">{interest}</span>
-                  ))}
-                </div>
+            </div>
+          ))}
+
+          {/* Faith tag */}
+          {profile.denomination && (
+            <div className="faith-tag">
+              <div className="faith-tag-icon">
+                <AgapeCross size={11} strokeWidth={1.5} />
               </div>
-            );
-          }
-          return null;
-        })}
+              <div>
+                <div className="faith-tag-label">{profile.denomination}</div>
+                {profile.location && <div className="faith-tag-sub">{profile.location}</div>}
+              </div>
+            </div>
+          )}
+
+          {/* Interests */}
+          {profile.interests?.length > 0 && (
+            <div className="profile-interests-section">
+              <div className="interests-label">Interests</div>
+              <div className="interests-wrap">
+                {profile.interests.map((interest) => (
+                  <span key={interest} className="interest-chip">{interest}</span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
       </div>
 
       {commentTarget && (
@@ -201,6 +268,7 @@ export default function Discover() {
                 ? profile.prompts[commentTarget.index]?.prompt
                 : `Say something to ${profile.name}...`}
             </h3>
+            <p className="comment-hint">Commenting has a 3x higher chance for a match than just liking</p>
             <textarea
               value={commentText}
               onChange={(e) => setCommentText(e.target.value)}
@@ -221,99 +289,75 @@ export default function Discover() {
       )}
 
       {matchCelebration && (
-        <div className="match-celebration-overlay">
-          <div className="match-celebration">
-            <div className="match-hearts">
-              {Array.from({ length: 12 }, (_, i) => (
-                <Heart
+        <div className="match-celebration-overlay" onClick={() => setMatchCelebration(null)}>
+          {/* Confetti */}
+          <div className="match-confetti">
+            {Array.from({ length: 28 }, (_, i) => {
+              const colors = ["#B8912A", "#F5D878", "#E8C44A", "#ffffff", "#111111", "#D4AF37"];
+              return (
+                <div
                   key={i}
-                  size={16 + Math.random() * 20}
-                  fill="var(--gold)"
-                  stroke="var(--gold)"
-                  className="floating-heart"
+                  className="confetti-piece"
                   style={{
-                    left: `${10 + Math.random() * 80}%`,
-                    animationDelay: `${Math.random() * 0.5}s`,
-                    animationDuration: `${1.5 + Math.random() * 1}s`,
+                    left: `${5 + ((i * 3.3) % 90)}%`,
+                    width: i % 3 === 0 ? 8 : i % 3 === 1 ? 6 : 10,
+                    height: i % 3 === 0 ? 8 : i % 3 === 1 ? 12 : 5,
+                    background: colors[i % colors.length],
+                    borderRadius: i % 4 === 0 ? "50%" : "2px",
+                    "--spin": `${(i % 2 === 0 ? 1 : -1) * (180 + ((i * 37) % 360))}deg`,
+                    "--dur": `${0.9 + ((i * 0.07) % 0.7)}s`,
+                    "--delay": `${(i * 0.045) % 0.5}s`,
                   }}
                 />
-              ))}
+              );
+            })}
+          </div>
+
+          <div className="match-reveal">
+            <div className="match-cross">
+              <AgapeCross size={22} strokeWidth={1.5} />
             </div>
-            <h2>It's a Match!</h2>
-            <p>You and {matchCelebration.name} liked each other</p>
-            <img
-              src={matchCelebration.photos[0]}
-              alt={matchCelebration.name}
-              className="match-celebration-photo"
-              onError={(e) => {
-                e.target.src = `https://ui-avatars.com/api/?name=${matchCelebration.name}&size=120&background=random`;
-              }}
-            />
+            <div className="match-label">It's a Match</div>
+            <h2 className="match-title shimmer-gold">You & {matchCelebration.name}</h2>
+            <div className="match-subtitle">You both liked each other ✦</div>
+
+            <div className="match-photos">
+              <div className="pulse-ring">
+                <img
+                  src={state.user?.photos?.[0] || "/profile.jpg"}
+                  alt="You"
+                  onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=You&size=200&background=random`; }}
+                />
+              </div>
+              <span className="match-sparkle">✦</span>
+              <div className="pulse-ring">
+                <img
+                  src={matchCelebration.photos[0]}
+                  alt={matchCelebration.name}
+                  onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${matchCelebration.name}&size=200&background=random`; }}
+                />
+              </div>
+            </div>
+
             <button
               className="match-celebration-btn"
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 setMatchCelebration(null);
                 dispatch({ type: "SET_TAB", payload: "matches" });
               }}
             >
-              Send a Message
+              Send a message
             </button>
             <button
               className="match-celebration-dismiss"
-              onClick={() => setMatchCelebration(null)}
+              onClick={(e) => { e.stopPropagation(); setMatchCelebration(null); }}
             >
-              Keep Swiping
+              Keep browsing
             </button>
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-function buildContentBlocks(profile) {
-  const blocks = [];
-  const photos = profile.photos || [];
-  const prompts = (profile.prompts || []).filter(p => p.prompt && p.answer);
-
-  blocks.push({ type: "photo", index: 0 });
-
-  if (prompts[0]) blocks.push({ type: "prompt", index: 0, ...prompts[0] });
-  if (photos[1]) blocks.push({ type: "photo", index: 1 });
-  if (prompts[1]) blocks.push({ type: "prompt", index: 1, ...prompts[1] });
-  if (photos[2]) blocks.push({ type: "photo", index: 2 });
-  if (prompts[2]) blocks.push({ type: "prompt", index: 2, ...prompts[2] });
-
-  for (let i = 3; i < photos.length; i++) {
-    blocks.push({ type: "photo", index: i });
-  }
-
-  if (profile.interests?.length > 0) {
-    blocks.push({ type: "interests" });
-  }
-
-  return blocks;
-}
-
-function ProfilePhoto({ profile, photoIndex, totalPhotos, onLike, onComment }) {
-  return (
-    <div className="hinge-photo-block">
-      <img
-        src={profile.photos[photoIndex]}
-        alt={`${profile.name}'s photo`}
-        className="hinge-photo"
-        onError={(e) => {
-          e.target.src = `https://ui-avatars.com/api/?name=${profile.name}&size=400&background=random`;
-        }}
-      />
-      <div className="hinge-photo-actions">
-        <button className="hinge-action-btn" onClick={onLike}>
-          <Heart size={20} />
-        </button>
-        <button className="hinge-action-btn" onClick={onComment}>
-          <MessageCircle size={20} />
-        </button>
-      </div>
     </div>
   );
 }

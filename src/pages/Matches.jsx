@@ -1,216 +1,368 @@
 import { useState, useRef, useEffect } from "react";
 import { useApp } from "../context/AppContext";
-import { Send, ArrowLeft, Phone, Video, Image, Smile, Mic, MicOff, Play } from "lucide-react";
+import AgapeCross from "../components/AgapeCross";
 
-export default function Matches() {
-  const { state, dispatch, actions } = useApp();
-  const [activeChat, setActiveChat] = useState(null);
-  const [messageText, setMessageText] = useState("");
-  const [isRecording, setIsRecording] = useState(false);
-  const [recordingTime, setRecordingTime] = useState(0);
-  const recordingInterval = useRef(null);
-  const messagesEndRef = useRef(null);
+const C = { bg: "#FFFFFF", card: "#FAFAF8", surface: "#F4F2EE", primary: "#B8912A", primarySoft: "#FBF5E6", text: "#1A1612", sub: "#8C857C", border: "#E8E4DF", sent: "#111111" };
+const FONT = "'Outfit', system-ui, sans-serif";
 
-  const activeMatch = activeChat
-    ? state.matches.find((m) => m.id === activeChat)
-    : null;
-  const activeChatProfile = activeMatch?.profile;
+function BackIcon() {
+  return (
+    <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="15 18 9 12 15 6" />
+    </svg>
+  );
+}
 
-  const conversation = activeChat ? state.conversations[activeChat] : null;
-
-  useEffect(() => {
-    if (activeChat) {
-      actions.loadMessages(activeChat).catch(console.error);
-    }
-  }, [activeChat]);
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [conversation?.messages?.length]);
+function ChatThread({ match, onBack }) {
+  const { state, actions } = useApp();
+  const [text, setText] = useState("");
+  const [reacting, setReacting] = useState(null);
+  const [localMessages, setLocalMessages] = useState([]);
+  const bottomRef = useRef(null);
 
   const currentUserId = state.currentUser?._id || state.currentUser?.id;
+  const conversation = state.conversations[match.id];
+  const profile = match.profile;
 
-  const handleSend = async () => {
-    if (!messageText.trim() || !activeChat) return;
-    const text = messageText.trim();
-    setMessageText("");
+  const REACTIONS = ["🙏", "❤️", "😊", "🔥", "😂", "✨"];
+
+  useEffect(() => {
+    actions.loadMessages(match.id).catch(console.error);
+  }, [match.id]);
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [conversation?.messages?.length, localMessages.length]);
+
+  const send = async () => {
+    if (!text.trim()) return;
+    const msg = text.trim();
+    setText("");
     try {
-      await actions.sendMessage(activeChat, text);
+      await actions.sendMessage(match.id, msg);
     } catch (err) {
       console.error("Send failed:", err);
     }
   };
 
-  const handleKeyDown = (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
-  };
-
-  const startRecording = () => {
-    setIsRecording(true);
-    setRecordingTime(0);
-    recordingInterval.current = setInterval(() => {
-      setRecordingTime((t) => t + 1);
-    }, 1000);
-  };
-
-  const stopRecording = async () => {
-    setIsRecording(false);
-    clearInterval(recordingInterval.current);
-    const duration = recordingTime;
-    setRecordingTime(0);
-    if (duration > 0 && activeChat) {
-      try {
-        await actions.sendMessage(activeChat, `🎙️ Voice message (0:${String(duration).padStart(2, "0")})`);
-      } catch (err) {
-        console.error("Voice send failed:", err);
-      }
-    }
-  };
-
-  const cancelRecording = () => {
-    setIsRecording(false);
-    clearInterval(recordingInterval.current);
-    setRecordingTime(0);
-  };
+  const messages = conversation?.messages || [];
 
   const formatTime = (ts) => {
     const d = new Date(ts);
     return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   };
 
-  if (activeChat && activeChatProfile) {
-    return (
-      <div className="chat-view">
-        <div className="chat-header">
-          <button className="chat-back-btn" onClick={() => setActiveChat(null)}>
-            <ArrowLeft size={20} />
-          </button>
-          <img
-            src={activeChatProfile.photos[0]}
-            alt={activeChatProfile.name}
-            className="chat-header-photo"
-            onError={(e) => {
-              e.target.src = `https://ui-avatars.com/api/?name=${activeChatProfile.name}&size=40&background=random`;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", position: "fixed", inset: 0, maxWidth: 430, margin: "0 auto", zIndex: 200, background: C.bg }}>
+      {/* Header */}
+      <div
+        style={{
+          flexShrink: 0,
+          padding: "40px 16px 12px",
+          background: C.card,
+          borderBottom: `1px solid ${C.border}`,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <button
+            onClick={onBack}
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: "50%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: C.surface,
+              color: C.text,
+              border: "none",
+              cursor: "pointer",
             }}
-          />
-          <div className="chat-header-info">
-            <h3>{activeChatProfile.name}</h3>
-            <span className="chat-status">Active now</span>
-          </div>
-          <div className="chat-header-actions">
-            <button className="icon-btn"><Phone size={18} /></button>
-            <button className="icon-btn"><Video size={18} /></button>
-          </div>
-        </div>
-
-        <div className="chat-messages">
-          <div className="chat-match-notice">
+          >
+            <BackIcon />
+          </button>
+          <div style={{ position: "relative", flexShrink: 0 }}>
             <img
-              src={activeChatProfile.photos[0]}
-              alt={activeChatProfile.name}
-              className="match-notice-photo"
+              src={profile.photos[0]}
+              alt={profile.name}
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: "50%",
+                objectFit: "cover",
+                border: `2px solid ${C.primary}`,
+              }}
               onError={(e) => {
-                e.target.src = `https://ui-avatars.com/api/?name=${activeChatProfile.name}&size=60&background=random`;
+                e.target.src = `https://ui-avatars.com/api/?name=${profile.name}&size=40&background=random`;
               }}
             />
-            <p>You matched with {activeChatProfile.name}</p>
+            <div
+              style={{
+                position: "absolute",
+                bottom: -2,
+                right: -2,
+                width: 12,
+                height: 12,
+                borderRadius: "50%",
+                background: "#22C55E",
+                border: "2px solid white",
+              }}
+            />
           </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ fontWeight: 700, fontSize: 16, lineHeight: 1, color: C.text, fontFamily: FONT, margin: 0 }}>
+              {profile.name}
+            </p>
+            <p style={{ fontSize: 12, color: "#22C55E", marginTop: 2 }}>Active now</p>
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: "50%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: C.surface,
+                border: "none",
+                cursor: "pointer",
+              }}
+            >
+              <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={C.sub} strokeWidth={2}>
+                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 14a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 3.18h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 10a16 16 0 0 0 6 6l.91-.91a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.73 17l.19-.08z" />
+              </svg>
+            </button>
+            <button
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: "50%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                background: "#FEF2F2",
+                border: "none",
+                cursor: "pointer",
+              }}
+            >
+              <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth={2.5}>
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+              </svg>
+            </button>
+          </div>
+        </div>
+        {/* Match banner */}
+        <div
+          style={{
+            marginTop: 12,
+            borderRadius: 12,
+            padding: "8px 16px",
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            background: C.primarySoft,
+          }}
+        >
+          <span style={{ color: C.primary }}>
+            <AgapeCross size={11} strokeWidth={1.5} />
+          </span>
+          <p style={{ fontSize: 12, fontWeight: 600, color: C.primary, margin: 0 }}>
+            You matched with {profile.name}{profile.denomination ? ` · ${profile.denomination}` : ""}
+          </p>
+        </div>
+      </div>
 
-          {conversation?.messages.map((msg) => {
-            const isMine = msg.sender === currentUserId;
-            const isVoice = msg.text.startsWith("🎙️");
-            return (
-              <div
-                key={msg.id}
-                className={`chat-message ${isMine ? "sent" : "received"}`}
-              >
-                {!isMine && (
+      {/* Messages */}
+      <div style={{ flex: 1, overflowY: "auto", padding: "16px 16px", display: "flex", flexDirection: "column", gap: 12 }}>
+        {/* Date divider */}
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ flex: 1, height: 1, background: C.border }} />
+          <span style={{ fontSize: 11, fontWeight: 600, color: C.sub }}>Today</span>
+          <div style={{ flex: 1, height: 1, background: C.border }} />
+        </div>
+
+        {messages.map((msg) => {
+          const isMe = msg.sender === currentUserId;
+          return (
+            <div
+              key={msg.id}
+              style={{ display: "flex", flexDirection: "column", alignItems: isMe ? "flex-end" : "flex-start" }}
+            >
+              <div style={{ display: "flex", alignItems: "flex-end", gap: 8 }}>
+                {!isMe && (
                   <img
-                    src={activeChatProfile.photos[0]}
-                    alt=""
-                    className="message-avatar"
+                    src={profile.photos[0]}
+                    alt={profile.name}
+                    style={{ width: 24, height: 24, borderRadius: "50%", objectFit: "cover", flexShrink: 0, marginBottom: 4 }}
                     onError={(e) => {
-                      e.target.src = `https://ui-avatars.com/api/?name=${activeChatProfile.name}&size=32&background=random`;
+                      e.target.src = `https://ui-avatars.com/api/?name=${profile.name}&size=24&background=random`;
                     }}
                   />
                 )}
-                <div className="message-bubble">
-                  {isVoice ? (
-                    <div className="voice-message-bubble">
-                      <button className="voice-play-btn">
-                        <Play size={14} />
-                      </button>
-                      <div className="voice-waveform">
-                        {Array.from({ length: 20 }, (_, i) => (
-                          <div
-                            key={i}
-                            className="voice-waveform-bar"
-                            style={{
-                              height: `${4 + Math.random() * 20}px`,
-                            }}
-                          />
-                        ))}
-                      </div>
-                      <span className="voice-duration">
-                        {msg.text.match(/\((.+?)\)/)?.[1] || "0:05"}
-                      </span>
-                    </div>
-                  ) : (
-                    <p>{msg.text}</p>
-                  )}
-                  <span className="message-time">{formatTime(msg.timestamp)}</span>
+                <div
+                  style={{
+                    maxWidth: "75%",
+                    padding: "12px 16px",
+                    borderRadius: 16,
+                    background: isMe ? C.sent : C.card,
+                    color: isMe ? "white" : C.text,
+                    borderBottomRightRadius: isMe ? 6 : 16,
+                    borderBottomLeftRadius: !isMe ? 6 : 16,
+                    boxShadow: !isMe ? "0 1px 4px rgba(0,0,0,0.06)" : undefined,
+                    cursor: "pointer",
+                  }}
+                  onDoubleClick={() => setReacting(reacting === msg.id ? null : msg.id)}
+                >
+                  <p style={{ fontSize: 14, lineHeight: 1.5, fontFamily: FONT, margin: 0 }}>
+                    {msg.text}
+                  </p>
                 </div>
               </div>
-            );
-          })}
-          <div ref={messagesEndRef} />
-        </div>
+              <p style={{ fontSize: 10, marginTop: 6, marginLeft: 32, marginRight: 32, color: C.sub }}>
+                {formatTime(msg.timestamp)}
+              </p>
 
-        <div className="chat-input-area">
-          {isRecording ? (
-            <div className="voice-recording-bar">
-              <button className="voice-cancel-btn" onClick={cancelRecording}>
-                <MicOff size={18} />
-              </button>
-              <div className="recording-indicator">
-                <span className="recording-dot" />
-                <span className="recording-time">
-                  0:{String(recordingTime).padStart(2, "0")}
-                </span>
-              </div>
-              <button className="voice-send-btn" onClick={stopRecording}>
-                <Send size={18} />
-              </button>
-            </div>
-          ) : (
-            <>
-              <button className="icon-btn"><Image size={20} /></button>
-              <button className="icon-btn"><Smile size={20} /></button>
-              <input
-                type="text"
-                value={messageText}
-                onChange={(e) => setMessageText(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Type a message..."
-                className="chat-input"
-              />
-              {messageText.trim() ? (
-                <button className="send-btn" onClick={handleSend}>
-                  <Send size={18} />
-                </button>
-              ) : (
-                <button className="mic-btn" onClick={startRecording}>
-                  <Mic size={20} />
-                </button>
+              {/* Reaction picker */}
+              {reacting === msg.id && (
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 6,
+                    marginTop: 4,
+                    marginLeft: 32,
+                    marginRight: 32,
+                    borderRadius: 16,
+                    padding: "8px 12px",
+                    background: C.card,
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                  }}
+                >
+                  {REACTIONS.map((r) => (
+                    <button
+                      key={r}
+                      onClick={() => setReacting(null)}
+                      style={{ fontSize: 18, background: "none", border: "none", cursor: "pointer", transition: "all 0.2s" }}
+                    >
+                      {r}
+                    </button>
+                  ))}
+                </div>
               )}
-            </>
-          )}
+            </div>
+          );
+        })}
+        <div ref={bottomRef} />
+      </div>
+
+      {/* Compose */}
+      <div
+        style={{
+          flexShrink: 0,
+          padding: "12px 16px",
+          background: C.card,
+          borderTop: `1px solid ${C.border}`,
+        }}
+      >
+        {/* Quick replies */}
+        <div style={{ display: "flex", gap: 8, marginBottom: 12, overflowX: "auto" }}>
+          {["Amen to that 🙏", "Tell me more!", "That's beautiful ✨", "Same here!"].map((q) => (
+            <button
+              key={q}
+              onClick={() => setText(q)}
+              style={{
+                flexShrink: 0,
+                fontSize: 12,
+                fontWeight: 600,
+                padding: "6px 12px",
+                borderRadius: 9999,
+                whiteSpace: "nowrap",
+                background: C.primarySoft,
+                color: C.primary,
+                border: "none",
+                cursor: "pointer",
+              }}
+            >
+              {q}
+            </button>
+          ))}
+        </div>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            borderRadius: 16,
+            padding: "12px 16px",
+            background: C.surface,
+          }}
+        >
+          {/* Mic button */}
+          <button
+            style={{
+              flexShrink: 0,
+              color: C.sub,
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+            }}
+          >
+            <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8" />
+            </svg>
+          </button>
+          <input
+            style={{
+              flex: 1,
+              fontSize: 14,
+              background: "transparent",
+              outline: "none",
+              border: "none",
+              color: C.text,
+              fontFamily: FONT,
+            }}
+            placeholder={`Message ${profile.name}...`}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && send()}
+          />
+          <button
+            onClick={send}
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: "50%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: text.trim() ? C.primary : C.border,
+              border: "none",
+              cursor: "pointer",
+            }}
+          >
+            <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2.5} strokeLinecap="round">
+              <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
+            </svg>
+          </button>
         </div>
       </div>
-    );
+    </div>
+  );
+}
+
+export default function Matches() {
+  const { state, actions } = useApp();
+  const [activeChat, setActiveChat] = useState(null);
+
+  const currentUserId = state.currentUser?._id || state.currentUser?.id;
+
+  const activeMatch = activeChat
+    ? state.matches.find((m) => m.id === activeChat)
+    : null;
+
+  if (activeMatch?.profile) {
+    return <ChatThread match={activeMatch} onBack={() => setActiveChat(null)} />;
   }
 
   const sortedMatches = [...state.matches].sort((a, b) => {
@@ -221,101 +373,161 @@ export default function Matches() {
     return bTime - aTime;
   });
 
-  const newMatches = sortedMatches.filter(
-    (m) => !state.conversations[m.id]?.messages?.length
-  );
-  const activeConversations = sortedMatches.filter(
-    (m) => state.conversations[m.id]?.messages?.length > 0
-  );
+  const formatTime = (ts) => {
+    if (!ts) return "";
+    const d = new Date(ts);
+    const now = new Date();
+    const diff = now - d;
+    if (diff < 60000) return "Just now";
+    if (diff < 3600000) return `${Math.floor(diff / 60000)}m`;
+    if (diff < 86400000) return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    return d.toLocaleDateString([], { month: "short", day: "numeric" });
+  };
 
   return (
-    <div className="matches-page">
-      <h2 className="matches-title">Matches</h2>
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", background: C.bg }}>
+      <div style={{ padding: "40px 20px 16px" }}>
+        <h1
+          style={{
+            color: C.text,
+            fontFamily: FONT,
+            fontSize: 24,
+            fontWeight: 700,
+            letterSpacing: "-0.4px",
+            margin: 0,
+          }}
+        >
+          Messages
+        </h1>
+      </div>
 
-      {sortedMatches.length === 0 ? (
-        <div className="matches-empty">
-          <h3>No matches yet</h3>
-          <p>When you match with someone, you can chat with them here.</p>
-        </div>
-      ) : (
-        <>
-          {newMatches.length > 0 && (
-            <div className="matches-section">
-              <h3 className="section-label">New Matches</h3>
-              <div className="new-matches-row">
-                {newMatches.map((match) => (
-                  <button
-                    key={match.id}
-                    className="new-match-card"
-                    onClick={() => setActiveChat(match.id)}
-                  >
-                    <img
-                      src={match.profile.photos[0]}
-                      alt={match.profile.name}
-                      className="new-match-photo"
-                      onError={(e) => {
-                        e.target.src = `https://ui-avatars.com/api/?name=${match.profile.name}&size=80&background=random`;
+      <div style={{ flex: 1, overflowY: "auto", paddingBottom: 24 }}>
+        {sortedMatches.length === 0 ? (
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "60px 20px", textAlign: "center" }}>
+            <div style={{ fontSize: 48, marginBottom: 16 }}>💬</div>
+            <h3 style={{ color: C.text, fontFamily: FONT, fontSize: 18, fontWeight: 700 }}>No messages yet</h3>
+            <p style={{ color: C.sub, fontSize: 14, marginTop: 4 }}>When you match with someone, you can chat here.</p>
+          </div>
+        ) : (
+          sortedMatches.map((m) => {
+            const profile = m.profile;
+            if (!profile) return null;
+            const convo = state.conversations[m.id];
+            const lastMsg = convo?.messages?.[convo.messages.length - 1];
+            const hasUnread = lastMsg && lastMsg.sender !== currentUserId;
+
+            return (
+              <button
+                key={m.id}
+                onClick={() => setActiveChat(m.id)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 16,
+                  width: "100%",
+                  padding: "16px 20px",
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  borderBottom: `1px solid ${C.border}`,
+                  textAlign: "left",
+                }}
+              >
+                {/* Large round photo */}
+                <div style={{ position: "relative", flexShrink: 0 }}>
+                  <img
+                    src={profile.photos[0]}
+                    alt={profile.name}
+                    style={{
+                      width: 74,
+                      height: 74,
+                      borderRadius: "50%",
+                      objectFit: "cover",
+                      display: "block",
+                    }}
+                    onError={(e) => {
+                      e.target.src = `https://ui-avatars.com/api/?name=${profile.name}&size=74&background=random`;
+                    }}
+                  />
+                  {/* Gold ring on unread */}
+                  {hasUnread && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        inset: -3,
+                        borderRadius: "50%",
+                        border: `2.5px solid ${C.primary}`,
+                        pointerEvents: "none",
                       }}
                     />
-                    <span className="new-match-name">{match.profile.name}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
+                  )}
+                  {/* Online indicator */}
+                  <div
+                    style={{
+                      position: "absolute",
+                      bottom: 3,
+                      right: 3,
+                      width: 11,
+                      height: 11,
+                      borderRadius: "50%",
+                      background: "#22C55E",
+                      border: `2px solid ${C.bg}`,
+                    }}
+                  />
+                </div>
 
-          {activeConversations.length > 0 && (
-            <div className="matches-section">
-              <h3 className="section-label">Messages</h3>
-              <div className="conversations-list">
-                {activeConversations.map((match) => {
-                  const convo = state.conversations[match.id];
-                  const lastMsg = convo?.messages[convo.messages.length - 1];
-                  return (
-                    <button
-                      key={match.id}
-                      className="conversation-row"
-                      onClick={() => setActiveChat(match.id)}
-                    >
-                      <img
-                        src={match.profile.photos[0]}
-                        alt={match.profile.name}
-                        className="convo-photo"
-                        onError={(e) => {
-                          e.target.src = `https://ui-avatars.com/api/?name=${match.profile.name}&size=56&background=random`;
-                        }}
-                      />
-                      <div className="convo-info">
-                        <div className="convo-name-row">
-                          <span className="convo-name">{match.profile.name}</span>
-                          <span className="convo-time">
-                            {lastMsg ? formatTime(lastMsg.timestamp) : ""}
-                          </span>
-                        </div>
-                        <p className="convo-preview">
-                          {lastMsg
-                            ? `${lastMsg.sender === currentUserId ? "You: " : ""}${lastMsg.text}`
-                            : "Start the conversation!"}
-                        </p>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </>
-      )}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  {/* Name + timestamp */}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 2 }}>
+                    <span style={{ fontWeight: 700, fontSize: 16, color: C.text, fontFamily: FONT }}>
+                      {profile.name}
+                    </span>
+                    <span style={{ fontSize: 10, color: C.sub, fontFamily: FONT, flexShrink: 0 }}>
+                      {lastMsg ? formatTime(lastMsg.timestamp) : ""}
+                    </span>
+                  </div>
+                  {/* Denomination */}
+                  {profile.denomination && (
+                    <p style={{ fontSize: 11, color: C.primary, fontWeight: 600, fontFamily: FONT, marginBottom: 5, margin: "0 0 5px 0" }}>
+                      {profile.denomination}
+                    </p>
+                  )}
+                  {/* Message preview */}
+                  <p
+                    style={{
+                      fontSize: 12,
+                      color: C.sub,
+                      fontFamily: FONT,
+                      overflow: "hidden",
+                      whiteSpace: "nowrap",
+                      textOverflow: "ellipsis",
+                      maxWidth: 180,
+                      margin: 0,
+                    }}
+                  >
+                    {lastMsg
+                      ? (lastMsg.sender === currentUserId ? "You: " : "") + lastMsg.text.slice(0, 30) + (lastMsg.text.length > 30 ? "..." : "")
+                      : "Start the conversation ✨"}
+                  </p>
+                </div>
+
+                {/* Unread dot */}
+                {hasUnread && (
+                  <div
+                    style={{
+                      width: 9,
+                      height: 9,
+                      borderRadius: "50%",
+                      background: C.primary,
+                      flexShrink: 0,
+                    }}
+                  />
+                )}
+              </button>
+            );
+          })
+        )}
+      </div>
     </div>
   );
-}
-
-function formatTime(ts) {
-  const d = new Date(ts);
-  const now = new Date();
-  const diff = now - d;
-  if (diff < 60000) return "Just now";
-  if (diff < 3600000) return `${Math.floor(diff / 60000)}m`;
-  if (diff < 86400000) return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  return d.toLocaleDateString([], { month: "short", day: "numeric" });
 }

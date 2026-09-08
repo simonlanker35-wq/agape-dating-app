@@ -1,4 +1,4 @@
-const API_URL = "http://localhost:3001/api";
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001/api";
 
 function getToken() {
   return localStorage.getItem("agape_token");
@@ -26,7 +26,18 @@ async function request(path, options = {}) {
   return data;
 }
 
+const compatibilityReasons = [
+  "You both love hiking and share the same denomination",
+  "Similar faith values and both enjoy worship music",
+  "You're both in the same area and share key interests",
+  "Strong faith alignment and shared love of travel",
+  "Compatible denomination and mutual interests in community",
+];
+
+let standoutCounter = 0;
+
 function mapProfile(p) {
+  const isStandout = standoutCounter++ % 3 === 0;
   return {
     id: p._id,
     name: p.name,
@@ -41,7 +52,8 @@ function mapProfile(p) {
     photos: p.photos || [],
     prompts: p.prompts || [],
     interests: p.interests || [],
-    isStandout: false,
+    isStandout,
+    compatibilityReason: isStandout ? compatibilityReasons[standoutCounter % compatibilityReasons.length] : null,
     lastActive: "Recently",
   };
 }

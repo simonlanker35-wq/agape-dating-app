@@ -18,9 +18,11 @@ import matchesRoutes from "./routes/matches.js";
 const app = express();
 const server = createServer(app);
 
+const allowedOrigins = config.clientUrl.split(",").map((s) => s.trim());
+
 const io = new Server(server, {
   cors: {
-    origin: config.clientUrl,
+    origin: allowedOrigins,
     methods: ["GET", "POST"],
   },
 });
@@ -29,7 +31,7 @@ app.set("io", io);
 
 // Middleware
 app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
-app.use(cors({ origin: config.clientUrl, credentials: true }));
+app.use(cors({ origin: allowedOrigins, credentials: true }));
 app.use(express.json({ limit: "10mb" }));
 
 const limiter = rateLimit({

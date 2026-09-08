@@ -256,20 +256,31 @@ export default function Onboarding() {
       <div className="onboarding-content">
         {currentStep === "welcome" && (
           <div className="onboarding-step welcome-step" key="welcome">
+            <img
+              src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=600&h=900&fit=crop&auto=format"
+              alt="Welcome"
+              className="welcome-bg-photo"
+            />
+            <div className="welcome-bg-gradient" />
+            <div className="welcome-gold-bar" />
             <div className="welcome-icon">
-              <AgapeCross size={40} strokeWidth={1.2} />
+              <AgapeCross size={13} strokeWidth={1.5} />
               <span className="welcome-logo-text">agape</span>
             </div>
-            <h1>Find love<br />rooted in faith.</h1>
-            <p className="welcome-desc">
-              Meet Christians who share your values, your church life, and your heart.
-            </p>
-            <button className="onboarding-cta" onClick={goNext}>
-              Create account
-            </button>
-            <button className="skip-btn-text welcome-signin" onClick={() => setMode("login")}>
-              Sign in
-            </button>
+            <div className="welcome-bottom">
+              <h1>Find love<br />rooted in faith.</h1>
+              <p className="welcome-desc">
+                Meet Christians who share your values, your church life, and your heart.
+              </p>
+              <div className="welcome-divider" />
+              <button className="onboarding-cta" onClick={goNext}>
+                Create account
+              </button>
+              <button className="welcome-signin-btn" onClick={() => setMode("login")}>
+                Sign in
+              </button>
+              <p className="welcome-terms">By continuing you agree to our Terms & Privacy Policy</p>
+            </div>
           </div>
         )}
 
