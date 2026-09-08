@@ -56,7 +56,7 @@ export default function Discover() {
         console.error("Like failed:", err);
         setLikeFlash(null);
       }
-    }, 900);
+    }, 500);
   };
 
   const handleSkip = async () => {
