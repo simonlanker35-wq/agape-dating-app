@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import config from "./config.js";
 import User from "./models/User.js";
 import Like from "./models/Like.js";
+import Skip from "./models/Skip.js";
 import Match from "./models/Match.js";
 import Message from "./models/Message.js";
 
@@ -116,6 +117,7 @@ async function seed() {
   await Message.deleteMany({});
   await Match.deleteMany({});
   await Like.deleteMany({});
+  await Skip.deleteMany({});
   await User.deleteMany({});
   console.log("Cleared existing data");
 
