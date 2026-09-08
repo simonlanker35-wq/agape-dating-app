@@ -18,6 +18,7 @@ function ChatThread({ match, onBack }) {
   const [text, setText] = useState("");
   const [reacting, setReacting] = useState(null);
   const [localMessages, setLocalMessages] = useState([]);
+  const [viewProfile, setViewProfile] = useState(false);
   const bottomRef = useRef(null);
 
   const currentUserId = state.currentUser?._id || state.currentUser?.id;
@@ -81,7 +82,7 @@ function ChatThread({ match, onBack }) {
           >
             <BackIcon />
           </button>
-          <div style={{ position: "relative", flexShrink: 0 }}>
+          <div style={{ position: "relative", flexShrink: 0, cursor: "pointer" }} onClick={() => setViewProfile(true)}>
             <img
               src={profile.photos[0]}
               alt={profile.name}
@@ -109,7 +110,7 @@ function ChatThread({ match, onBack }) {
               }}
             />
           </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ flex: 1, minWidth: 0, cursor: "pointer" }} onClick={() => setViewProfile(true)}>
             <p style={{ fontWeight: 700, fontSize: 16, lineHeight: 1, color: C.text, fontFamily: FONT, margin: 0 }}>
               {profile.name}
             </p>
@@ -347,6 +348,64 @@ function ChatThread({ match, onBack }) {
           </button>
         </div>
       </div>
+
+      {viewProfile && (
+        <div
+          style={{
+            position: "fixed", inset: 0, maxWidth: 430, margin: "0 auto",
+            zIndex: 300, background: C.bg, overflowY: "auto",
+          }}
+        >
+          <div style={{ position: "relative" }}>
+            <img
+              src={profile.photos?.[0]}
+              alt={profile.name}
+              style={{ width: "100%", maxHeight: "56vh", objectFit: "cover", display: "block" }}
+              onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${profile.name}&size=600&background=random`; }}
+            />
+            <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 50%)", pointerEvents: "none" }} />
+            <button
+              onClick={() => setViewProfile(false)}
+              style={{
+                position: "absolute", top: 44, left: 16, width: 36, height: 36, borderRadius: "50%",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                background: "rgba(0,0,0,0.4)", backdropFilter: "blur(10px)", border: "none", cursor: "pointer",
+              }}
+            >
+              <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2.5}><polyline points="15 18 9 12 15 6" /></svg>
+            </button>
+            <div style={{ position: "absolute", bottom: 20, left: 16 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ color: "white", fontSize: 28, fontWeight: 700 }}>{profile.name}</span>
+                <span style={{ color: "rgba(255,255,255,0.8)", fontSize: 22, fontWeight: 300 }}>{profile.age}</span>
+              </div>
+              <p style={{ color: "rgba(255,255,255,0.7)", fontSize: 12, marginTop: 4 }}>
+                {profile.denomination}{profile.location ? ` · ${profile.location}` : ""}
+              </p>
+            </div>
+          </div>
+          <div style={{ padding: "20px 16px", display: "flex", flexDirection: "column", gap: 12 }}>
+            {(profile.prompts || []).filter(p => p.prompt && p.answer).map((p, i) => (
+              <div key={i} style={{ borderRadius: 16, overflow: "hidden", background: C.primarySoft }}>
+                <div style={{ display: "flex" }}>
+                  <div style={{ width: 4, flexShrink: 0, background: C.primary }} />
+                  <div style={{ flex: 1, padding: "14px" }}>
+                    <p style={{ fontSize: 10, fontWeight: 600, color: C.primary, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>{p.prompt}</p>
+                    <p style={{ fontSize: 16, fontWeight: 600, color: C.text }}>{p.answer}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+            {profile.interests?.length > 0 && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, padding: "8px 0" }}>
+                {profile.interests.map((v) => (
+                  <span key={v} style={{ fontSize: 12, fontWeight: 600, padding: "6px 12px", borderRadius: 9999, background: C.surface, color: C.sub }}>{v}</span>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
