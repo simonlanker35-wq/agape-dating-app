@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useApp } from "../context/AppContext";
-import { Heart, X, MessageCircle, MapPin } from "lucide-react";
+import { Heart, X, MessageCircle, MapPin, Church } from "lucide-react";
 import DoveIcon from "../components/DoveIcon";
 
 export default function Discover() {
@@ -93,28 +93,35 @@ export default function Discover() {
           if (block.type === "photo") {
             if (block.index === 0) {
               return (
-                <div key="hero-photo" className="hero-photo-block">
-                  <img
-                    src={profile.photos[0]}
-                    alt={`${profile.name}'s photo`}
-                    className="hero-photo"
-                    onError={(e) => {
-                      e.target.src = `https://ui-avatars.com/api/?name=${profile.name}&size=400&background=random`;
-                    }}
-                  />
-                  {profile.photos.length > 1 && (
-                    <div className="photo-indicators">
-                      {profile.photos.map((_, idx) => (
-                        <div key={idx} className={`photo-indicator ${idx === 0 ? "active" : ""}`} />
-                      ))}
-                    </div>
-                  )}
-                  <div className="hero-overlay">
-                    <div className="hero-name-row">
-                      <h2><span className="profile-script-name">{profile.name}</span> {profile.age}</h2>
-                      {profile.location && (
-                        <span className="hero-location"><MapPin size={12} /> {profile.location}</span>
-                      )}
+                <div key="hero" className="hero-section">
+                  <div className="hero-photo-block">
+                    <img
+                      src={profile.photos[0]}
+                      alt={`${profile.name}'s photo`}
+                      className="hero-photo"
+                      onError={(e) => {
+                        e.target.src = `https://ui-avatars.com/api/?name=${profile.name}&size=400&background=random`;
+                      }}
+                    />
+                    {profile.photos.length > 1 && (
+                      <div className="photo-indicators">
+                        {profile.photos.map((_, idx) => (
+                          <div key={idx} className={`photo-indicator ${idx === 0 ? "active" : ""}`} />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div className="hero-info">
+                    <div className="hero-name-line">
+                      <h2>{profile.name} <span className="hero-age">{profile.age}</span></h2>
+                      <div className="hero-details">
+                        {profile.location && (
+                          <span className="hero-detail"><MapPin size={12} /> {profile.location}</span>
+                        )}
+                        {profile.denomination && (
+                          <span className="hero-detail"><Church size={12} /> {profile.denomination}</span>
+                        )}
+                      </div>
                     </div>
                     <div className="hero-actions">
                       <button className="action-btn skip-btn" onClick={handleSkip}>

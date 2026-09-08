@@ -1091,7 +1091,11 @@ input[type="range"] {
   z-index: 3;
 }
 
-/* === HERO PHOTO WITH NAME OVERLAY (Figma) === */
+/* === HERO SECTION: Photo + Info + Actions (Figma) === */
+.hero-section {
+  background: var(--bg-card);
+}
+
 .hero-photo-block {
   position: relative;
   width: 100%;
@@ -1106,70 +1110,81 @@ input[type="range"] {
   object-fit: cover;
 }
 
-.hero-overlay {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  padding: 60px 20px 20px;
-  background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.3) 50%, transparent 100%);
-  z-index: 2;
+.hero-info {
+  padding: 18px 20px 20px;
 }
 
-.hero-name-row {
-  margin-bottom: 14px;
+.hero-name-line h2 {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -0.3px;
 }
 
-.hero-name-row h2 {
-  font-size: 32px;
-  font-weight: 700;
-  color: white;
-  margin-bottom: 4px;
-}
-
-.hero-name-row h2 .profile-script-name {
-  font-family: var(--font-script);
-  font-size: 38px;
+.hero-age {
   font-weight: 400;
-  letter-spacing: 0.5px;
+  color: var(--text-secondary);
 }
 
-.hero-location {
+.hero-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.hero-detail {
   display: inline-flex;
   align-items: center;
   gap: 4px;
   font-size: 13px;
-  color: rgba(255,255,255,0.8);
+  color: var(--text-secondary);
+}
+
+.hero-detail svg {
+  opacity: 0.5;
 }
 
 .hero-actions {
   display: flex;
-  gap: 16px;
+  justify-content: center;
+  gap: 20px;
   align-items: center;
+  margin-top: 18px;
 }
 
 .hero-actions .action-btn {
-  width: 50px;
-  height: 50px;
-  border: none;
+  width: 52px;
+  height: 52px;
 }
 
 .hero-actions .skip-btn {
-  background: rgba(40,40,40,0.85);
-  color: white;
+  background: white;
+  color: var(--text);
+  border: 2px solid var(--border);
+}
+
+.hero-actions .skip-btn:hover {
+  border-color: var(--text-secondary);
 }
 
 .hero-actions .like-btn {
   background: var(--gold);
   color: white;
-  width: 56px;
-  height: 56px;
-  box-shadow: 0 4px 20px rgba(201,168,76,0.4);
+  width: 60px;
+  height: 60px;
+  border: none;
+  box-shadow: 0 4px 20px rgba(201,168,76,0.35);
 }
 
 .hero-actions .comment-btn {
-  background: rgba(40,40,40,0.85);
-  color: white;
+  background: white;
+  color: var(--text);
+  border: 2px solid var(--border);
+}
+
+.hero-actions .comment-btn:hover {
+  border-color: var(--text-secondary);
 }
 
 /* === LEGACY PROFILE INFO (used by Profile page) === */
@@ -1343,18 +1358,20 @@ input[type="range"] {
   width: auto;
   height: auto;
   border-radius: 20px;
-  background: transparent;
+  background: white;
   box-shadow: none;
-  padding: 4px 0;
-  color: var(--text-muted);
+  padding: 6px 14px;
+  color: var(--text-secondary);
   font-size: 13px;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
+  border: 1.5px solid var(--border);
 }
 
 .hinge-prompt-actions .hinge-action-btn:hover {
   color: var(--gold);
+  border-color: var(--gold);
   transform: none;
 }
 
