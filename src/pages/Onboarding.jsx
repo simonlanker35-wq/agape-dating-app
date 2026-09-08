@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useApp } from "../context/AppContext";
 import { PROMPT_CATEGORIES, INTERESTS_POOL, DENOMINATIONS } from "../data/profiles";
-import { Camera, ChevronRight, Sparkles, Church, X, Check, LogIn } from "lucide-react";
+import { ChevronRight, Sparkles, Church, X, Check, LogIn } from "lucide-react";
 import AgapeCross from "../components/AgapeCross";
 
 const STEPS = [
@@ -16,7 +16,6 @@ const STEPS = [
   "job",
   "school",
   "location",
-  "photos",
   "prompts",
   "interests",
   "preferences",
@@ -43,7 +42,6 @@ export default function Onboarding() {
     job: "",
     school: "",
     location: "",
-    photos: [],
     prompts: [
       { prompt: "", answer: "" },
       { prompt: "", answer: "" },
@@ -97,8 +95,8 @@ export default function Onboarding() {
         location: form.location
           ? { type: "Point", coordinates: [8.65, 47.02], city: form.location }
           : undefined,
-        photos: form.photos.length > 0 ? form.photos : demoPhotos,
-        prompts: form.prompts.filter((p) => p.prompt && p.answer),
+        photos: demoPhotos,
+        prompts: form.prompts,
         interests: form.interests,
         filters: {
           maxAge: form.maxAge,
@@ -158,8 +156,7 @@ export default function Onboarding() {
       case "job": return true;
       case "school": return true;
       case "location": return true;
-      case "photos": return true;
-      case "prompts": return form.prompts.some((p) => p.prompt && p.answer);
+      case "prompts": return form.prompts.every((p) => p.prompt && p.answer);
       case "interests": return form.interests.length >= 3;
       case "preferences": return true;
       default: return true;
@@ -260,19 +257,18 @@ export default function Onboarding() {
         {currentStep === "welcome" && (
           <div className="onboarding-step welcome-step" key="welcome">
             <div className="welcome-icon">
-              <AgapeCross size={56} strokeWidth={1.2} />
+              <AgapeCross size={40} strokeWidth={1.2} />
+              <span className="welcome-logo-text">agape</span>
             </div>
-            <h1>Agape</h1>
-            <p className="welcome-subtitle">Where faith meets love.</p>
+            <h1>Find love<br />rooted in faith.</h1>
             <p className="welcome-desc">
-              Find someone who shares your values. Like what catches your eye. When the feeling's mutual, it's a match.
+              Meet Christians who share your values, your church life, and your heart.
             </p>
             <button className="onboarding-cta" onClick={goNext}>
-              Get Started
+              Create account
             </button>
-            <button className="skip-btn-text" onClick={() => setMode("login")} style={{ marginTop: 16 }}>
-              <LogIn size={14} style={{ marginRight: 6 }} />
-              I already have an account
+            <button className="skip-btn-text welcome-signin" onClick={() => setMode("login")}>
+              Sign in
             </button>
           </div>
         )}
@@ -484,30 +480,11 @@ export default function Onboarding() {
           </div>
         )}
 
-        {currentStep === "photos" && (
-          <div className="onboarding-step" key="photos">
-            <h2>Add your photos</h2>
-            <p className="step-hint">Profiles with 3+ photos get more likes</p>
-            <div className="photo-grid-upload">
-              {[0, 1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className={`photo-upload-slot ${i < 3 ? "required" : ""}`}>
-                  <Camera size={24} />
-                  <span>{i < 3 ? "Required" : "Optional"}</span>
-                </div>
-              ))}
-            </div>
-            <p className="photo-note">Demo mode: placeholder photos will be used</p>
-            <button className="onboarding-cta" onClick={goNext}>
-              Continue <ChevronRight size={18} />
-            </button>
-          </div>
-        )}
-
         {currentStep === "prompts" && (
           <div className="onboarding-step prompts-step" key="prompts">
             <div className="prompts-header">
               <h2>Prompts</h2>
-              <p className="step-hint">Answer at least one prompt</p>
+              <p className="step-hint">Answer all 3 prompts to continue</p>
             </div>
 
             {form.prompts.some((p) => p.prompt) && (

@@ -37,8 +37,8 @@ function AppContent() {
     <div className="app-container">
       <header className="app-header">
         <div className="app-logo">
-          <AgapeCross size={20} strokeWidth={1.5} />
-          <span>Agape</span>
+          <AgapeCross size={18} strokeWidth={1.5} />
+          <span>agape</span>
         </div>
       </header>
       <main className="app-main">{renderPage()}</main>

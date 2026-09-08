@@ -110,7 +110,7 @@ export default function Discover() {
             return (
               <div key="info" className="profile-info-section">
                 <div className="profile-name-age">
-                  <h2>{profile.name}, {profile.age}</h2>
+                  <h2><span className="profile-script-name">{profile.name}</span> {profile.age}</h2>
                 </div>
                 <div className="profile-vitals">
                   {profile.height && (
@@ -143,10 +143,10 @@ export default function Discover() {
                 <div className="hinge-prompt-answer">{block.answer}</div>
                 <div className="hinge-prompt-actions">
                   <button className="hinge-action-btn" onClick={() => handleLike("prompt", block.index)}>
-                    <Heart size={20} />
+                    <Heart size={14} /> Like
                   </button>
                   <button className="hinge-action-btn" onClick={() => setCommentTarget({ type: "prompt", index: block.index })}>
-                    <MessageCircle size={20} />
+                    <MessageCircle size={14} /> Comment
                   </button>
                 </div>
               </div>
