@@ -1,9 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useApp } from "../context/AppContext";
-import {
-  Heart, X, MessageCircle, Star, MapPin, Briefcase,
-  GraduationCap, Church, Ruler,
-} from "lucide-react";
+import { Heart, X, MessageCircle, MapPin } from "lucide-react";
 import DoveIcon from "../components/DoveIcon";
 
 export default function Discover() {
@@ -94,6 +91,52 @@ export default function Discover() {
 
         {contentBlocks.map((block, i) => {
           if (block.type === "photo") {
+            if (block.index === 0) {
+              return (
+                <div key="hero-photo" className="hero-photo-block">
+                  <img
+                    src={profile.photos[0]}
+                    alt={`${profile.name}'s photo`}
+                    className="hero-photo"
+                    onError={(e) => {
+                      e.target.src = `https://ui-avatars.com/api/?name=${profile.name}&size=400&background=random`;
+                    }}
+                  />
+                  {profile.photos.length > 1 && (
+                    <div className="photo-indicators">
+                      {profile.photos.map((_, idx) => (
+                        <div key={idx} className={`photo-indicator ${idx === 0 ? "active" : ""}`} />
+                      ))}
+                    </div>
+                  )}
+                  <div className="hero-overlay">
+                    <div className="hero-name-row">
+                      <h2><span className="profile-script-name">{profile.name}</span> {profile.age}</h2>
+                      {profile.location && (
+                        <span className="hero-location"><MapPin size={12} /> {profile.location}</span>
+                      )}
+                    </div>
+                    <div className="hero-actions">
+                      <button className="action-btn skip-btn" onClick={handleSkip}>
+                        <X size={24} />
+                      </button>
+                      <button
+                        className="action-btn like-btn"
+                        onClick={() => handleLike("profile", 0)}
+                      >
+                        <Heart size={24} />
+                      </button>
+                      <button
+                        className="action-btn comment-btn"
+                        onClick={() => setCommentTarget({ type: "photo", index: 0 })}
+                      >
+                        <MessageCircle size={24} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            }
             return (
               <ProfilePhoto
                 key={`photo-${block.index}`}
@@ -102,38 +145,7 @@ export default function Discover() {
                 totalPhotos={profile.photos.length}
                 onLike={() => handleLike("photo", block.index)}
                 onComment={() => setCommentTarget({ type: "photo", index: block.index })}
-                isFirst={block.index === 0}
               />
-            );
-          }
-          if (block.type === "info") {
-            return (
-              <div key="info" className="profile-info-section">
-                <div className="profile-name-age">
-                  <h2><span className="profile-script-name">{profile.name}</span> {profile.age}</h2>
-                </div>
-                <div className="profile-vitals">
-                  {profile.height && (
-                    <span className="vital-chip"><Ruler size={13} /> {profile.height}</span>
-                  )}
-                  {profile.location && (
-                    <span className="vital-chip"><MapPin size={13} /> {profile.location}</span>
-                  )}
-                  {profile.denomination && (
-                    <span className="vital-chip"><Church size={13} /> {profile.denomination}</span>
-                  )}
-                </div>
-                {(profile.job || profile.school) && (
-                  <div className="profile-details-row">
-                    {profile.job && (
-                      <span className="detail-item"><Briefcase size={13} /> {profile.job}</span>
-                    )}
-                    {profile.school && (
-                      <span className="detail-item"><GraduationCap size={13} /> {profile.school}</span>
-                    )}
-                  </div>
-                )}
-              </div>
             );
           }
           if (block.type === "prompt") {
@@ -166,29 +178,6 @@ export default function Discover() {
           }
           return null;
         })}
-
-        <div className="profile-bottom-actions">
-          <button className="action-btn skip-btn" onClick={handleSkip}>
-            <X size={28} />
-          </button>
-          <button
-            className="action-btn dove-btn"
-            onClick={() => {
-              setShowDove(true);
-              setCommentTarget({ type: "profile", index: 0 });
-            }}
-            disabled={state.doves <= 0}
-          >
-            <DoveIcon size={24} />
-            <span className="dove-count">{state.doves}</span>
-          </button>
-          <button
-            className="action-btn like-btn"
-            onClick={() => handleLike("profile", 0)}
-          >
-            <Heart size={28} />
-          </button>
-        </div>
       </div>
 
       {commentTarget && (
@@ -281,7 +270,6 @@ function buildContentBlocks(profile) {
   const prompts = (profile.prompts || []).filter(p => p.prompt && p.answer);
 
   blocks.push({ type: "photo", index: 0 });
-  blocks.push({ type: "info" });
 
   if (prompts[0]) blocks.push({ type: "prompt", index: 0, ...prompts[0] });
   if (photos[1]) blocks.push({ type: "photo", index: 1 });
@@ -300,7 +288,7 @@ function buildContentBlocks(profile) {
   return blocks;
 }
 
-function ProfilePhoto({ profile, photoIndex, totalPhotos, onLike, onComment, isFirst }) {
+function ProfilePhoto({ profile, photoIndex, totalPhotos, onLike, onComment }) {
   return (
     <div className="hinge-photo-block">
       <img
@@ -311,13 +299,6 @@ function ProfilePhoto({ profile, photoIndex, totalPhotos, onLike, onComment, isF
           e.target.src = `https://ui-avatars.com/api/?name=${profile.name}&size=400&background=random`;
         }}
       />
-      {isFirst && totalPhotos > 1 && (
-        <div className="photo-indicators">
-          {profile.photos.map((_, i) => (
-            <div key={i} className={`photo-indicator ${i === photoIndex ? "active" : ""}`} />
-          ))}
-        </div>
-      )}
       <div className="hinge-photo-actions">
         <button className="hinge-action-btn" onClick={onLike}>
           <Heart size={20} />
@@ -326,11 +307,6 @@ function ProfilePhoto({ profile, photoIndex, totalPhotos, onLike, onComment, isF
           <MessageCircle size={20} />
         </button>
       </div>
-      {profile.isStandout && isFirst && (
-        <div className="standout-badge">
-          <Star size={14} fill="gold" stroke="gold" /> Standout
-        </div>
-      )}
     </div>
   );
 }
