@@ -100,13 +100,13 @@ export default function Standouts() {
       <div style={{ flex: 1, overflowY: "auto", position: "relative" }}>
         {/* Hero photo */}
         <div style={{ position: "relative", background: "#ddd" }}>
-          <div style={{ width: "100%", maxHeight: "56vh", overflow: "hidden", position: "relative" }}>
+          <div style={{ width: "100%", aspectRatio: "3/4", maxHeight: "56vh", overflow: "hidden", position: "relative" }}>
             <img
               src={photos[photoIdx] || photos[0]}
               alt={profile.name}
               style={{
                 width: "100%",
-                maxHeight: "56vh",
+                height: "100%",
                 objectFit: "cover",
                 display: "block",
                 opacity: dovePhase === "sent" ? 0.3 : 1,
@@ -236,7 +236,8 @@ export default function Standouts() {
               left: 0,
               right: 0,
               background: "linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.6) 45%, transparent 100%)",
-              padding: "80px 16px 44px",
+              padding: "80px 16px 20px",
+              zIndex: 3,
             }}
           >
             {/* Name row */}

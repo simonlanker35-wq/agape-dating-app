@@ -215,7 +215,16 @@ export function AppProvider({ children }) {
     },
 
     matchFromLike: async (like) => {
-      const res = await api.sendLike(like.fromId, "profile", 0);
+      let res;
+      try {
+        res = await api.sendLike(like.fromId, "profile", 0);
+      } catch (err) {
+        if (err.message === "Already liked") {
+          res = { matched: true };
+        } else {
+          throw err;
+        }
+      }
       if (res.matched) {
         const matches = await api.getMatches();
         dispatch({ type: "SET_MATCHES", payload: matches });

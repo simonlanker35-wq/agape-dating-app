@@ -1524,7 +1524,7 @@ input[type="range"] {
   border-radius: 28px 28px 0 0;
   margin-top: -28px;
   position: relative;
-  z-index: 2;
+  z-index: 5;
   padding: 24px 16px 0;
 }
 
