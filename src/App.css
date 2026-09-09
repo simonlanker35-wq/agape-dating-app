@@ -1403,6 +1403,12 @@ input[type="range"] {
   box-shadow: 0 3px 12px rgba(184,145,42,0.45);
 }
 
+.id-dove {
+  background: var(--gold);
+  color: white;
+  box-shadow: 0 3px 12px rgba(184,145,42,0.45);
+}
+
 /* Mini round action buttons (prompts) */
 .mini-btn {
   width: 40px;
@@ -1443,6 +1449,12 @@ input[type="range"] {
 }
 
 .prompt-heart {
+  background: var(--gold);
+  color: white;
+  box-shadow: 0 2px 8px rgba(184,145,42,0.3);
+}
+
+.prompt-dove {
   background: var(--gold);
   color: white;
   box-shadow: 0 2px 8px rgba(184,145,42,0.3);
@@ -1505,9 +1517,47 @@ input[type="range"] {
   color: white;
 }
 
+.dove-choice {
+  background: var(--gold);
+  color: white;
+}
+
 .comment-choice {
   background: var(--surface);
   color: var(--text);
+}
+
+/* Chosen badge — positioned independently */
+.chosen-badge {
+  position: absolute;
+  top: 32px;
+  left: 12px;
+  z-index: 11;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(184,145,42,0.9);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-radius: 20px;
+  padding: 5px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  color: white;
+  letter-spacing: 0.04em;
+}
+
+/* Dove burst overlay */
+.dove-burst-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 50;
+  background: radial-gradient(circle at 50% 45%, rgba(184,145,42,0.3) 0%, rgba(0,0,0,0.4) 70%);
 }
 
 /* === LEGACY PROFILE INFO (used by Profile page) === */
