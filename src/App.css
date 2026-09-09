@@ -1412,18 +1412,20 @@ input[type="range"] {
   box-shadow: 0 2px 8px rgba(184,145,42,0.3);
 }
 
-/* Prompt mini actions */
-.prompt-mini-actions {
+/* Prompt side actions — stacked vertically on right */
+.prompt-side-actions {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 12px;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 10px 0 0;
+  flex-shrink: 0;
 }
 
-.prompt-mini-actions .mini-btn {
-  width: 34px;
-  height: 34px;
+.prompt-side-actions .mini-btn {
+  width: 32px;
+  height: 32px;
 }
 
 .prompt-skip {
@@ -1435,7 +1437,7 @@ input[type="range"] {
 .prompt-heart {
   background: var(--gold);
   color: white;
-  box-shadow: 0 3px 10px rgba(184,145,42,0.35);
+  box-shadow: 0 2px 8px rgba(184,145,42,0.3);
 }
 
 /* Like choice bottom sheet */
@@ -1632,7 +1634,7 @@ input[type="range"] {
 /* === PROMPT CARDS (Figma exact: warm cream cards, no border) === */
 .prompts-sheet {
   background: var(--bg);
-  padding: 24px 16px 120px;
+  padding: 16px 12px 120px;
 }
 
 .hinge-prompt-card {
@@ -1656,7 +1658,7 @@ input[type="range"] {
 
 .hinge-prompt-content {
   flex: 1;
-  padding: 14px 14px 12px;
+  padding: 12px 8px 10px 12px;
 }
 
 .hinge-prompt-label {

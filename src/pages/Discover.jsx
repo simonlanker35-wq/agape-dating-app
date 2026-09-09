@@ -210,14 +210,14 @@ export default function Discover() {
                   ) : (
                     <div className="hinge-prompt-answer">{p.answer}</div>
                   )}
-                  <div className="prompt-mini-actions">
-                    <button className="mini-btn skip-mini prompt-skip" onClick={handleSkip}>
-                      <X size={14} />
-                    </button>
-                    <button className="mini-btn heart-mini prompt-heart" onClick={() => onHeartPress("prompt", i)}>
-                      <Heart size={14} fill="white" stroke="white" />
-                    </button>
-                  </div>
+                </div>
+                <div className="prompt-side-actions">
+                  <button className="mini-btn prompt-skip" onClick={handleSkip}>
+                    <X size={13} />
+                  </button>
+                  <button className="mini-btn prompt-heart" onClick={() => onHeartPress("prompt", i)}>
+                    <Heart size={13} fill="white" stroke="white" />
+                  </button>
                 </div>
               </div>
             </div>
