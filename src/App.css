@@ -1666,18 +1666,18 @@ input[type="range"] {
 }
 
 .hinge-prompt-label {
-  font-size: 10px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--gold);
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.06em;
 }
 
 .hinge-prompt-answer {
-  font-size: 18px;
-  font-weight: 600;
-  line-height: 1.4;
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.5;
   color: var(--text);
   font-family: var(--font);
 }
