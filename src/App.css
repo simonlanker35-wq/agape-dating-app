@@ -1294,9 +1294,13 @@ input[type="range"] {
   left: 0;
   right: 0;
   background: linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.6) 45%, transparent 100%);
-  padding: 90px 16px 14px;
+  padding: 0 16px 14px;
   z-index: 6;
   pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  min-height: 45%;
 }
 
 .hero-overlay * {
