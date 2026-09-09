@@ -1293,17 +1293,26 @@ input[type="range"] {
   left: 0;
   right: 0;
   background: linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.6) 45%, transparent 100%);
-  padding: 80px 16px 20px;
+  padding: 100px 16px 18px;
   z-index: 4;
 }
 
-/* Name row on overlay */
+/* Name block — stacked: name+age on top, details below */
+.hero-name-block {
+  margin-bottom: 14px;
+}
+
 .hero-name-row {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
   gap: 8px;
-  margin-bottom: 18px;
+  margin-bottom: 4px;
+}
+
+.hero-details-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .hero-name {
