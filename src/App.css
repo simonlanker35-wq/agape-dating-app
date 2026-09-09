@@ -1278,7 +1278,8 @@ input[type="range"] {
   position: absolute;
   inset: 0;
   display: flex;
-  z-index: 3;
+  z-index: 5;
+  pointer-events: auto;
 }
 
 .hero-tap-zone {
@@ -1294,7 +1295,12 @@ input[type="range"] {
   right: 0;
   background: linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.6) 45%, transparent 100%);
   padding: 60px 16px 16px;
-  z-index: 4;
+  z-index: 6;
+  pointer-events: none;
+}
+
+.hero-overlay * {
+  pointer-events: auto;
 }
 
 /* Name row */
