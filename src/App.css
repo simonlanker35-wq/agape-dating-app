@@ -1297,22 +1297,28 @@ input[type="range"] {
   z-index: 4;
 }
 
-/* Name block — stacked: name+age on top, details below */
-.hero-name-block {
-  margin-bottom: 14px;
-}
-
+/* Name row */
 .hero-name-row {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 4px;
+  margin-bottom: 8px;
+}
+
+/* Bottom row: details left, buttons right, aligned */
+.hero-bottom-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
 }
 
 .hero-details-row {
   display: flex;
   align-items: center;
   gap: 6px;
+  flex-wrap: wrap;
+  padding-bottom: 4px;
 }
 
 .hero-name {

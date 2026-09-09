@@ -151,49 +151,47 @@ export default function Discover() {
 
             {/* Bottom gradient overlay — name + buttons ON photo */}
             <div className="hero-overlay">
-              <div className="hero-name-block">
-                <div className="hero-name-row">
-                  <span className="hero-name">{profile.name}</span>
-                  <span className="hero-age">{profile.age}</span>
-                  <span className="verified-badge">
-                    <svg width={16} height={16} viewBox="0 0 24 24">
-                      <circle cx="12" cy="12" r="10" fill="#B8912A" />
-                      <path d="M9 12l2 2 4-4" stroke="white" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" fill="none" />
-                    </svg>
-                  </span>
-                </div>
-                {(profile.location || profile.denomination) && (
-                  <div className="hero-details-row">
-                    {profile.location && (
-                      <span className="hero-detail">
-                        <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth={2}>
-                          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                          <circle cx="12" cy="10" r="3" />
-                        </svg>
-                        <span>{profile.location}</span>
-                      </span>
-                    )}
-                    {profile.location && profile.denomination && (
-                      <span className="hero-sep">·</span>
-                    )}
-                    {profile.denomination && (
-                      <span className="hero-detail">
-                        <span style={{ color: "rgba(255,255,255,0.6)", fontSize: 11 }}>✝</span>
-                        <span>{profile.denomination}</span>
-                      </span>
-                    )}
-                  </div>
-                )}
+              <div className="hero-name-row">
+                <span className="hero-name">{profile.name}</span>
+                <span className="hero-age">{profile.age}</span>
+                <span className="verified-badge">
+                  <svg width={16} height={16} viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="10" fill="#B8912A" />
+                    <path d="M9 12l2 2 4-4" stroke="white" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+                  </svg>
+                </span>
               </div>
 
-              {/* Mini round action buttons */}
-              <div className="hero-actions-mini">
-                <button className="mini-btn skip-mini" onClick={handleSkip}>
-                  <X size={18} />
-                </button>
-                <button className="mini-btn heart-mini" onClick={() => onHeartPress("profile", 0)}>
-                  <Heart size={18} fill="white" stroke="white" />
-                </button>
+              {/* Details + buttons on same row */}
+              <div className="hero-bottom-row">
+                <div className="hero-details-row">
+                  {profile.location && (
+                    <span className="hero-detail">
+                      <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth={2}>
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                        <circle cx="12" cy="10" r="3" />
+                      </svg>
+                      <span>{profile.location}</span>
+                    </span>
+                  )}
+                  {profile.location && profile.denomination && (
+                    <span className="hero-sep">·</span>
+                  )}
+                  {profile.denomination && (
+                    <span className="hero-detail">
+                      <span style={{ color: "rgba(255,255,255,0.6)", fontSize: 11 }}>✝</span>
+                      <span>{profile.denomination}</span>
+                    </span>
+                  )}
+                </div>
+                <div className="hero-actions-mini">
+                  <button className="mini-btn skip-mini" onClick={handleSkip}>
+                    <X size={18} />
+                  </button>
+                  <button className="mini-btn heart-mini" onClick={() => onHeartPress("profile", 0)}>
+                    <Heart size={18} fill="white" stroke="white" />
+                  </button>
+                </div>
               </div>
             </div>
           </div>

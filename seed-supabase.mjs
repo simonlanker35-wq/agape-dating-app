@@ -91,7 +91,11 @@ async function seed() {
     location_city: "Schwyz",
     location_lat: 47.0207,
     location_lng: 8.6545,
-    photos: ["/profile.jpg"],
+    photos: [
+      "https://i.pravatar.cc/800?u=simon_a",
+      "https://i.pravatar.cc/800?u=simon_b",
+      "https://i.pravatar.cc/800?u=simon_c",
+    ],
     prompts: [
       { prompt: "My idea of a perfect Sunday", answer: "Church in the morning, brunch with friends, and a long walk" },
       { prompt: "I'm looking for someone who", answer: "Shares my faith and loves a good adventure" },
@@ -136,7 +140,11 @@ async function seed() {
       location_city: city.city,
       location_lat: city.lat + (Math.random() - 0.5) * 0.5,
       location_lng: city.lng + (Math.random() - 0.5) * 0.5,
-      photos: ["/profile.jpg"],
+      photos: [
+        `https://i.pravatar.cc/800?u=demo${i}_a`,
+        `https://i.pravatar.cc/800?u=demo${i}_b`,
+        `https://i.pravatar.cc/800?u=demo${i}_c`,
+      ],
       prompts: userPrompts,
       interests: pickN(interests, 4 + Math.floor(Math.random() * 4)),
       is_standout: i < 20 && i % 4 === 0,
