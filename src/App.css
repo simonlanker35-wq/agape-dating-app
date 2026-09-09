@@ -1349,46 +1349,134 @@ input[type="range"] {
   font-family: var(--font);
 }
 
-/* Glass-morphism action buttons on photo */
-.hero-actions {
+/* Mini round action buttons (photo + prompts) */
+.hero-actions-mini {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 10px;
 }
 
-.hero-actions .action-btn {
-  flex: 1;
-  height: 48px;
-  border-radius: 999px;
-  background: rgba(255,255,255,0.15);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1.5px solid rgba(255,255,255,0.25);
+.mini-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
-  transition: all 0.15s;
-  width: auto;
-}
-
-.hero-actions .action-btn:active {
-  transform: scale(0.95);
-}
-
-.hero-actions .like-btn {
-  flex: 1.4;
-  height: 54px;
-  background: var(--gold);
   border: none;
-  box-shadow: 0 6px 24px rgba(184,145,42,0.55);
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
 }
 
-.hero-actions .skip-btn,
-.hero-actions .comment-btn {
-  background: rgba(255,255,255,0.15);
-  backdrop-filter: blur(12px);
-  border: 1.5px solid rgba(255,255,255,0.25);
+.mini-btn:active {
+  transform: scale(0.88);
+}
+
+.skip-mini {
+  background: rgba(255,255,255,0.18);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: white;
+  border: 1px solid rgba(255,255,255,0.2);
+}
+
+.heart-mini {
+  background: var(--gold);
+  color: white;
+  box-shadow: 0 4px 14px rgba(184,145,42,0.45);
+}
+
+.heart-mini:active {
+  box-shadow: 0 2px 8px rgba(184,145,42,0.3);
+}
+
+/* Prompt mini actions */
+.prompt-mini-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.prompt-mini-actions .mini-btn {
+  width: 34px;
+  height: 34px;
+}
+
+.prompt-skip {
+  background: var(--surface);
+  color: var(--text-muted);
+  border: none;
+}
+
+.prompt-heart {
+  background: var(--gold);
+  color: white;
+  box-shadow: 0 3px 10px rgba(184,145,42,0.35);
+}
+
+/* Like choice bottom sheet */
+.like-choice-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.35);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 200;
+  animation: overlayFadeIn 0.2s ease;
+}
+
+.like-choice-sheet {
+  background: var(--bg-card);
+  border-radius: 20px 20px 0 0;
+  padding: 8px 20px 32px;
+  width: 100%;
+  max-width: 430px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  animation: sheetSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.like-choice-handle {
+  width: 36px;
+  height: 4px;
+  background: #ddd;
+  border-radius: 2px;
+  margin: 4px auto 14px;
+}
+
+.like-choice-btn {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 20px;
+  border-radius: 14px;
+  font-size: 16px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.12s, opacity 0.12s;
+}
+
+.like-choice-btn:active {
+  transform: scale(0.97);
+  opacity: 0.9;
+}
+
+.heart-choice {
+  background: var(--gold);
+  color: white;
+}
+
+.comment-choice {
+  background: var(--surface);
+  color: var(--text);
 }
 
 /* === LEGACY PROFILE INFO (used by Profile page) === */

@@ -15,6 +15,7 @@ export default function Discover() {
   const [matchCelebration, setMatchCelebration] = useState(null);
   const [cardEnter, setCardEnter] = useState(true);
   const [photoIdx, setPhotoIdx] = useState(0);
+  const [likeChoice, setLikeChoice] = useState(null);
   const cardRef = useRef(null);
 
   const profile = state.profiles[state.currentProfileIndex];
@@ -71,6 +72,20 @@ export default function Discover() {
     if (commentText.trim()) {
       handleLike(commentTarget.type, commentTarget.index, commentText.trim(), showDove);
     }
+  };
+
+  const onHeartPress = (type, index) => {
+    setLikeChoice({ type, index });
+  };
+
+  const onSendHeart = () => {
+    handleLike(likeChoice.type, likeChoice.index);
+    setLikeChoice(null);
+  };
+
+  const onAddComment = () => {
+    setCommentTarget(likeChoice);
+    setLikeChoice(null);
   };
 
   const photos = profile.photos || [];
@@ -169,21 +184,13 @@ export default function Discover() {
                 )}
               </div>
 
-              {/* Glass-morphism action buttons */}
-              <div className="hero-actions">
-                <button className="action-btn skip-btn" onClick={handleSkip}>
-                  <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2.5} strokeLinecap="round">
-                    <line x1="18" y1="6" x2="6" y2="18" />
-                    <line x1="6" y1="6" x2="18" y2="18" />
-                  </svg>
+              {/* Mini round action buttons */}
+              <div className="hero-actions-mini">
+                <button className="mini-btn skip-mini" onClick={handleSkip}>
+                  <X size={18} />
                 </button>
-                <button className="action-btn like-btn" onClick={() => handleLike("profile", 0)}>
-                  <Heart size={24} fill="white" stroke="white" />
-                </button>
-                <button className="action-btn comment-btn" onClick={() => setCommentTarget({ type: "photo", index: 0 })}>
-                  <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2} strokeLinecap="round">
-                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                  </svg>
+                <button className="mini-btn heart-mini" onClick={() => onHeartPress("profile", 0)}>
+                  <Heart size={18} fill="white" stroke="white" />
                 </button>
               </div>
             </div>
@@ -203,15 +210,12 @@ export default function Discover() {
                   ) : (
                     <div className="hinge-prompt-answer">{p.answer}</div>
                   )}
-                  <div className="hinge-prompt-actions">
-                    <button className="hinge-action-btn" onClick={() => handleLike("prompt", i)}>
-                      <Heart size={12} /> Like
+                  <div className="prompt-mini-actions">
+                    <button className="mini-btn skip-mini prompt-skip" onClick={handleSkip}>
+                      <X size={14} />
                     </button>
-                    <button className="hinge-action-btn" onClick={() => setCommentTarget({ type: "prompt", index: i })}>
-                      <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                      </svg>
-                      Comment
+                    <button className="mini-btn heart-mini prompt-heart" onClick={() => onHeartPress("prompt", i)}>
+                      <Heart size={14} fill="white" stroke="white" />
                     </button>
                   </div>
                 </div>
@@ -246,6 +250,22 @@ export default function Discover() {
         </div>
 
       </div>
+
+      {likeChoice && (
+        <div className="like-choice-overlay" onClick={() => setLikeChoice(null)}>
+          <div className="like-choice-sheet" onClick={(e) => e.stopPropagation()}>
+            <div className="like-choice-handle" />
+            <button className="like-choice-btn heart-choice" onClick={onSendHeart}>
+              <Heart size={20} fill="white" stroke="white" />
+              <span>Send Heart</span>
+            </button>
+            <button className="like-choice-btn comment-choice" onClick={onAddComment}>
+              <MessageCircle size={18} />
+              <span>Add a Comment</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {commentTarget && (
         <div className="comment-modal-overlay" onClick={() => { setCommentTarget(null); setShowDove(false); }}>
