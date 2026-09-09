@@ -1293,16 +1293,16 @@ input[type="range"] {
   left: 0;
   right: 0;
   background: linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.6) 45%, transparent 100%);
-  padding: 100px 16px 18px;
+  padding: 60px 16px 16px;
   z-index: 4;
 }
 
 /* Name row */
 .hero-name-row {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 8px;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 /* Bottom row: details left, buttons right, aligned */
