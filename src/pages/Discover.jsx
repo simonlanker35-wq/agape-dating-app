@@ -149,49 +149,43 @@ export default function Discover() {
               <div className="hero-tap-zone" onClick={() => setPhotoIdx(p => Math.min(photos.length - 1, p + 1))} />
             </div>
 
-            {/* Bottom gradient overlay — name + buttons ON photo */}
-            <div className="hero-overlay">
-              <div className="hero-name-row">
-                <span className="hero-name">{profile.name}</span>
-                <span className="hero-age">{profile.age}</span>
-                <span className="verified-badge">
-                  <svg width={16} height={16} viewBox="0 0 24 24">
+            {/* Bottom gradient */}
+            <div className="hero-gradient" />
+
+            {/* Identity block — pinned to bottom of photo */}
+            <div className="id-block">
+              <div className="id-info">
+                <div className="id-line1">
+                  <span className="id-name">{profile.name},</span>
+                  <span className="id-age">{profile.age}</span>
+                  <svg className="id-verified" width={15} height={15} viewBox="0 0 24 24">
                     <circle cx="12" cy="12" r="10" fill="#B8912A" />
                     <path d="M9 12l2 2 4-4" stroke="white" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" fill="none" />
                   </svg>
-                </span>
-              </div>
-
-              {/* Details + buttons on same row */}
-              <div className="hero-bottom-row">
-                <div className="hero-details-row">
+                </div>
+                <div className="id-line2">
                   {profile.location && (
-                    <span className="hero-detail">
-                      <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth={2}>
+                    <span className="id-detail">
+                      <svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
                         <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
                         <circle cx="12" cy="10" r="3" />
                       </svg>
-                      <span>{profile.location}</span>
+                      {profile.location}
                     </span>
                   )}
-                  {profile.location && profile.denomination && (
-                    <span className="hero-sep">·</span>
-                  )}
+                  {profile.location && profile.denomination && <span className="id-dot">·</span>}
                   {profile.denomination && (
-                    <span className="hero-detail">
-                      <span style={{ color: "rgba(255,255,255,0.6)", fontSize: 11 }}>✝</span>
-                      <span>{profile.denomination}</span>
-                    </span>
+                    <span className="id-detail">✝ {profile.denomination}</span>
                   )}
                 </div>
-                <div className="hero-actions-mini">
-                  <button className="mini-btn skip-mini" onClick={handleSkip}>
-                    <X size={18} />
-                  </button>
-                  <button className="mini-btn heart-mini" onClick={() => onHeartPress("profile", 0)}>
-                    <Heart size={18} fill="white" stroke="white" />
-                  </button>
-                </div>
+              </div>
+              <div className="id-actions">
+                <button className="id-btn id-skip" onClick={handleSkip}>
+                  <X size={17} />
+                </button>
+                <button className="id-btn id-heart" onClick={() => onHeartPress("profile", 0)}>
+                  <Heart size={17} fill="white" stroke="white" />
+                </button>
               </div>
             </div>
           </div>
