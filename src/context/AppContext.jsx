@@ -111,7 +111,6 @@ function reducer(state, action) {
       return { ...state, error: action.payload };
 
     case "LOGOUT":
-      supabase.auth.signOut();
       return { ...initialState };
 
     case "REMOVE_MATCH":
@@ -137,8 +136,8 @@ export function AppProvider({ children }) {
       }
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session) {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_OUT") {
         dispatch({ type: "LOGOUT" });
       }
     });
@@ -262,6 +261,10 @@ export function AppProvider({ children }) {
     unmatch: async (matchId) => {
       await api.unmatch(matchId);
       dispatch({ type: "REMOVE_MATCH", payload: matchId });
+    },
+
+    logout: async () => {
+      await supabase.auth.signOut();
     },
 
     refreshDiscover: loadDiscover,

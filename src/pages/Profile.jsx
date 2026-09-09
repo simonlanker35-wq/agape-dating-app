@@ -344,7 +344,7 @@ function SettingsScreen({ onBack, initialSection = null }) {
           </div>
         </div>
         <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
-          <SettingsRow icon="🚪" label="Log out" danger onPress={() => dispatch({ type: "LOGOUT" })} />
+          <SettingsRow icon="🚪" label="Log out" danger onPress={() => actions.logout()} />
           <SettingsRow icon="🗑️" label="Delete account" danger />
         </div>
       </div>
@@ -862,7 +862,7 @@ export default function Profile() {
           </div>
 
           <button
-            onClick={() => dispatch({ type: "LOGOUT" })}
+            onClick={() => actions.logout()}
             style={{
               width: "100%",
               padding: "16px 0",
