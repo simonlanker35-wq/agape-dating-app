@@ -1188,19 +1188,21 @@ input[type="range"] {
   z-index: 3;
 }
 
-/* === HERO SECTION: Photo with overlay (Figma exact) === */
+/* === HERO SECTION: Photo with overlay === */
 .hero-section {
   position: relative;
-  background: #ddd;
+  background: var(--bg);
+  padding: 12px 12px 0;
 }
 
 .hero-photo-block {
   position: relative;
   width: 100%;
   aspect-ratio: 3/4;
-  max-height: 56vh;
+  max-height: 50vh;
   overflow: hidden;
   background: #e8e8e8;
+  border-radius: 20px;
 }
 
 .hero-photo {
