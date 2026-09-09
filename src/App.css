@@ -1680,6 +1680,7 @@ input[type="range"] {
   line-height: 1.5;
   color: var(--text);
   font-family: var(--font);
+  text-wrap: balance;
 }
 
 .hinge-prompt-actions {
