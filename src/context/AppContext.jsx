@@ -1,5 +1,6 @@
 import { createContext, useContext, useReducer, useEffect, useCallback } from "react";
 import * as api from "../services/api";
+import { supabase } from "../services/supabase";
 
 const AppContext = createContext();
 
@@ -110,7 +111,7 @@ function reducer(state, action) {
       return { ...state, error: action.payload };
 
     case "LOGOUT":
-      api.clearToken();
+      supabase.auth.signOut();
       return { ...initialState };
 
     case "REMOVE_MATCH":
@@ -128,16 +129,21 @@ export function AppProvider({ children }) {
   const [state, dispatch] = useReducer(reducer, initialState);
 
   useEffect(() => {
-    const token = api.getToken();
-    if (token) {
-      api.getMe()
-        .then((user) => {
-          dispatch({ type: "SET_USER", payload: user });
-        })
-        .catch(() => {
-          api.clearToken();
-        });
-    }
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        api.getMe()
+          .then((user) => dispatch({ type: "SET_USER", payload: user }))
+          .catch(() => supabase.auth.signOut());
+      }
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session) {
+        dispatch({ type: "LOGOUT" });
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   useEffect(() => {
