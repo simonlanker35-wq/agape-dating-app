@@ -1312,7 +1312,7 @@ input[type="range"] {
   display: flex;
   align-items: baseline;
   gap: 8px;
-  margin-bottom: 3px;
+  margin-bottom: 1px;
 }
 
 /* Bottom row: details left, buttons right, aligned */
