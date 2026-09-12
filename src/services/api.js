@@ -384,6 +384,26 @@ function mapProfileToUser(p) {
   };
 }
 
+// ─── PHOTOS ───
+
+export function compressPhoto(file, maxWidth = 800, quality = 0.75) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const ratio = Math.min(maxWidth / img.width, (maxWidth * 1.33) / img.height, 1);
+      const w = Math.round(img.width * ratio);
+      const h = Math.round(img.height * ratio);
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL("image/jpeg", quality));
+    };
+    img.onerror = () => reject(new Error("Failed to load image"));
+    img.src = URL.createObjectURL(file);
+  });
+}
+
 // Legacy token functions — no longer needed with Supabase auth but kept for compatibility
 export function getToken() {
   return supabase.auth.getSession().then(({ data }) => data?.session?.access_token || null);

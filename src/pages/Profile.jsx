@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useApp } from "../context/AppContext";
+import { compressPhoto } from "../services/api";
 import AgapeCross from "../components/AgapeCross";
 
 const C = { bg: "#FFFFFF", card: "#FAFAF8", surface: "#F4F2EE", primary: "#B8912A", primarySoft: "#FBF5E6", text: "#1A1612", sub: "#8C857C", border: "#E8E4DF", sent: "#111111" };
@@ -361,6 +362,9 @@ export default function Profile() {
   const [editMode, setEditMode] = useState(false);
   const [editPrompts, setEditPrompts] = useState([]);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [editPhotos, setEditPhotos] = useState(false);
+  const fileInputRef = useRef(null);
 
   if (!currentUser) return null;
 
@@ -400,6 +404,35 @@ export default function Profile() {
   const openSettings = (sec) => {
     setSettingsSection(sec);
     setShowSettings(true);
+  };
+
+  const photos = currentUser.photos || [];
+
+  const handleAddPhoto = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const dataUrl = await compressPhoto(file);
+      await actions.updateProfile({ photos: [...photos, dataUrl] });
+    } catch (err) {
+      console.error("Upload failed:", err);
+    }
+    setUploading(false);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleRemovePhoto = async (idx) => {
+    const updated = photos.filter((_, i) => i !== idx);
+    await actions.updateProfile({ photos: updated });
+  };
+
+  const handleSetMain = async (idx) => {
+    if (idx === 0) return;
+    const updated = [...photos];
+    const [moved] = updated.splice(idx, 1);
+    updated.unshift(moved);
+    await actions.updateProfile({ photos: updated });
   };
 
   return (
@@ -625,6 +658,79 @@ export default function Profile() {
             <span style={{ color: C.sub, fontSize: 11, marginTop: 2 }}>
               {state.doves === 1 ? "Dove left" : "Doves left"}
             </span>
+          </div>
+
+          {/* Photos */}
+          <div style={{ borderRadius: 16, padding: 16, background: C.card, border: `1px solid ${C.border}` }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+              <p style={{ fontSize: 10, fontWeight: 600, color: C.primary, textTransform: "uppercase", letterSpacing: "0.1em" }}>My Photos</p>
+              <button
+                onClick={() => setEditPhotos(!editPhotos)}
+                style={{ fontSize: 12, fontWeight: 600, color: editPhotos ? "#EF4444" : C.primary, background: "none", border: "none", cursor: "pointer" }}
+              >
+                {editPhotos ? "Done" : "Edit"}
+              </button>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+              {photos.map((url, i) => (
+                <div key={i} style={{ position: "relative", aspectRatio: "3/4", borderRadius: 12, overflow: "hidden", border: i === 0 ? `2px solid ${C.primary}` : `1px solid ${C.border}` }}>
+                  <img src={url} alt={`Photo ${i + 1}`} style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${currentUser.name}&size=200&background=random`; }} />
+                  {i === 0 && (
+                    <span style={{ position: "absolute", bottom: 4, left: 4, fontSize: 9, fontWeight: 700, padding: "2px 6px", borderRadius: 6, background: C.primary, color: "white", textTransform: "uppercase" }}>Main</span>
+                  )}
+                  {editPhotos && (
+                    <>
+                      {i !== 0 && (
+                        <button
+                          onClick={() => handleSetMain(i)}
+                          style={{ position: "absolute", bottom: 4, left: 4, width: 24, height: 24, borderRadius: "50%", background: "rgba(0,0,0,0.6)", color: "white", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10 }}
+                          title="Set as main"
+                        >
+                          <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2.5}><path d="M12 19V5M5 12l7-7 7 7" /></svg>
+                        </button>
+                      )}
+                      {photos.length > 1 && (
+                        <button
+                          onClick={() => handleRemovePhoto(i)}
+                          style={{ position: "absolute", top: 4, right: 4, width: 24, height: 24, borderRadius: "50%", background: "rgba(239,68,68,0.9)", color: "white", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                        >
+                          <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={3}><path d="M18 6L6 18M6 6l12 12" /></svg>
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
+              ))}
+              {photos.length < 6 && (
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                  style={{
+                    aspectRatio: "3/4",
+                    borderRadius: 12,
+                    border: `2px dashed ${C.border}`,
+                    background: C.surface,
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 4,
+                    cursor: uploading ? "wait" : "pointer",
+                    opacity: uploading ? 0.5 : 1,
+                  }}
+                >
+                  {uploading ? (
+                    <span style={{ fontSize: 11, color: C.sub, fontWeight: 600 }}>Uploading...</span>
+                  ) : (
+                    <>
+                      <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke={C.sub} strokeWidth={2}><path d="M12 5v14M5 12h14" /></svg>
+                      <span style={{ fontSize: 10, color: C.sub, fontWeight: 600 }}>Add Photo</span>
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
+            <input ref={fileInputRef} type="file" accept="image/*" onChange={handleAddPhoto} style={{ display: "none" }} />
           </div>
 
           {/* Prompts */}
