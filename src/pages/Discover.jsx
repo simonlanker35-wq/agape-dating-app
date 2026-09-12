@@ -150,6 +150,7 @@ export default function Discover() {
 
   const handleReport = (reason) => {
     dispatch({ type: "BLOCK_PROFILE", payload: profile.id });
+    dispatch({ type: "ADD_REPORT", payload: { profileId: profile.id, name: profile.name, reason, timestamp: Date.now() } });
     actions.skipProfile(profile.id).catch(() => {});
   };
 

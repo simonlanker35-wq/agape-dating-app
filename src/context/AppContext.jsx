@@ -14,6 +14,7 @@ const initialState = {
   conversations: {},
   doves: 3,
   blocked: [],
+  reports: [],
   filters: {
     minAge: 18,
     maxAge: 35,
@@ -118,6 +119,12 @@ function reducer(state, action) {
 
     case "BLOCK_PROFILE":
       return { ...state, blocked: [...state.blocked, action.payload] };
+
+    case "UNBLOCK_PROFILE":
+      return { ...state, blocked: state.blocked.filter((id) => id !== action.payload) };
+
+    case "ADD_REPORT":
+      return { ...state, reports: [...(state.reports || []), action.payload] };
 
     case "SET_LOADING":
       return { ...state, loading: action.payload };
