@@ -19,6 +19,8 @@ function ChatThread({ match, onBack }) {
   const [reacting, setReacting] = useState(null);
   const [localMessages, setLocalMessages] = useState([]);
   const [viewProfile, setViewProfile] = useState(false);
+  const [showReportMenu, setShowReportMenu] = useState(false);
+  const [reportDone, setReportDone] = useState(null);
   const bottomRef = useRef(null);
 
   const currentUserId = state.currentUser?._id || state.currentUser?.id;
@@ -116,42 +118,24 @@ function ChatThread({ match, onBack }) {
             </p>
             <p style={{ fontSize: 12, color: "#22C55E", marginTop: 2 }}>Active now</p>
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: "50%",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                background: C.surface,
-                border: "none",
-                cursor: "pointer",
-              }}
-            >
-              <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={C.sub} strokeWidth={2}>
-                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 14a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 3.18h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 10a16 16 0 0 0 6 6l.91-.91a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.73 17l.19-.08z" />
-              </svg>
-            </button>
-            <button
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: "50%",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                background: "#FEF2F2",
-                border: "none",
-                cursor: "pointer",
-              }}
-            >
-              <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth={2.5}>
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-              </svg>
-            </button>
-          </div>
+          <button
+            onClick={() => setShowReportMenu(true)}
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: "50%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: "#FEF2F2",
+              border: "none",
+              cursor: "pointer",
+            }}
+          >
+            <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth={2.5}>
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+            </svg>
+          </button>
         </div>
         {/* Match banner */}
         <div
@@ -348,6 +332,63 @@ function ChatThread({ match, onBack }) {
           </button>
         </div>
       </div>
+
+      {/* Report / Block menu */}
+      {showReportMenu && (
+        <div
+          onClick={() => { if (!reportDone) setShowReportMenu(false); }}
+          style={{ position: "fixed", inset: 0, maxWidth: 430, margin: "0 auto", zIndex: 400, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}
+        >
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", borderRadius: "24px 24px 0 0", background: C.bg, padding: "20px 16px 32px" }}>
+            {reportDone ? (
+              <div style={{ textAlign: "center", padding: "20px 0" }}>
+                <div style={{ fontSize: 36, marginBottom: 12 }}>{reportDone === "block" ? "🚫" : reportDone === "report" ? "🚩" : "👋"}</div>
+                <p style={{ fontSize: 16, fontWeight: 700, color: C.text, fontFamily: FONT, marginBottom: 4 }}>
+                  {reportDone === "block" ? `${profile.name} has been blocked` : reportDone === "report" ? "Report submitted" : "Unmatched"}
+                </p>
+                <p style={{ fontSize: 13, color: C.sub, marginBottom: 20 }}>
+                  {reportDone === "block" ? "They can no longer see your profile or contact you." : reportDone === "report" ? "Our team will review this. Thank you for keeping Agape safe." : `You and ${profile.name} have been unmatched.`}
+                </p>
+                <button
+                  onClick={() => { setShowReportMenu(false); setReportDone(null); if (reportDone === "block" || reportDone === "unmatch") onBack(); }}
+                  style={{ padding: "12px 32px", borderRadius: 9999, fontSize: 14, fontWeight: 700, background: C.text, color: "white", border: "none", cursor: "pointer" }}
+                >
+                  Done
+                </button>
+              </div>
+            ) : (
+              <>
+                <div style={{ width: 36, height: 4, borderRadius: 2, background: C.border, margin: "0 auto 16px" }} />
+                <p style={{ fontSize: 16, fontWeight: 700, color: C.text, fontFamily: FONT, textAlign: "center", marginBottom: 16 }}>{profile.name}</p>
+                {[
+                  { icon: "🚩", label: "Report", desc: "Flag inappropriate behaviour", color: "#EF4444", action: async () => { setReportDone("report"); } },
+                  { icon: "🚫", label: "Block", desc: "They won't be able to see you", color: "#EF4444", action: async () => { try { await actions.unmatch(match.id); } catch (_) {} setReportDone("block"); } },
+                  { icon: "👋", label: "Unmatch", desc: "Remove this match", color: C.text, action: async () => { try { await actions.unmatch(match.id); } catch (_) {} setReportDone("unmatch"); } },
+                ].map((item) => (
+                  <button
+                    key={item.label}
+                    onClick={item.action}
+                    style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "14px 12px", borderRadius: 12, background: "none", border: "none", cursor: "pointer", textAlign: "left", marginBottom: 4 }}
+                  >
+                    <div style={{ width: 40, height: 40, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", background: C.surface, fontSize: 18 }}>{item.icon}</div>
+                    <div style={{ flex: 1 }}>
+                      <p style={{ fontSize: 14, fontWeight: 600, color: item.color, margin: 0 }}>{item.label}</p>
+                      <p style={{ fontSize: 12, color: C.sub, marginTop: 2 }}>{item.desc}</p>
+                    </div>
+                    <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={C.sub} strokeWidth={2}><polyline points="9 18 15 12 9 6" /></svg>
+                  </button>
+                ))}
+                <button
+                  onClick={() => setShowReportMenu(false)}
+                  style={{ width: "100%", padding: "14px 0", borderRadius: 12, fontSize: 14, fontWeight: 600, background: C.surface, color: C.sub, border: "none", cursor: "pointer", marginTop: 8 }}
+                >
+                  Cancel
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {viewProfile && (
         <div
