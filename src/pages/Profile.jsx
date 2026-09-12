@@ -365,6 +365,7 @@ export default function Profile() {
   const [uploading, setUploading] = useState(false);
   const [editPhotos, setEditPhotos] = useState(false);
   const fileInputRef = useRef(null);
+  const photosRef = useRef(null);
 
   if (!currentUser) return null;
 
@@ -438,7 +439,11 @@ export default function Profile() {
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: C.surface }}>
       {/* Header — full bleed photo */}
-      <div style={{ position: "relative", height: 260, flexShrink: 0 }}>
+      <div
+        className="profile-hero-photo"
+        style={{ position: "relative", height: 260, flexShrink: 0, cursor: "pointer" }}
+        onClick={() => { setEditPhotos(true); photosRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }); }}
+      >
         <img
           src={currentUser.photos?.[0]}
           alt="Me"
@@ -454,6 +459,16 @@ export default function Profile() {
             background: "linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.1) 60%)",
           }}
         />
+        <div className="profile-hero-hover">
+          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 20px", borderRadius: 9999, background: "rgba(255,255,255,0.2)", backdropFilter: "blur(8px)" }}>
+            <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2}>
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+              <circle cx="8.5" cy="8.5" r="1.5" />
+              <polyline points="21 15 16 10 5 21" />
+            </svg>
+            <span style={{ color: "white", fontSize: 13, fontWeight: 700, fontFamily: FONT }}>Change Photos</span>
+          </div>
+        </div>
 
         {/* Top bar */}
         <div style={{ position: "absolute", top: 0, left: 0, right: 0, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "40px 20px 0" }}>
@@ -461,7 +476,7 @@ export default function Profile() {
             My Profile
           </span>
           <button
-            onClick={() => setShowSettings(true)}
+            onClick={(e) => { e.stopPropagation(); setShowSettings(true); }}
             style={{
               width: 36,
               height: 36,
@@ -504,7 +519,7 @@ export default function Profile() {
           {editMode ? (
             <div style={{ display: "flex", gap: 8 }}>
               <button
-                onClick={cancelEdit}
+                onClick={(e) => { e.stopPropagation(); cancelEdit(); }}
                 style={{
                   padding: "8px 16px",
                   borderRadius: 9999,
@@ -520,7 +535,7 @@ export default function Profile() {
                 Cancel
               </button>
               <button
-                onClick={saveEdit}
+                onClick={(e) => { e.stopPropagation(); saveEdit(); }}
                 disabled={saving}
                 style={{
                   padding: "8px 16px",
@@ -539,7 +554,7 @@ export default function Profile() {
             </div>
           ) : (
             <button
-              onClick={startEdit}
+              onClick={(e) => { e.stopPropagation(); startEdit(); }}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -661,7 +676,7 @@ export default function Profile() {
           </div>
 
           {/* Photos */}
-          <div style={{ borderRadius: 16, padding: 16, background: C.card, border: `1px solid ${C.border}` }}>
+          <div ref={photosRef} style={{ borderRadius: 16, padding: 16, background: C.card, border: `1px solid ${C.border}` }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
               <p style={{ fontSize: 10, fontWeight: 600, color: C.primary, textTransform: "uppercase", letterSpacing: "0.1em" }}>My Photos</p>
               <button
