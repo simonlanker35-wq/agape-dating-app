@@ -993,21 +993,18 @@ export default function Profile() {
               style={{
                 borderRadius: 16,
                 overflow: "hidden",
-                background: C.primarySoft,
-                border: editMode ? `2px solid ${C.primary}44` : "none",
+                background: C.card,
+                border: editMode ? `1.5px solid ${C.border}` : `1px solid ${C.border}`,
               }}
             >
-              <div style={{ display: "flex" }}>
-                <div style={{ width: 4, flexShrink: 0, background: C.primary, borderRadius: "4px 0 0 4px" }} />
-                <div style={{ flex: 1, padding: "14px 14px 12px" }}>
+              <div style={{ padding: "14px 14px 12px" }}>
                   <p
                     style={{
-                      fontSize: 10,
+                      fontSize: 13,
                       fontWeight: 600,
-                      color: C.primary,
-                      textTransform: "uppercase",
-                      letterSpacing: "0.1em",
-                      marginBottom: 8,
+                      color: C.sub,
+                      lineHeight: 1.4,
+                      marginBottom: 6,
                     }}
                   >
                     {p.prompt}
@@ -1065,7 +1062,6 @@ export default function Profile() {
                       </button>
                     </>
                   )}
-                </div>
               </div>
             </div>
           ))}
