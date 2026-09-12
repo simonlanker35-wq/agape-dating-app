@@ -3,7 +3,6 @@ import { useApp } from "../context/AppContext";
 import { Heart, X, MessageCircle } from "lucide-react";
 import AgapeCross from "../components/AgapeCross";
 import WaveformBar from "../components/WaveformBar";
-import FilterSheet from "../components/FilterSheet";
 import ReportSheet from "../components/ReportSheet";
 
 function haversine(lat1, lon1, lat2, lon2) {
@@ -27,7 +26,6 @@ export default function Standouts() {
   const [commentTarget, setCommentTarget] = useState(null);
   const [commentText, setCommentText] = useState("");
   const [cardEnter, setCardEnter] = useState(true);
-  const [showFilter, setShowFilter] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const cardRef = useRef(null);
 
@@ -53,10 +51,6 @@ export default function Standouts() {
 
   const profile = standoutProfiles[idx];
 
-  const handleApplyFilters = (newFilters) => {
-    dispatch({ type: "UPDATE_FILTERS", payload: newFilters });
-  };
-
   useEffect(() => {
     if (idx >= standoutProfiles.length && standoutProfiles.length > 0) {
       setIdx(0);
@@ -75,17 +69,7 @@ export default function Standouts() {
       <div className="discover-empty">
         <span style={{ fontSize: 48 }}>⭐</span>
         <h2>No standouts right now</h2>
-        <p>Check back later for top picks or adjust your filters.</p>
-        <button className="filter-apply-btn" style={{ marginTop: 16 }} onClick={() => setShowFilter(true)}>
-          Adjust Filters
-        </button>
-        {showFilter && (
-          <FilterSheet
-            filters={filters}
-            onApply={handleApplyFilters}
-            onClose={() => setShowFilter(false)}
-          />
-        )}
+        <p>Check back later for top picks.</p>
       </div>
     );
   }
@@ -213,16 +197,11 @@ export default function Standouts() {
               <span>CHOSEN FOR YOU</span>
             </div>
 
-            {/* Shield + filter icons */}
+            {/* Shield icon */}
             <div className="photo-overlay-icons">
               <button className="photo-overlay-btn" onClick={() => setShowReport(true)}>
                 <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2.5}>
                   <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                </svg>
-              </button>
-              <button className="photo-overlay-btn" onClick={() => setShowFilter(true)}>
-                <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2}>
-                  <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
                 </svg>
               </button>
             </div>
@@ -389,14 +368,6 @@ export default function Standouts() {
             </button>
           </div>
         </div>
-      )}
-
-      {showFilter && (
-        <FilterSheet
-          filters={filters}
-          onApply={handleApplyFilters}
-          onClose={() => setShowFilter(false)}
-        />
       )}
 
       {showReport && (
