@@ -27,6 +27,7 @@ export default function Standouts() {
   const [commentText, setCommentText] = useState("");
   const [cardEnter, setCardEnter] = useState(true);
   const [showReport, setShowReport] = useState(false);
+  const [localLikes, setLocalLikes] = useState(new Set());
   const cardRef = useRef(null);
 
   const userLat = state.currentUser?.location?.lat;
@@ -37,6 +38,7 @@ export default function Standouts() {
     return state.profiles.filter((p) => {
       if (!p.isStandout) return false;
       if (state.likes.some((l) => l.profileId === p.id)) return false;
+      if (localLikes.has(p.id)) return false;
       if (p.id === "current_user") return false;
       if (state.blocked.includes(p.id)) return false;
       if (p.age < filters.minAge || p.age > filters.maxAge) return false;
@@ -47,7 +49,7 @@ export default function Standouts() {
       }
       return true;
     });
-  }, [state.profiles, state.likes, state.blocked, filters, userLat, userLng]);
+  }, [state.profiles, state.likes, state.blocked, localLikes, filters, userLat, userLng]);
 
   const profile = standoutProfiles[idx];
 
@@ -79,13 +81,15 @@ export default function Standouts() {
 
   const handleLike = async (targetType, targetIndex, comment = null) => {
     const flashType = comment ? "comment" : "dove";
+    const likedId = profile.id;
     setCommentTarget(null);
     setCommentText("");
+    setLocalLikes((prev) => new Set(prev).add(likedId));
     setLikeFlash(flashType);
 
     setTimeout(async () => {
       try {
-        await actions.likeProfile(profile.id, targetType, targetIndex, comment, true);
+        await actions.likeProfile(likedId, targetType, targetIndex, comment, true);
         setLikeFlash(null);
       } catch (err) {
         console.error("Like failed:", err);

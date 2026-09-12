@@ -30,6 +30,7 @@ export default function Discover() {
   const [photoIdx, setPhotoIdx] = useState(0);
   const [likeChoice, setLikeChoice] = useState(null);
   const [localSkips, setLocalSkips] = useState(new Set());
+  const [localLikes, setLocalLikes] = useState(new Set());
   const [showFilter, setShowFilter] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const cardRef = useRef(null);
@@ -43,6 +44,7 @@ export default function Discover() {
       if (state.likes.some((l) => l.profileId === p.id)) return false;
       if (state.blocked.includes(p.id)) return false;
       if (localSkips.has(p.id)) return false;
+      if (localLikes.has(p.id)) return false;
       if (p.age < filters.minAge || p.age > filters.maxAge) return false;
       if (filters.denominations.length > 0 && !filters.denominations.includes(p.denomination)) return false;
       if (userLat && userLng && p.lat && p.lng) {
@@ -51,7 +53,7 @@ export default function Discover() {
       }
       return true;
     });
-  }, [state.profiles, state.likes, state.blocked, localSkips, filters, userLat, userLng]);
+  }, [state.profiles, state.likes, state.blocked, localSkips, localLikes, filters, userLat, userLng]);
 
   const profile = filteredProfiles[0];
 
@@ -88,18 +90,21 @@ export default function Discover() {
 
   const handleLike = async (targetType, targetIndex, comment = null, isDove = false) => {
     const flashType = comment ? "comment" : isDove ? "dove" : "heart";
+    const likedId = profile.id;
+    const likedProfile = profile;
     setCommentTarget(null);
     setCommentText("");
     setShowDove(false);
+    setLocalLikes((prev) => new Set(prev).add(likedId));
     setLikeFlash(flashType);
 
     setTimeout(async () => {
       try {
-        const res = await actions.likeProfile(profile.id, targetType, targetIndex, comment, isDove);
+        const res = await actions.likeProfile(likedId, targetType, targetIndex, comment, isDove);
         setLikeFlash(null);
 
         if (res.matched) {
-          setMatchCelebration(profile);
+          setMatchCelebration(likedProfile);
           setTimeout(() => setMatchCelebration(null), 3000);
         }
       } catch (err) {
