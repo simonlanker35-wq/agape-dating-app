@@ -1190,6 +1190,10 @@ input[type="range"] {
   background: radial-gradient(circle at 50% 45%, rgba(201,168,76,0.3) 0%, rgba(201,168,76,0.08) 40%, transparent 70%);
 }
 
+.like-flash-overlay.block {
+  background: radial-gradient(circle at 50% 45%, rgba(239,68,68,0.3) 0%, rgba(239,68,68,0.1) 40%, transparent 70%);
+}
+
 .flash-emoji {
   font-size: 120px;
   animation: emojiBurst 1.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;

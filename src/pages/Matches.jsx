@@ -21,6 +21,7 @@ function ChatThread({ match, onBack }) {
   const [viewProfile, setViewProfile] = useState(false);
   const [showReportMenu, setShowReportMenu] = useState(false);
   const [reportDone, setReportDone] = useState(null);
+  const [blockFlash, setBlockFlash] = useState(false);
   const bottomRef = useRef(null);
 
   const currentUserId = state.currentUser?._id || state.currentUser?.id;
@@ -57,6 +58,11 @@ function ChatThread({ match, onBack }) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", position: "fixed", inset: 0, maxWidth: 430, margin: "0 auto", zIndex: 200, background: C.bg }}>
+      {blockFlash && (
+        <div className="like-flash-overlay block">
+          <span className="flash-emoji">🚫</span>
+        </div>
+      )}
       {/* Header */}
       <div
         style={{
@@ -362,7 +368,7 @@ function ChatThread({ match, onBack }) {
                 <p style={{ fontSize: 16, fontWeight: 700, color: C.text, fontFamily: FONT, textAlign: "center", marginBottom: 16 }}>{profile.name}</p>
                 {[
                   { icon: "🚩", label: "Report", desc: "Flag inappropriate behaviour", color: "#EF4444", action: async () => { setReportDone("report"); } },
-                  { icon: "🚫", label: "Block", desc: "They won't be able to see you", color: "#EF4444", action: async () => { try { await actions.unmatch(match.id); } catch (_) {} setReportDone("block"); } },
+                  { icon: "🚫", label: "Block", desc: "They won't be able to see you", color: "#EF4444", action: async () => { setShowReportMenu(false); setBlockFlash(true); try { await actions.unmatch(match.id); } catch (_) {} setTimeout(() => { setBlockFlash(false); setShowReportMenu(true); setReportDone("block"); }, 1500); } },
                   { icon: "👋", label: "Unmatch", desc: "Remove this match", color: C.text, action: async () => { try { await actions.unmatch(match.id); } catch (_) {} setReportDone("unmatch"); } },
                 ].map((item) => (
                   <button
