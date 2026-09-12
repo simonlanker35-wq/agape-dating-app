@@ -9,15 +9,16 @@ export default function LikesYou() {
   const [viewProfile, setViewProfile] = useState(null);
 
   const likesWithProfiles = state.likesReceived.filter(
-    (l) => l.profile && !dismissed.has(l.id)
+    (l) => l.profile && !dismissed.has(l.id) && !likedBack.has(l.id)
   );
 
   const handleLikeBack = async (like) => {
+    setLikedBack((prev) => new Set(prev).add(like.id));
     try {
       await actions.matchFromLike(like);
-      setLikedBack((prev) => new Set(prev).add(like.id));
     } catch (err) {
       console.error("Match failed:", err);
+      setLikedBack((prev) => { const n = new Set(prev); n.delete(like.id); return n; });
     }
   };
 

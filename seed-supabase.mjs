@@ -81,11 +81,20 @@ async function seed() {
   await supabase.from("skips").delete().neq("id", "00000000-0000-0000-0000-000000000000");
   await supabase.from("profiles").delete().neq("id", "00000000-0000-0000-0000-000000000000");
 
-  // Delete all auth users
-  const { data: existingUsers } = await supabase.auth.admin.listUsers();
-  for (const u of existingUsers?.users || []) {
-    await supabase.auth.admin.deleteUser(u.id);
+  // Delete all auth users (paginate to get them all)
+  let page = 1;
+  let deleted = 0;
+  while (true) {
+    const { data: existingUsers } = await supabase.auth.admin.listUsers({ page, perPage: 100 });
+    const users = existingUsers?.users || [];
+    if (users.length === 0) break;
+    for (const u of users) {
+      await supabase.auth.admin.deleteUser(u.id);
+      deleted++;
+    }
+    page++;
   }
+  console.log(`Deleted ${deleted} auth users`);
   console.log("Cleared");
 
   // Create test user
