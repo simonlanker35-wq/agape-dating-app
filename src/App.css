@@ -810,6 +810,30 @@ a {
   max-height: calc(100vh - 40px);
 }
 
+.custom-denom-input {
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: 16px;
+  color: var(--text);
+  flex: 1;
+  min-width: 0;
+}
+
+.custom-denom-input::placeholder {
+  color: var(--text-muted);
+}
+
+.denomination-card.different-btn {
+  border-style: dashed;
+}
+
+.prompt-step-icon {
+  font-size: 32px;
+  display: block;
+  margin-bottom: 8px;
+}
+
 .prompts-header {
   text-align: center;
   margin-bottom: 16px;

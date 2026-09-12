@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useApp } from "../context/AppContext";
-import { PROMPT_CATEGORIES, INTERESTS_POOL, DENOMINATIONS } from "../data/profiles";
-import { ChevronRight, Sparkles, Church, X, Check, LogIn } from "lucide-react";
+import { PROMPT_CATEGORIES, TRAITS_POOL, DENOMINATIONS } from "../data/profiles";
+import { ChevronRight, Sparkles, Church, X, Check } from "lucide-react";
 import AgapeCross from "../components/AgapeCross";
 
 const STEPS = [
@@ -17,10 +17,19 @@ const STEPS = [
   "job",
   "school",
   "location",
-  "prompts",
-  "interests",
+  "prompt_faith",
+  "prompt_future",
+  "prompt_aboutme",
+  "traits",
+  "lookingFor",
   "preferences",
 ];
+
+const PROMPT_STEP_MAP = {
+  prompt_faith: { category: "Faith", label: "Faith", icon: "✝" },
+  prompt_future: { category: "Future", label: "Future", icon: "🌅" },
+  prompt_aboutme: { category: "About Me", label: "About Me", icon: "👋" },
+};
 
 export default function Onboarding() {
   const { actions } = useApp();
@@ -32,7 +41,15 @@ export default function Onboarding() {
   const [signupError, setSignupError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const inputRef = useRef(null);
+  const answerRef = useRef(null);
   const [faithConsent, setFaithConsent] = useState(false);
+  const [customDenom, setCustomDenom] = useState("");
+  const [promptSelections, setPromptSelections] = useState({
+    Faith: { prompt: "", answer: "" },
+    Future: { prompt: "", answer: "" },
+    "About Me": { prompt: "", answer: "" },
+  });
+  const [editingAnswer, setEditingAnswer] = useState(false);
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -44,12 +61,8 @@ export default function Onboarding() {
     job: "",
     school: "",
     location: "",
-    prompts: [
-      { prompt: "", answer: "" },
-      { prompt: "", answer: "" },
-      { prompt: "", answer: "" },
-    ],
-    interests: [],
+    traits: [],
+    lookingFor: [],
     maxAge: 35,
     maxDistance: 30,
   });
@@ -65,6 +78,7 @@ export default function Onboarding() {
   const goNext = () => {
     if (step < STEPS.length - 1) {
       setStep(step + 1);
+      setEditingAnswer(false);
     } else {
       finishOnboarding();
     }
@@ -80,6 +94,8 @@ export default function Onboarding() {
         `https://randomuser.me/api/portraits/${g}/76.jpg`,
         `https://randomuser.me/api/portraits/${g}/77.jpg`,
       ];
+
+      const prompts = Object.values(promptSelections).filter(p => p.prompt && p.answer);
 
       await actions.register({
         email: form.email,
@@ -98,8 +114,10 @@ export default function Onboarding() {
           ? { type: "Point", coordinates: [8.65, 47.02], city: form.location }
           : undefined,
         photos: demoPhotos,
-        prompts: form.prompts,
-        interests: form.interests,
+        prompts,
+        interests: form.traits,
+        traits: form.traits,
+        lookingFor: form.lookingFor,
         filters: {
           maxAge: form.maxAge,
           minAge: 18,
@@ -141,9 +159,25 @@ export default function Onboarding() {
   };
 
   const selectDenomination = (d) => {
+    if (d === "Different") return;
     setForm({ ...form, denomination: d });
     setTimeout(goNext, 300);
   };
+
+  const toggleTrait = (trait, field) => {
+    setForm((prev) => ({
+      ...prev,
+      [field]: prev[field].includes(trait)
+        ? prev[field].filter((t) => t !== trait)
+        : prev[field].length < 8
+        ? [...prev[field], trait]
+        : prev[field],
+    }));
+  };
+
+  const isPromptStep = currentStep?.startsWith("prompt_");
+  const promptStepInfo = isPromptStep ? PROMPT_STEP_MAP[currentStep] : null;
+  const currentPromptSelection = promptStepInfo ? promptSelections[promptStepInfo.category] : null;
 
   const canProceed = () => {
     switch (currentStep) {
@@ -159,51 +193,46 @@ export default function Onboarding() {
       case "job": return true;
       case "school": return true;
       case "location": return true;
-      case "prompts": return form.prompts.every((p) => p.prompt && p.answer);
-      case "interests": return form.interests.length >= 3;
+      case "prompt_faith":
+      case "prompt_future":
+      case "prompt_aboutme": {
+        const sel = promptSelections[promptStepInfo.category];
+        return sel.prompt && sel.answer.trim().length > 0;
+      }
+      case "traits": return form.traits.length >= 3;
+      case "lookingFor": return form.lookingFor.length >= 3;
       case "preferences": return true;
       default: return true;
     }
   };
 
-  const toggleInterest = (interest) => {
-    setForm((prev) => ({
+  const selectPromptForStep = (promptText) => {
+    const cat = promptStepInfo.category;
+    setPromptSelections((prev) => ({
       ...prev,
-      interests: prev.interests.includes(interest)
-        ? prev.interests.filter((i) => i !== interest)
-        : prev.interests.length < 8
-        ? [...prev.interests, interest]
-        : prev.interests,
+      [cat]: { prompt: promptText, answer: prev[cat].answer },
     }));
-  };
-
-  const [promptCategory, setPromptCategory] = useState("Your World");
-  const [editingPromptIndex, setEditingPromptIndex] = useState(null);
-  const answerRef = useRef(null);
-
-  const updatePrompt = (index, field, value) => {
-    setForm((prev) => {
-      const newPrompts = [...prev.prompts];
-      newPrompts[index] = { ...newPrompts[index], [field]: value };
-      return { ...prev, prompts: newPrompts };
-    });
-  };
-
-  const selectPrompt = (promptText) => {
-    const emptyIndex = form.prompts.findIndex((p) => !p.prompt);
-    if (emptyIndex === -1) return;
-    updatePrompt(emptyIndex, "prompt", promptText);
-    setEditingPromptIndex(emptyIndex);
+    setEditingAnswer(true);
     setTimeout(() => answerRef.current?.focus(), 100);
   };
 
-  const removePrompt = (index) => {
-    updatePrompt(index, "prompt", "");
-    updatePrompt(index, "answer", "");
-    setEditingPromptIndex(null);
+  const updatePromptAnswer = (value) => {
+    const cat = promptStepInfo.category;
+    setPromptSelections((prev) => ({
+      ...prev,
+      [cat]: { ...prev[cat], answer: value },
+    }));
   };
 
-  const usedPrompts = form.prompts.map((p) => p.prompt).filter(Boolean);
+  const clearPromptForStep = () => {
+    const cat = promptStepInfo.category;
+    setPromptSelections((prev) => ({
+      ...prev,
+      [cat]: { prompt: "", answer: "" },
+    }));
+    setEditingAnswer(false);
+  };
+
   const progress = ((step) / (STEPS.length - 1)) * 100;
 
   if (mode === "login") {
@@ -440,14 +469,42 @@ export default function Onboarding() {
               {DENOMINATIONS.map((d) => (
                 <button
                   key={d}
-                  className={`denomination-card ${form.denomination === d ? "selected" : ""}`}
-                  onClick={() => selectDenomination(d)}
+                  className={`denomination-card ${form.denomination === d ? "selected" : ""} ${d === "Different" && !customDenom ? "different-btn" : ""}`}
+                  onClick={() => {
+                    if (d === "Different") return;
+                    selectDenomination(d);
+                  }}
                 >
                   <Church size={16} />
-                  {d}
+                  {d === "Different" ? (
+                    <input
+                      type="text"
+                      value={customDenom}
+                      onChange={(e) => {
+                        e.stopPropagation();
+                        setCustomDenom(e.target.value);
+                        setForm({ ...form, denomination: e.target.value });
+                      }}
+                      onKeyDown={(e) => {
+                        e.stopPropagation();
+                        if (e.key === "Enter" && customDenom.trim()) {
+                          setForm({ ...form, denomination: customDenom.trim() });
+                          setTimeout(goNext, 300);
+                        }
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                      placeholder="Other denomination..."
+                      className="custom-denom-input"
+                    />
+                  ) : d}
                 </button>
               ))}
             </div>
+            {customDenom.trim() && (
+              <button className="onboarding-cta" onClick={() => { setForm({ ...form, denomination: customDenom.trim() }); setTimeout(goNext, 100); }}>
+                Continue <ChevronRight size={18} />
+              </button>
+            )}
           </div>
         )}
 
@@ -520,78 +577,47 @@ export default function Onboarding() {
           </div>
         )}
 
-        {currentStep === "prompts" && (
-          <div className="onboarding-step prompts-step" key="prompts">
+        {isPromptStep && (
+          <div className="onboarding-step prompts-step" key={currentStep}>
             <div className="prompts-header">
-              <h2>Prompts</h2>
-              <p className="step-hint">Answer all 3 prompts to continue</p>
+              <span className="prompt-step-icon">{promptStepInfo.icon}</span>
+              <h2>{promptStepInfo.label}</h2>
+              <p className="step-hint">Pick a prompt and write your answer</p>
             </div>
 
-            {form.prompts.some((p) => p.prompt) && (
+            {currentPromptSelection.prompt ? (
               <div className="selected-prompts">
-                {form.prompts.map((p, i) => p.prompt && (
-                  <div key={i} className="selected-prompt-card">
-                    <div className="selected-prompt-header">
-                      <span className="selected-prompt-q">{p.prompt}</span>
-                      <button className="remove-prompt-btn" onClick={() => removePrompt(i)}>
-                        <X size={16} />
-                      </button>
-                    </div>
-                    {editingPromptIndex === i ? (
-                      <textarea
-                        ref={answerRef}
-                        value={p.answer}
-                        onChange={(e) => updatePrompt(i, "answer", e.target.value)}
-                        placeholder="Your answer..."
-                        maxLength={250}
-                        rows={2}
-                        className="prompt-answer-input"
-                        onBlur={() => setEditingPromptIndex(null)}
-                      />
-                    ) : (
-                      <div
-                        className="prompt-answer-display"
-                        onClick={() => {
-                          setEditingPromptIndex(i);
-                          setTimeout(() => answerRef.current?.focus(), 100);
-                        }}
-                      >
-                        {p.answer || "Tap to write your answer..."}
-                      </div>
-                    )}
+                <div className="selected-prompt-card">
+                  <div className="selected-prompt-header">
+                    <span className="selected-prompt-q">{currentPromptSelection.prompt}</span>
+                    <button className="remove-prompt-btn" onClick={clearPromptForStep}>
+                      <X size={16} />
+                    </button>
                   </div>
+                  <textarea
+                    ref={answerRef}
+                    value={currentPromptSelection.answer}
+                    onChange={(e) => updatePromptAnswer(e.target.value)}
+                    placeholder="Your answer..."
+                    maxLength={250}
+                    rows={3}
+                    className="prompt-answer-input"
+                    autoFocus={editingAnswer}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="prompt-list">
+                {PROMPT_CATEGORIES[promptStepInfo.category]?.map((prompt) => (
+                  <button
+                    key={prompt}
+                    className="prompt-list-item"
+                    onClick={() => selectPromptForStep(prompt)}
+                  >
+                    {prompt}
+                  </button>
                 ))}
               </div>
-            )}
-
-            {usedPrompts.length < 3 && (
-              <>
-                <div className="prompt-category-tabs">
-                  {Object.keys(PROMPT_CATEGORIES).map((cat) => (
-                    <button
-                      key={cat}
-                      className={`prompt-cat-tab ${promptCategory === cat ? "active" : ""}`}
-                      onClick={() => setPromptCategory(cat)}
-                    >
-                      {cat}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="prompt-list">
-                  {PROMPT_CATEGORIES[promptCategory]
-                    ?.filter((p) => !usedPrompts.includes(p))
-                    .map((prompt) => (
-                      <button
-                        key={prompt}
-                        className="prompt-list-item"
-                        onClick={() => selectPrompt(prompt)}
-                      >
-                        {prompt}
-                      </button>
-                    ))}
-                </div>
-              </>
             )}
 
             {canProceed() && (
@@ -602,23 +628,47 @@ export default function Onboarding() {
           </div>
         )}
 
-        {currentStep === "interests" && (
-          <div className="onboarding-step" key="interests">
+        {currentStep === "traits" && (
+          <div className="onboarding-step" key="traits">
             <h2>What are you into?</h2>
-            <p className="step-hint">Pick 3-8 interests</p>
+            <p className="step-hint">Pick 3-8 things you enjoy</p>
             <div className="interests-grid">
-              {INTERESTS_POOL.map((interest) => (
+              {TRAITS_POOL.map((trait) => (
                 <button
-                  key={interest}
-                  className={`interest-chip ${form.interests.includes(interest) ? "selected" : ""}`}
-                  onClick={() => toggleInterest(interest)}
+                  key={trait}
+                  className={`interest-chip ${form.traits.includes(trait) ? "selected" : ""}`}
+                  onClick={() => toggleTrait(trait, "traits")}
                 >
-                  {interest}
+                  {trait}
                 </button>
               ))}
             </div>
-            <p className="interest-count">{form.interests.length}/8 selected</p>
-            {form.interests.length >= 3 && (
+            <p className="interest-count">{form.traits.length}/8 selected</p>
+            {form.traits.length >= 3 && (
+              <button className="onboarding-cta" onClick={goNext}>
+                Continue <ChevronRight size={18} />
+              </button>
+            )}
+          </div>
+        )}
+
+        {currentStep === "lookingFor" && (
+          <div className="onboarding-step" key="lookingFor">
+            <h2>What are you looking for?</h2>
+            <p className="step-hint">Pick 3-8 traits you value in a partner</p>
+            <div className="interests-grid">
+              {TRAITS_POOL.map((trait) => (
+                <button
+                  key={trait}
+                  className={`interest-chip ${form.lookingFor.includes(trait) ? "selected" : ""}`}
+                  onClick={() => toggleTrait(trait, "lookingFor")}
+                >
+                  {trait}
+                </button>
+              ))}
+            </div>
+            <p className="interest-count">{form.lookingFor.length}/8 selected</p>
+            {form.lookingFor.length >= 3 && (
               <button className="onboarding-cta" onClick={goNext}>
                 Continue <ChevronRight size={18} />
               </button>

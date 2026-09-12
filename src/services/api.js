@@ -28,6 +28,8 @@ function mapProfile(p) {
     photos: p.photos || [],
     prompts: p.prompts || [],
     interests: p.interests || [],
+    traits: p.traits || [],
+    lookingFor: p.looking_for || [],
     isStandout: isStandout,
     compatibilityReason: isStandout ? compatibilityReasons[standoutCounter % compatibilityReasons.length] : null,
     lastActive: "Recently",
@@ -116,6 +118,8 @@ export async function updateProfile(data) {
   if (data.location !== undefined) updates.location_city = data.location;
   if (data.prompts !== undefined) updates.prompts = data.prompts;
   if (data.interests !== undefined) updates.interests = data.interests;
+  if (data.traits !== undefined) updates.traits = data.traits;
+  if (data.lookingFor !== undefined) updates.looking_for = data.lookingFor;
   if (data.bio !== undefined) updates.bio = data.bio;
   if (data.filters !== undefined) updates.filters = data.filters;
   if (data.photos !== undefined) updates.photos = data.photos;
@@ -369,6 +373,8 @@ function mapProfileToUser(p) {
     photos: p.photos || [],
     prompts: p.prompts || [],
     interests: p.interests || [],
+    traits: p.traits || [],
+    lookingFor: p.looking_for || [],
     bio: p.bio || "",
     doves: p.doves ?? 3,
     filters: p.filters || { minAge: 18, maxAge: 50, maxDistance: 80, denomination: "" },
