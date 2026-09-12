@@ -84,10 +84,10 @@ export default function Standouts() {
     const likedId = profile.id;
     setCommentTarget(null);
     setCommentText("");
-    setLocalLikes((prev) => new Set(prev).add(likedId));
     setLikeFlash(flashType);
 
     setTimeout(async () => {
+      setLocalLikes((prev) => new Set(prev).add(likedId));
       try {
         await actions.likeProfile(likedId, targetType, targetIndex, comment, true);
         setLikeFlash(null);

@@ -95,10 +95,10 @@ export default function Discover() {
     setCommentTarget(null);
     setCommentText("");
     setShowDove(false);
-    setLocalLikes((prev) => new Set(prev).add(likedId));
     setLikeFlash(flashType);
 
     setTimeout(async () => {
+      setLocalLikes((prev) => new Set(prev).add(likedId));
       try {
         const res = await actions.likeProfile(likedId, targetType, targetIndex, comment, isDove);
         setLikeFlash(null);
