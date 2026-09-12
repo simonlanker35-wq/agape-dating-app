@@ -144,14 +144,22 @@ export default function Discover() {
   };
 
   const handleBlock = () => {
-    dispatch({ type: "BLOCK_PROFILE", payload: { id: profile.id, name: profile.name, photo: profile.photos?.[0] } });
-    actions.skipProfile(profile.id).catch(() => {});
+    setLikeFlash("block");
+    setTimeout(() => {
+      setLikeFlash(null);
+      dispatch({ type: "BLOCK_PROFILE", payload: { id: profile.id, name: profile.name, photo: profile.photos?.[0] } });
+      actions.skipProfile(profile.id).catch(() => {});
+    }, 1200);
   };
 
   const handleReport = (reason) => {
-    dispatch({ type: "BLOCK_PROFILE", payload: { id: profile.id, name: profile.name, photo: profile.photos?.[0] } });
-    dispatch({ type: "ADD_REPORT", payload: { profileId: profile.id, name: profile.name, photo: profile.photos?.[0], reason, timestamp: Date.now() } });
-    actions.skipProfile(profile.id).catch(() => {});
+    setLikeFlash("report");
+    setTimeout(() => {
+      setLikeFlash(null);
+      dispatch({ type: "BLOCK_PROFILE", payload: { id: profile.id, name: profile.name, photo: profile.photos?.[0] } });
+      dispatch({ type: "ADD_REPORT", payload: { profileId: profile.id, name: profile.name, photo: profile.photos?.[0], reason, timestamp: Date.now() } });
+      actions.skipProfile(profile.id).catch(() => {});
+    }, 1200);
   };
 
   const photos = profile.photos || [];
@@ -162,7 +170,7 @@ export default function Discover() {
       {likeFlash && (
         <div className={`like-flash-overlay ${likeFlash}`}>
           <span className="flash-emoji">
-            {likeFlash === "dove" ? "🕊️" : likeFlash === "comment" ? "💬" : "❤️"}
+            {likeFlash === "dove" ? "🕊️" : likeFlash === "comment" ? "💬" : likeFlash === "block" ? "🚫" : likeFlash === "report" ? "🚩" : "❤️"}
           </span>
         </div>
       )}

@@ -1194,6 +1194,10 @@ input[type="range"] {
   background: radial-gradient(circle at 50% 45%, rgba(239,68,68,0.3) 0%, rgba(239,68,68,0.1) 40%, transparent 70%);
 }
 
+.like-flash-overlay.report {
+  background: radial-gradient(circle at 50% 45%, rgba(239,68,68,0.25) 0%, rgba(239,68,68,0.08) 40%, transparent 70%);
+}
+
 .profile-hero-hover {
   position: absolute;
   inset: 0;
