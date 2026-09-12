@@ -100,12 +100,33 @@ function SettingsRow({ icon, label, sub, onPress, danger, toggle }) {
 }
 
 function SettingsScreen({ onBack, initialSection = null }) {
-  const { state, dispatch } = useApp();
+  const { state, dispatch, actions } = useApp();
   const { currentUser } = state;
   const [notifs, setNotifs] = useState({ matches: true, likes: true, messages: true, doves: true, prompts: false });
   const [privacy, setPrivacy] = useState({ activeStatus: true, readReceipts: true, showDistance: true, incognito: false });
   const [faithPref, setFaithPref] = useState({ sameOnly: false, openToAll: true });
+  const [paused, setPaused] = useState(false);
   const [section, setSection] = useState(initialSection);
+  const [editField, setEditField] = useState(null);
+  const [editValue, setEditValue] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [distanceVal, setDistanceVal] = useState(currentUser?.filters?.maxDistance || 80);
+
+  const saveField = async () => {
+    if (!editField || !editValue.trim()) return;
+    setSaving(true);
+    try {
+      const updates = {};
+      if (editField === "name") updates.name = editValue;
+      else if (editField === "age") updates.age = parseInt(editValue, 10);
+      else if (editField === "denomination") updates.denomination = editValue;
+      await actions.updateProfile(updates);
+      setEditField(null);
+      setEditValue("");
+    } catch (err) { console.error(err); }
+    setSaving(false);
+  };
 
   const toggle = (obj, key, setter) => setter((p) => ({ ...p, [key]: !p[key] }));
 
@@ -118,6 +139,13 @@ function SettingsScreen({ onBack, initialSection = null }) {
       safety: "Safety Centre",
       subscription: "Agape+",
       account: "Personal Info",
+      blocked: "Blocked Users",
+      reports: "Reports",
+      guidelines: "Community Guidelines",
+      billing: "Billing & Payments",
+      help: "Help & Feedback",
+      terms: "Terms of Service",
+      privacypolicy: "Privacy Policy",
     };
 
     return (
@@ -194,12 +222,96 @@ function SettingsScreen({ onBack, initialSection = null }) {
               <div>
                 <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: C.sub, padding: "0 4px", marginBottom: 8 }}>Tools</p>
                 <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
-                  <SettingsRow icon="🚫" label="Blocked users" sub="Manage blocked profiles" />
-                  <SettingsRow icon="🚩" label="Reports submitted" sub="View your reports" />
-                  <SettingsRow icon="📵" label="Pause my profile" sub="Temporarily hide your profile" />
+                  <SettingsRow icon="🚫" label="Blocked users" sub="Manage blocked profiles" onPress={() => setSection("blocked")} />
+                  <SettingsRow icon="🚩" label="Reports submitted" sub="View your reports" onPress={() => setSection("reports")} />
+                  <SettingsRow icon="📵" label="Pause my profile" sub={paused ? "Your profile is hidden" : "Temporarily hide your profile"} toggle={{ on: paused, onToggle: () => setPaused((p) => !p) }} />
                 </div>
               </div>
             </>
+          )}
+          {section === "blocked" && (
+            <div style={{ textAlign: "center", padding: "40px 20px" }}>
+              <span style={{ fontSize: 48 }}>🚫</span>
+              <p style={{ fontSize: 16, fontWeight: 700, color: C.text, marginTop: 16 }}>No blocked users</p>
+              <p style={{ fontSize: 13, color: C.sub, marginTop: 4 }}>When you block someone, they'll appear here.</p>
+            </div>
+          )}
+          {section === "reports" && (
+            <div style={{ textAlign: "center", padding: "40px 20px" }}>
+              <span style={{ fontSize: 48 }}>🚩</span>
+              <p style={{ fontSize: 16, fontWeight: 700, color: C.text, marginTop: 16 }}>No reports submitted</p>
+              <p style={{ fontSize: 13, color: C.sub, marginTop: 4 }}>Reports you submit will appear here for your records.</p>
+            </div>
+          )}
+          {section === "guidelines" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              {[
+                { icon: "🤝", title: "Be respectful", text: "Treat everyone with kindness and dignity. Harassment, hate speech, and discrimination are never tolerated." },
+                { icon: "✝️", title: "Honour your faith", text: "This is a faith-based community. Be authentic about who you are and what you believe." },
+                { icon: "📸", title: "Be genuine", text: "Use recent photos of yourself. No fake profiles, catfishing, or misleading information." },
+                { icon: "🔒", title: "Protect your privacy", text: "Don't share personal information like your address, financial details, or passwords with anyone." },
+                { icon: "🚫", title: "No inappropriate content", text: "Keep conversations respectful. Explicit, vulgar, or offensive content will result in a ban." },
+                { icon: "🛡️", title: "Report concerns", text: "If someone makes you feel uncomfortable or unsafe, use the report feature. We review every report." },
+              ].map((item) => (
+                <div key={item.title} style={{ borderRadius: 16, padding: 16, background: C.card, display: "flex", gap: 12 }}>
+                  <span style={{ fontSize: 24, flexShrink: 0 }}>{item.icon}</span>
+                  <div>
+                    <p style={{ fontSize: 14, fontWeight: 700, color: C.text, marginBottom: 4 }}>{item.title}</p>
+                    <p style={{ fontSize: 13, lineHeight: 1.5, color: C.sub }}>{item.text}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          {section === "billing" && (
+            <div style={{ textAlign: "center", padding: "40px 20px" }}>
+              <span style={{ fontSize: 48 }}>💳</span>
+              <p style={{ fontSize: 16, fontWeight: 700, color: C.text, marginTop: 16 }}>No active subscription</p>
+              <p style={{ fontSize: 13, color: C.sub, marginTop: 4 }}>Upgrade to Agape+ to manage billing and payments.</p>
+              <button onClick={() => setSection("subscription")} style={{ marginTop: 16, padding: "12px 24px", borderRadius: 12, fontSize: 14, fontWeight: 700, background: C.primary, color: "white", border: "none", cursor: "pointer" }}>View plans</button>
+            </div>
+          )}
+          {section === "help" && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {[
+                { icon: "📧", label: "Email us", sub: "support@agape-app.com" },
+                { icon: "🐛", label: "Report a bug", sub: "Help us improve the app" },
+                { icon: "💡", label: "Suggest a feature", sub: "We'd love to hear your ideas" },
+                { icon: "⭐", label: "Rate Agape", sub: "Leave a review on the App Store" },
+              ].map((item) => (
+                <div key={item.label} style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
+                  <SettingsRow icon={item.icon} label={item.label} sub={item.sub} />
+                </div>
+              ))}
+            </div>
+          )}
+          {section === "terms" && (
+            <div style={{ borderRadius: 16, padding: 20, background: C.card }}>
+              <p style={{ fontSize: 14, lineHeight: 1.7, color: C.text }}>
+                By using Agape, you agree to our terms of service. Agape is a faith-based dating platform designed to connect Christians seeking meaningful relationships.
+              </p>
+              <p style={{ fontSize: 14, lineHeight: 1.7, color: C.text, marginTop: 12 }}>
+                Users must be 18 or older. You are responsible for maintaining the confidentiality of your account. We reserve the right to suspend accounts that violate our community guidelines.
+              </p>
+              <p style={{ fontSize: 14, lineHeight: 1.7, color: C.text, marginTop: 12 }}>
+                Content you post remains yours, but you grant Agape a licence to display it within the platform. We do not sell your data to third parties.
+              </p>
+              <p style={{ fontSize: 12, color: C.sub, marginTop: 16 }}>Last updated: September 2026</p>
+            </div>
+          )}
+          {section === "privacypolicy" && (
+            <div style={{ borderRadius: 16, padding: 20, background: C.card }}>
+              <p style={{ fontSize: 14, lineHeight: 1.7, color: C.text }}>
+                Agape collects only the data necessary to provide our service: your profile information, preferences, and messages with your matches.
+              </p>
+              <p style={{ fontSize: 14, lineHeight: 1.7, color: C.text, marginTop: 12 }}>
+                We use industry-standard encryption to protect your data. Your photos and messages are stored securely and never shared with third parties for advertising.
+              </p>
+              <p style={{ fontSize: 14, lineHeight: 1.7, color: C.text, marginTop: 12 }}>
+                You can request deletion of all your data at any time through the Delete Account option in settings. We will remove your data within 30 days.
+              </p>
+              <p style={{ fontSize: 12, color: C.sub, marginTop: 16 }}>Last updated: September 2026</p>
+            </div>
           )}
           {section === "location" && (
             <>
@@ -208,16 +320,32 @@ function SettingsScreen({ onBack, initialSection = null }) {
                 <div style={{ borderRadius: 16, overflow: "hidden", background: C.card, padding: 16 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
                     <span style={{ fontSize: 14, fontWeight: 500, color: C.text }}>Maximum distance</span>
-                    <span style={{ fontSize: 14, fontWeight: 700, color: C.primary }}>80 km</span>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: C.primary }}>{distanceVal} km</span>
                   </div>
-                  <input type="range" min={5} max={200} defaultValue={80} style={{ width: "100%", accentColor: C.primary }} />
+                  <input type="range" min={5} max={200} value={distanceVal} onChange={(e) => setDistanceVal(Number(e.target.value))} onMouseUp={() => actions.updateProfile({ filters: { ...currentUser?.filters, maxDistance: distanceVal } })} onTouchEnd={() => actions.updateProfile({ filters: { ...currentUser?.filters, maxDistance: distanceVal } })} style={{ width: "100%", accentColor: C.primary }} />
                 </div>
               </div>
               <div>
                 <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: C.sub, padding: "0 4px", marginBottom: 8 }}>My location</p>
                 <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
-                  <SettingsRow icon="📍" label="Current location" sub="Using device location" />
+                  <SettingsRow icon="📍" label="Current location" sub={currentUser?.location?.city || "Not set"} onPress={() => { setEditField("location"); setEditValue(currentUser?.location?.city || ""); }} />
                 </div>
+                {editField === "location" && (
+                  <div style={{ borderRadius: 16, padding: 16, background: C.card, marginTop: 8 }}>
+                    <input
+                      type="text"
+                      value={editValue}
+                      onChange={(e) => setEditValue(e.target.value)}
+                      placeholder="City or area"
+                      autoFocus
+                      style={{ width: "100%", padding: "12px 14px", fontSize: 16, fontWeight: 600, fontFamily: FONT, borderRadius: 12, border: `1.5px solid ${C.border}`, background: C.surface, outline: "none", color: C.text }}
+                    />
+                    <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                      <button onClick={() => { setEditField(null); setEditValue(""); }} style={{ flex: 1, padding: "10px 0", borderRadius: 12, fontSize: 14, fontWeight: 600, background: C.surface, color: C.sub, border: "none", cursor: "pointer" }}>Cancel</button>
+                      <button onClick={async () => { setSaving(true); await actions.updateProfile({ location: editValue }); setEditField(null); setEditValue(""); setSaving(false); }} disabled={saving} style={{ flex: 1, padding: "10px 0", borderRadius: 12, fontSize: 14, fontWeight: 600, background: C.primary, color: "white", border: "none", cursor: "pointer", opacity: saving ? 0.5 : 1 }}>{saving ? "Saving..." : "Save"}</button>
+                    </div>
+                  </div>
+                )}
               </div>
             </>
           )}
@@ -226,12 +354,52 @@ function SettingsScreen({ onBack, initialSection = null }) {
               <div>
                 <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: C.sub, padding: "0 4px", marginBottom: 8 }}>Personal details</p>
                 <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
-                  <SettingsRow icon="👤" label="Name" sub={currentUser?.name || "Not set"} />
+                  <SettingsRow icon="👤" label="Name" sub={currentUser?.name || "Not set"} onPress={() => { setEditField("name"); setEditValue(currentUser?.name || ""); }} />
                   <SettingsRow icon="📧" label="Email" sub={currentUser?.email || "Not set"} />
-                  <SettingsRow icon="🎂" label="Age" sub={currentUser?.age ? `${currentUser.age} years old` : "Not set"} />
-                  <SettingsRow icon="✝️" label="Denomination" sub={currentUser?.denomination || "Not set"} />
+                  <SettingsRow icon="🎂" label="Age" sub={currentUser?.age ? `${currentUser.age} years old` : "Not set"} onPress={() => { setEditField("age"); setEditValue(String(currentUser?.age || "")); }} />
+                  <SettingsRow icon="✝️" label="Denomination" sub={currentUser?.denomination || "Not set"} onPress={() => { setEditField("denomination"); setEditValue(currentUser?.denomination || ""); }} />
                 </div>
               </div>
+              {editField && (
+                <div style={{ borderRadius: 16, padding: 16, background: C.card }}>
+                  <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: C.sub, marginBottom: 8 }}>
+                    Edit {editField}
+                  </p>
+                  <input
+                    type={editField === "age" ? "number" : "text"}
+                    value={editValue}
+                    onChange={(e) => setEditValue(e.target.value)}
+                    autoFocus
+                    style={{
+                      width: "100%",
+                      padding: "12px 14px",
+                      fontSize: 16,
+                      fontWeight: 600,
+                      fontFamily: FONT,
+                      borderRadius: 12,
+                      border: `1.5px solid ${C.border}`,
+                      background: C.surface,
+                      outline: "none",
+                      color: C.text,
+                    }}
+                  />
+                  <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                    <button
+                      onClick={() => { setEditField(null); setEditValue(""); }}
+                      style={{ flex: 1, padding: "10px 0", borderRadius: 12, fontSize: 14, fontWeight: 600, background: C.surface, color: C.sub, border: "none", cursor: "pointer" }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={saveField}
+                      disabled={saving || !editValue.trim()}
+                      style={{ flex: 1, padding: "10px 0", borderRadius: 12, fontSize: 14, fontWeight: 600, background: C.primary, color: "white", border: "none", cursor: "pointer", opacity: saving ? 0.5 : 1 }}
+                    >
+                      {saving ? "Saving..." : "Save"}
+                    </button>
+                  </div>
+                </div>
+              )}
             </>
           )}
           {section === "subscription" && (
@@ -327,28 +495,56 @@ function SettingsScreen({ onBack, initialSection = null }) {
           <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: C.sub, padding: "0 4px", marginBottom: 8 }}>Safety</p>
           <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
             <SettingsRow icon="🛡️" label="Safety centre" sub="Block list, reports, tips" onPress={() => setSection("safety")} />
-            <SettingsRow icon="📋" label="Community guidelines" />
+            <SettingsRow icon="📋" label="Community guidelines" onPress={() => setSection("guidelines")} />
           </div>
         </div>
         <div>
           <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: C.sub, padding: "0 4px", marginBottom: 8 }}>Subscription</p>
           <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
             <SettingsRow icon="✨" label="Agape+" sub="Not subscribed" onPress={() => setSection("subscription")} />
-            <SettingsRow icon="💳" label="Billing & payments" />
+            <SettingsRow icon="💳" label="Billing & payments" onPress={() => setSection("billing")} />
           </div>
         </div>
         <div>
           <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: C.sub, padding: "0 4px", marginBottom: 8 }}>Support</p>
           <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
-            <SettingsRow icon="💬" label="Help & feedback" />
-            <SettingsRow icon="📄" label="Terms of service" />
-            <SettingsRow icon="🔐" label="Privacy policy" />
+            <SettingsRow icon="💬" label="Help & feedback" onPress={() => setSection("help")} />
+            <SettingsRow icon="📄" label="Terms of service" onPress={() => setSection("terms")} />
+            <SettingsRow icon="🔐" label="Privacy policy" onPress={() => setSection("privacypolicy")} />
           </div>
         </div>
         <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
           <SettingsRow icon="🚪" label="Log out" danger onPress={() => actions.logout()} />
-          <SettingsRow icon="🗑️" label="Delete account" danger />
+          <SettingsRow icon="🗑️" label="Delete account" danger onPress={() => setShowDeleteConfirm(true)} />
         </div>
+        {showDeleteConfirm && (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+            <div style={{ background: C.bg, borderRadius: 20, padding: 24, maxWidth: 320, width: "100%", textAlign: "center" }}>
+              <span style={{ fontSize: 40 }}>⚠️</span>
+              <p style={{ fontSize: 18, fontWeight: 700, color: C.text, marginTop: 12 }}>Delete your account?</p>
+              <p style={{ fontSize: 13, color: C.sub, marginTop: 8, lineHeight: 1.5 }}>This will permanently delete your profile, matches, and messages. This action cannot be undone.</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 20 }}>
+                <button onClick={async () => {
+                  try {
+                    const { supabase } = await import("../services/supabase");
+                    const { data: { user: u } } = await supabase.auth.getUser();
+                    if (u) {
+                      await supabase.from("messages").delete().or(`match_id.in.(select id from matches where user1=eq.${u.id} or user2=eq.${u.id})`);
+                      await supabase.from("matches").delete().or(`user1.eq.${u.id},user2.eq.${u.id}`);
+                      await supabase.from("likes").delete().or(`from_user.eq.${u.id},to_user.eq.${u.id}`);
+                      await supabase.from("skips").delete().or(`from_user.eq.${u.id},to_user.eq.${u.id}`);
+                      await supabase.from("profiles").delete().eq("id", u.id);
+                    }
+                    await actions.logout();
+                  } catch (err) {
+                    alert("Failed to delete account: " + err.message);
+                  }
+                }} style={{ padding: "14px 20px", borderRadius: 12, fontSize: 15, fontWeight: 700, background: "#e53e3e", color: "white", border: "none", cursor: "pointer" }}>Delete my account</button>
+                <button onClick={() => setShowDeleteConfirm(false)} style={{ padding: "14px 20px", borderRadius: 12, fontSize: 15, fontWeight: 600, background: C.card, color: C.text, border: "none", cursor: "pointer" }}>Cancel</button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
