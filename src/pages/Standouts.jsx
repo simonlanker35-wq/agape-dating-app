@@ -21,7 +21,7 @@ export default function Standouts() {
   const { state, dispatch, actions } = useApp();
   const [idx, setIdx] = useState(0);
   const [photoIdx, setPhotoIdx] = useState(0);
-  const [dovePhase, setDovePhase] = useState("idle");
+  const [likeFlash, setLikeFlash] = useState(null);
   const [likeChoice, setLikeChoice] = useState(null);
   const [commentTarget, setCommentTarget] = useState(null);
   const [commentText, setCommentText] = useState("");
@@ -77,35 +77,29 @@ export default function Standouts() {
   const photos = profile.photos || [];
   const prompts = (profile.prompts || []).filter((p) => p.prompt && p.answer);
 
-  const advance = () => {
-    setDovePhase("idle");
+  const handleLike = async (targetType, targetIndex, comment = null) => {
+    const flashType = comment ? "comment" : "dove";
+    setCommentTarget(null);
+    setCommentText("");
+    setLikeFlash(flashType);
+
+    setTimeout(async () => {
+      try {
+        await actions.likeProfile(profile.id, targetType, targetIndex, comment, true);
+        setLikeFlash(null);
+      } catch (err) {
+        console.error("Like failed:", err);
+        setLikeFlash(null);
+      }
+    }, 500);
+  };
+
+  const handleSkip = () => {
     setPhotoIdx(0);
     setLikeChoice(null);
     setCommentTarget(null);
     setCommentText("");
     setIdx((i) => (i + 1) % standoutProfiles.length);
-  };
-
-  const handleDove = (targetType = "profile", targetIndex = 0, comment = null) => {
-    if (dovePhase !== "idle" || state.doves <= 0) return;
-    setDovePhase("burst");
-    setLikeChoice(null);
-    dispatch({
-      type: "LIKE_PROFILE",
-      payload: {
-        profileId: profile.id,
-        targetType,
-        targetIndex,
-        comment,
-        isDove: true,
-      },
-    });
-    setTimeout(() => setDovePhase("sent"), 800);
-    setTimeout(() => advance(), 2200);
-  };
-
-  const handleSkip = () => {
-    advance();
   };
 
   const handleBlock = () => {
@@ -123,7 +117,7 @@ export default function Standouts() {
   };
 
   const onSendDove = () => {
-    handleDove(likeChoice.type, likeChoice.index);
+    handleLike(likeChoice.type, likeChoice.index);
     setLikeChoice(null);
   };
 
@@ -134,27 +128,17 @@ export default function Standouts() {
 
   const handleComment = () => {
     if (commentText.trim()) {
-      handleDove(commentTarget.type, commentTarget.index, commentText.trim());
+      handleLike(commentTarget.type, commentTarget.index, commentText.trim());
     }
   };
 
   return (
     <div className="discover">
-      {/* Dove animation overlay */}
-      {dovePhase !== "idle" && (
-        <div className="dove-burst-overlay">
-          <div style={{ animation: "bigDoveIn 0.8s cubic-bezier(.34,1.56,.64,1) forwards" }}>
-            <span style={{ fontSize: 130, lineHeight: 1, filter: "drop-shadow(0 8px 24px rgba(0,0,0,0.3))" }}>
-              🕊️
-            </span>
-          </div>
-          <p style={{
-            marginTop: 16, fontSize: 18, fontWeight: 700, color: "white",
-            letterSpacing: "0.04em", textShadow: "0 2px 12px rgba(0,0,0,0.6)",
-            animation: "bigDoveIn 0.8s 0.15s cubic-bezier(.34,1.56,.64,1) both",
-          }}>
-            Dove sent to {profile.name}
-          </p>
+      {likeFlash && (
+        <div className={`like-flash-overlay ${likeFlash}`}>
+          <span className="flash-emoji">
+            {likeFlash === "comment" ? "💬" : "🕊️"}
+          </span>
         </div>
       )}
 
@@ -166,10 +150,6 @@ export default function Standouts() {
               src={photos[photoIdx] || photos[0]}
               alt={`${profile.name}'s photo`}
               className="hero-photo"
-              style={{
-                opacity: dovePhase === "sent" ? 0.3 : 1,
-                transition: "opacity 0.3s",
-              }}
               onError={(e) => {
                 e.target.src = `https://ui-avatars.com/api/?name=${profile.name}&size=400&background=random`;
               }}
