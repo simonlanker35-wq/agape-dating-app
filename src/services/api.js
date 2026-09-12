@@ -119,6 +119,7 @@ export async function updateProfile(data) {
   if (data.prompts !== undefined) updates.prompts = data.prompts;
   if (data.interests !== undefined) updates.interests = data.interests;
   if (data.traits !== undefined) updates.traits = data.traits;
+  if (data.whoAreYou !== undefined) updates.who_are_you = data.whoAreYou;
   if (data.lookingFor !== undefined) updates.looking_for = data.lookingFor;
   if (data.bio !== undefined) updates.bio = data.bio;
   if (data.filters !== undefined) updates.filters = data.filters;

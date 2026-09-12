@@ -21,6 +21,7 @@ const STEPS = [
   "prompt_future",
   "prompt_aboutme",
   "traits",
+  "whoAreYou",
   "lookingFor",
   "preferences",
 ];
@@ -62,6 +63,7 @@ export default function Onboarding() {
     school: "",
     location: "",
     traits: [],
+    whoAreYou: [],
     lookingFor: [],
     maxAge: 35,
     maxDistance: 30,
@@ -117,6 +119,7 @@ export default function Onboarding() {
         prompts,
         interests: form.traits,
         traits: form.traits,
+        whoAreYou: form.whoAreYou,
         lookingFor: form.lookingFor,
         filters: {
           maxAge: form.maxAge,
@@ -200,6 +203,7 @@ export default function Onboarding() {
         return sel.prompt && sel.answer.trim().length > 0;
       }
       case "traits": return form.traits.length >= 3;
+      case "whoAreYou": return form.whoAreYou.length >= 3;
       case "lookingFor": return form.lookingFor.length >= 3;
       case "preferences": return true;
       default: return true;
@@ -645,6 +649,30 @@ export default function Onboarding() {
             </div>
             <p className="interest-count">{form.traits.length}/8 selected</p>
             {form.traits.length >= 3 && (
+              <button className="onboarding-cta" onClick={goNext}>
+                Continue <ChevronRight size={18} />
+              </button>
+            )}
+          </div>
+        )}
+
+        {currentStep === "whoAreYou" && (
+          <div className="onboarding-step" key="whoAreYou">
+            <h2>Who are you?</h2>
+            <p className="step-hint">Pick 3-8 traits that describe you</p>
+            <div className="interests-grid">
+              {LOOKING_FOR_POOL.map((trait) => (
+                <button
+                  key={trait}
+                  className={`interest-chip ${form.whoAreYou.includes(trait) ? "selected" : ""}`}
+                  onClick={() => toggleTrait(trait, "whoAreYou")}
+                >
+                  {trait}
+                </button>
+              ))}
+            </div>
+            <p className="interest-count">{form.whoAreYou.length}/8 selected</p>
+            {form.whoAreYou.length >= 3 && (
               <button className="onboarding-cta" onClick={goNext}>
                 Continue <ChevronRight size={18} />
               </button>
