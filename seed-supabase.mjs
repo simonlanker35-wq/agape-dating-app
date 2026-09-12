@@ -37,6 +37,22 @@ const prompts = [
 
 const femaleNames = ["Sophia", "Lena", "Mia", "Emma", "Anna", "Laura", "Sarah", "Nina", "Lisa", "Julia", "Marie", "Lea", "Nora", "Clara", "Hannah", "Alina", "Amelie", "Chloe", "Elena", "Lara"];
 const maleNames = ["Noah", "Liam", "Elias", "Ben", "Finn", "Jonas", "Leon", "Luca", "Paul", "David", "Felix", "Luis", "Tim", "Max", "Jan", "Tom", "Samuel", "Julian", "Rafael", "Lukas", "Simon"];
+
+const bgFemaleNames = ["Viktoria", "Maria", "Gabriela", "Desislava", "Ivana", "Kalina", "Rada", "Tsvetana", "Yana", "Anelia", "Bilyana", "Darina", "Elitsa"];
+const bgMaleNames = ["Dimitar", "Georgi", "Nikolay", "Stefan", "Aleksandar", "Todor", "Krasimir", "Petar", "Yordan", "Boyan", "Hristo", "Veselin"];
+const bgCities = [
+  { city: "Sofia", lat: 42.6977, lng: 23.3219 },
+  { city: "Sofia", lat: 42.6977, lng: 23.3219 },
+  { city: "Plovdiv", lat: 42.1354, lng: 24.7453 },
+  { city: "Plovdiv", lat: 42.1354, lng: 24.7453 },
+  { city: "Varna", lat: 43.2141, lng: 27.9147 },
+  { city: "Burgas", lat: 42.5048, lng: 27.4626 },
+  { city: "Stara Zagora", lat: 42.4258, lng: 25.6345 },
+  { city: "Blagoevgrad", lat: 42.0116, lng: 23.0979 },
+  { city: "Veliko Tarnovo", lat: 43.0757, lng: 25.6172 },
+  { city: "Ruse", lat: 43.8486, lng: 25.9549 },
+];
+const bgSchools = ["Sofia University", "UNWE Sofia", "New Bulgarian University", "Plovdiv University", "Technical University Sofia", "American University in Bulgaria"];
 const cities = [
   { city: "Schwyz", lat: 47.0207, lng: 8.6545 },
   { city: "Schwyz", lat: 47.0207, lng: 8.6545 },
@@ -158,7 +174,94 @@ async function seed() {
     if (pErr) { console.error(`Profile ${i}:`, pErr.message); continue; }
     profileIds.push({ id: authUser.user.id, gender, name: names[i % names.length] });
   }
-  console.log(`Seeded ${profileIds.length} demo profiles`);
+  console.log(`Seeded ${profileIds.length} Swiss demo profiles`);
+
+  // --- Bulgarian test user ---
+  const { data: bgTestAuth, error: bgTestErr } = await supabase.auth.admin.createUser({
+    email: "bg@test.com",
+    password: "password123",
+    email_confirm: true,
+  });
+  if (bgTestErr) { console.error("Failed to create BG test user:", bgTestErr); }
+  else {
+    const bgTestProfile = {
+      id: bgTestAuth.user.id,
+      email: "bg@test.com",
+      name: "Nikolay",
+      age: 26,
+      height: 182,
+      gender: "male",
+      denomination: "Orthodox",
+      job: "Developer",
+      school: "Sofia University",
+      location_city: "Sofia",
+      location_lat: 42.6977,
+      location_lng: 23.3219,
+      photos: [
+        "https://i.pravatar.cc/800?u=bg_test_a",
+        "https://i.pravatar.cc/800?u=bg_test_b",
+      ],
+      prompts: [
+        { prompt: "My idea of a perfect Sunday", answer: "Liturgy at Alexander Nevsky, then a walk through Borisova Gradina" },
+        { prompt: "I'm looking for someone who", answer: "Loves God and can appreciate a good banitsa" },
+        { prompt: "A verse that guides me", answer: "Be strong and courageous - Joshua 1:9" },
+      ],
+      interests: ["Hiking", "Coffee", "Travel", "Photography"],
+      is_standout: false,
+    };
+    await supabase.from("profiles").insert(bgTestProfile);
+    console.log("Created BG test user: bg@test.com / password123");
+  }
+
+  // --- 25 Bulgarian demo profiles ---
+  const bgProfileIds = [];
+  for (let i = 0; i < 25; i++) {
+    const gender = i < 13 ? "female" : "male";
+    const names = gender === "female" ? bgFemaleNames : bgMaleNames;
+    const city = bgCities[i % bgCities.length];
+
+    const { data: authUser, error: authErr } = await supabase.auth.admin.createUser({
+      email: `bg_demo${i}@agape.test`,
+      password: "DemoPass123!",
+      email_confirm: true,
+    });
+    if (authErr) { console.error(`Failed BG user ${i}:`, authErr.message); continue; }
+
+    const userPrompts = pickN(prompts, 3).map((p) => ({
+      prompt: p.q,
+      answer: p.answers[Math.floor(Math.random() * p.answers.length)],
+    }));
+
+    const profile = {
+      id: authUser.user.id,
+      email: `bg_demo${i}@agape.test`,
+      name: names[i % names.length],
+      age: 22 + Math.floor(Math.random() * 12),
+      height: 155 + Math.floor(Math.random() * 30),
+      gender,
+      denomination: ["Orthodox", "Orthodox", "Orthodox", "Protestant", "Evangelical", "Baptist", "Pentecostal", "Non-denominational", "Catholic"][Math.floor(Math.random() * 9)],
+      job: jobs[Math.floor(Math.random() * jobs.length)],
+      school: bgSchools[Math.floor(Math.random() * bgSchools.length)],
+      location_city: city.city,
+      location_lat: city.lat + (Math.random() - 0.5) * 0.15,
+      location_lng: city.lng + (Math.random() - 0.5) * 0.15,
+      photos: [
+        `https://i.pravatar.cc/800?u=bg${i}_a`,
+        `https://i.pravatar.cc/800?u=bg${i}_b`,
+        `https://i.pravatar.cc/800?u=bg${i}_c`,
+      ],
+      prompts: userPrompts,
+      interests: pickN(interests, 4 + Math.floor(Math.random() * 4)),
+      is_standout: i < 13 && i % 4 === 0,
+      compatibility_reason: i < 13 && i % 4 === 0 ? "Strong faith alignment and shared interests" : null,
+      last_active: new Date(Date.now() - Math.random() * 86400000 * 3).toISOString(),
+    };
+
+    const { error: pErr } = await supabase.from("profiles").insert(profile);
+    if (pErr) { console.error(`BG Profile ${i}:`, pErr.message); continue; }
+    bgProfileIds.push({ id: authUser.user.id, gender, name: names[i % names.length] });
+  }
+  console.log(`Seeded ${bgProfileIds.length} Bulgarian demo profiles`);
 
   const females = profileIds.filter((p) => p.gender === "female");
 
