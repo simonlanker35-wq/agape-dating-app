@@ -180,7 +180,7 @@ function ChatThread({ match, onBack }) {
               key={msg.id}
               style={{ display: "flex", flexDirection: "column", alignItems: isMe ? "flex-end" : "flex-start" }}
             >
-              <div style={{ display: "flex", alignItems: "flex-end", gap: 8 }}>
+              <div style={{ display: "flex", alignItems: "flex-end", gap: 8, maxWidth: "80%" }}>
                 {!isMe && (
                   <img
                     src={profile.photos[0]}
@@ -193,7 +193,6 @@ function ChatThread({ match, onBack }) {
                 )}
                 <div
                   style={{
-                    maxWidth: "75%",
                     padding: "12px 16px",
                     borderRadius: 16,
                     background: isMe ? C.sent : C.card,
@@ -205,7 +204,7 @@ function ChatThread({ match, onBack }) {
                   }}
                   onDoubleClick={() => setReacting(reacting === msg.id ? null : msg.id)}
                 >
-                  <p style={{ fontSize: 14, lineHeight: 1.5, fontFamily: FONT, margin: 0 }}>
+                  <p style={{ fontSize: 14, lineHeight: 1.5, fontFamily: FONT, margin: 0, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
                     {msg.text}
                   </p>
                 </div>
