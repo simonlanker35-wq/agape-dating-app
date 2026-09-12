@@ -1060,9 +1060,9 @@ export default function Profile() {
               <div style={{ padding: "14px 14px 12px" }}>
                   <p
                     style={{
-                      fontSize: 13,
-                      fontWeight: 600,
-                      color: C.sub,
+                      fontSize: 16,
+                      fontWeight: 700,
+                      color: C.text,
                       lineHeight: 1.4,
                       marginBottom: 6,
                     }}
