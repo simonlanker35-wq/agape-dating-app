@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { useApp } from "../context/AppContext";
 import { compressPhoto } from "../services/api";
+import { PROMPT_CATEGORIES } from "../data/profiles";
 import AgapeCross from "../components/AgapeCross";
 
 const C = { bg: "#FFFFFF", card: "#FAFAF8", surface: "#F4F2EE", primary: "#B8912A", primarySoft: "#FBF5E6", text: "#1A1612", sub: "#8C857C", border: "#E8E4DF", sent: "#111111" };
@@ -364,8 +365,11 @@ export default function Profile() {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [editPhotos, setEditPhotos] = useState(false);
+  const [editingPromptIdx, setEditingPromptIdx] = useState(null);
+  const [editingPromptData, setEditingPromptData] = useState(null);
   const fileInputRef = useRef(null);
   const photosRef = useRef(null);
+  const answerRef = useRef(null);
 
   if (!currentUser) return null;
 
@@ -396,6 +400,42 @@ export default function Profile() {
       await actions.updateProfile({ prompts: allPrompts });
       setEditMode(false);
       setEditPrompts([]);
+    } catch (err) {
+      console.error("Save failed:", err);
+    }
+    setSaving(false);
+  };
+
+  const findCategory = (promptText) => {
+    for (const [cat, list] of Object.entries(PROMPT_CATEGORIES)) {
+      if (list.includes(promptText)) return cat;
+    }
+    return null;
+  };
+
+  const openPromptEditor = (idx) => {
+    const p = prompts[idx];
+    const cat = findCategory(p.prompt);
+    setEditingPromptIdx(idx);
+    setEditingPromptData({ prompt: p.prompt, answer: p.answer, category: cat || "Faith" });
+  };
+
+  const selectPromptQuestion = (promptText) => {
+    setEditingPromptData((d) => ({ ...d, prompt: promptText, answer: d.prompt === promptText ? d.answer : "" }));
+    setTimeout(() => answerRef.current?.focus(), 100);
+  };
+
+  const savePromptEdit = async () => {
+    if (!editingPromptData?.prompt || !editingPromptData.answer.trim()) return;
+    setSaving(true);
+    try {
+      const allPrompts = (currentUser.prompts || []).map((p, i) => {
+        if (i === editingPromptIdx) return { prompt: editingPromptData.prompt, answer: editingPromptData.answer };
+        return p;
+      });
+      await actions.updateProfile({ prompts: allPrompts });
+      setEditingPromptIdx(null);
+      setEditingPromptData(null);
     } catch (err) {
       console.error("Save failed:", err);
     }
@@ -806,7 +846,7 @@ export default function Profile() {
                         {p.answer}
                       </p>
                       <button
-                        onClick={startEdit}
+                        onClick={() => openPromptEditor(i)}
                         style={{
                           marginTop: 12,
                           display: "flex",
@@ -1003,6 +1043,126 @@ export default function Profile() {
           </button>
         </div>
       </div>
+
+      {/* Prompt editor bottom sheet */}
+      {editingPromptIdx !== null && editingPromptData && (
+        <div
+          style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", flexDirection: "column", justifyContent: "flex-end" }}
+          onClick={() => { setEditingPromptIdx(null); setEditingPromptData(null); }}
+        >
+          <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)" }} />
+          <div
+            style={{
+              position: "relative",
+              background: C.bg,
+              borderRadius: "24px 24px 0 0",
+              maxHeight: "85vh",
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 20px 12px" }}>
+              <button
+                onClick={() => { setEditingPromptIdx(null); setEditingPromptData(null); }}
+                style={{ background: "none", border: "none", cursor: "pointer", color: C.sub, fontSize: 14, fontWeight: 600 }}
+              >
+                Cancel
+              </button>
+              <span style={{ fontSize: 16, fontWeight: 700, fontFamily: FONT, color: C.text }}>
+                {editingPromptData.category}
+              </span>
+              <button
+                onClick={savePromptEdit}
+                disabled={saving || !editingPromptData.answer.trim()}
+                style={{
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  color: editingPromptData.answer.trim() ? C.primary : C.sub,
+                  fontSize: 14,
+                  fontWeight: 700,
+                  opacity: saving ? 0.5 : 1,
+                }}
+              >
+                {saving ? "Saving..." : "Save"}
+              </button>
+            </div>
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: C.border, margin: "0 auto 16px" }} />
+
+            <div style={{ overflowY: "auto", padding: "0 20px 20px", flex: 1 }}>
+              {editingPromptData.prompt && (
+                <div style={{ marginBottom: 20 }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                    <p style={{ fontSize: 10, fontWeight: 600, color: C.primary, textTransform: "uppercase", letterSpacing: "0.1em" }}>
+                      {editingPromptData.prompt}
+                    </p>
+                    <button
+                      onClick={() => setEditingPromptData((d) => ({ ...d, prompt: "", answer: "" }))}
+                      style={{ background: "none", border: "none", cursor: "pointer", color: C.sub, fontSize: 18, lineHeight: 1 }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                  <textarea
+                    ref={answerRef}
+                    value={editingPromptData.answer}
+                    onChange={(e) => setEditingPromptData((d) => ({ ...d, answer: e.target.value }))}
+                    placeholder="Your answer..."
+                    maxLength={250}
+                    rows={3}
+                    style={{
+                      width: "100%",
+                      fontSize: 16,
+                      fontWeight: 600,
+                      lineHeight: 1.4,
+                      color: C.text,
+                      fontFamily: FONT,
+                      background: C.surface,
+                      border: `1.5px solid ${C.border}`,
+                      borderRadius: 12,
+                      padding: "12px 14px",
+                      resize: "vertical",
+                      outline: "none",
+                    }}
+                    autoFocus
+                  />
+                  <p style={{ fontSize: 11, color: C.sub, textAlign: "right", marginTop: 4 }}>
+                    {editingPromptData.answer.length}/250
+                  </p>
+                </div>
+              )}
+
+              <p style={{ fontSize: 10, fontWeight: 600, color: C.sub, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>
+                {editingPromptData.prompt ? "Or pick a different question" : "Pick a question"}
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {(PROMPT_CATEGORIES[editingPromptData.category] || []).map((q) => (
+                  <button
+                    key={q}
+                    onClick={() => selectPromptQuestion(q)}
+                    style={{
+                      padding: "12px 14px",
+                      borderRadius: 12,
+                      fontSize: 14,
+                      fontWeight: 600,
+                      fontFamily: FONT,
+                      textAlign: "left",
+                      cursor: "pointer",
+                      border: q === editingPromptData.prompt ? `2px solid ${C.primary}` : `1px solid ${C.border}`,
+                      background: q === editingPromptData.prompt ? C.primarySoft : C.card,
+                      color: q === editingPromptData.prompt ? C.primary : C.text,
+                    }}
+                  >
+                    {q}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
