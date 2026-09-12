@@ -40,7 +40,7 @@ export default function Standouts() {
       if (state.likes.some((l) => l.profileId === p.id)) return false;
       if (localLikes.has(p.id)) return false;
       if (p.id === "current_user") return false;
-      if (state.blocked.includes(p.id)) return false;
+      if (state.blocked.some((b) => (b.id || b) === p.id)) return false;
       if (p.age < filters.minAge || p.age > filters.maxAge) return false;
       if (filters.denominations.length > 0 && !filters.denominations.includes(p.denomination)) return false;
       if (userLat && userLng && p.lat && p.lng) {
@@ -107,13 +107,13 @@ export default function Standouts() {
   };
 
   const handleBlock = () => {
-    dispatch({ type: "BLOCK_PROFILE", payload: profile.id });
+    dispatch({ type: "BLOCK_PROFILE", payload: { id: profile.id, name: profile.name, photo: profile.photos?.[0] } });
     actions.skipProfile(profile.id).catch(() => {});
   };
 
   const handleReport = (reason) => {
-    dispatch({ type: "BLOCK_PROFILE", payload: profile.id });
-    dispatch({ type: "ADD_REPORT", payload: { profileId: profile.id, name: profile.name, reason, timestamp: Date.now() } });
+    dispatch({ type: "BLOCK_PROFILE", payload: { id: profile.id, name: profile.name, photo: profile.photos?.[0] } });
+    dispatch({ type: "ADD_REPORT", payload: { profileId: profile.id, name: profile.name, photo: profile.photos?.[0], reason, timestamp: Date.now() } });
     actions.skipProfile(profile.id).catch(() => {});
   };
 
@@ -261,7 +261,7 @@ export default function Standouts() {
                 <div className="hinge-prompt-content">
                   <div className="hinge-prompt-label">{p.prompt}</div>
                   {p.voice ? (
-                    <WaveformBar duration={p.voice.duration} color="#B8912A" />
+                    <WaveformBar duration={p.voice.duration} color="#8C857C" />
                   ) : (
                     <div className="hinge-prompt-answer">{p.answer}</div>
                   )}

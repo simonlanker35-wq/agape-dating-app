@@ -2063,8 +2063,8 @@ input[type="range"] {
 .hinge-prompt-card {
   border-radius: 16px;
   overflow: hidden;
-  background: var(--primary-soft);
-  border: none;
+  background: var(--card);
+  border: 1px solid var(--border);
   margin-bottom: 16px;
 }
 
@@ -2073,24 +2073,20 @@ input[type="range"] {
 }
 
 .hinge-prompt-accent {
-  width: 4px;
-  flex-shrink: 0;
-  background: var(--gold);
-  border-radius: 4px 0 0 4px;
+  display: none;
 }
 
 .hinge-prompt-content {
   flex: 1;
-  padding: 12px 8px 10px 12px;
+  padding: 14px 14px 12px;
 }
 
 .hinge-prompt-label {
   font-size: 13px;
   font-weight: 600;
-  color: var(--gold);
+  color: var(--sub);
   margin-bottom: 6px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
+  line-height: 1.4;
 }
 
 .hinge-prompt-answer {
@@ -2140,7 +2136,8 @@ input[type="range"] {
   display: flex;
   align-items: center;
   gap: 12px;
-  background: var(--primary-soft);
+  background: var(--card);
+  border: 1px solid var(--border);
   margin-bottom: 24px;
 }
 
@@ -2148,7 +2145,7 @@ input[type="range"] {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: var(--gold);
+  background: var(--sub);
   color: white;
   display: flex;
   align-items: center;

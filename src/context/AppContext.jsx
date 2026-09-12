@@ -118,10 +118,10 @@ function reducer(state, action) {
       };
 
     case "BLOCK_PROFILE":
-      return { ...state, blocked: [...state.blocked, action.payload] };
+      return { ...state, blocked: [...state.blocked, typeof action.payload === "string" ? { id: action.payload } : action.payload] };
 
     case "UNBLOCK_PROFILE":
-      return { ...state, blocked: state.blocked.filter((id) => id !== action.payload) };
+      return { ...state, blocked: state.blocked.filter((b) => (b.id || b) !== action.payload) };
 
     case "ADD_REPORT":
       return { ...state, reports: [...(state.reports || []), action.payload] };

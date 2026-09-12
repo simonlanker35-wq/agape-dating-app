@@ -243,21 +243,28 @@ function SettingsScreen({ onBack, initialSection = null }) {
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {state.blocked.map((id) => (
-                  <div key={id} style={{ borderRadius: 16, background: C.card, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12 }}>
-                    <div style={{ width: 40, height: 40, borderRadius: "50%", background: C.surface, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                      <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={C.sub} strokeWidth={2}>
-                        <circle cx="12" cy="12" r="10" />
-                        <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
-                      </svg>
+                {state.blocked.map((b, i) => {
+                  const item = typeof b === "string" ? { id: b } : b;
+                  return (
+                    <div key={item.id || i} style={{ borderRadius: 16, background: C.card, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12 }}>
+                      {item.photo ? (
+                        <img src={item.photo} alt="" style={{ width: 44, height: 44, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
+                      ) : (
+                        <div style={{ width: 44, height: 44, borderRadius: "50%", background: C.surface, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                          <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={C.sub} strokeWidth={2}>
+                            <circle cx="12" cy="12" r="10" />
+                            <line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+                          </svg>
+                        </div>
+                      )}
+                      <div style={{ flex: 1 }}>
+                        <p style={{ fontSize: 14, fontWeight: 600, color: C.text }}>{item.name || "Blocked user"}</p>
+                        <p style={{ fontSize: 12, color: C.sub }}>Can no longer see you</p>
+                      </div>
+                      <button onClick={() => dispatch({ type: "UNBLOCK_PROFILE", payload: item.id })} style={{ padding: "6px 12px", borderRadius: 9999, fontSize: 12, fontWeight: 600, background: C.surface, color: C.sub, border: "none", cursor: "pointer" }}>Unblock</button>
                     </div>
-                    <div style={{ flex: 1 }}>
-                      <p style={{ fontSize: 14, fontWeight: 600, color: C.text }}>Blocked user</p>
-                      <p style={{ fontSize: 12, color: C.sub }}>This profile can no longer see you</p>
-                    </div>
-                    <button onClick={() => dispatch({ type: "UNBLOCK_PROFILE", payload: id })} style={{ padding: "6px 12px", borderRadius: 9999, fontSize: 12, fontWeight: 600, background: C.surface, color: C.sub, border: "none", cursor: "pointer" }}>Unblock</button>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )
           )}
@@ -277,15 +284,19 @@ function SettingsScreen({ onBack, initialSection = null }) {
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {state.reports.map((r, i) => (
                   <div key={i} style={{ borderRadius: 16, background: C.card, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12 }}>
-                    <div style={{ width: 40, height: 40, borderRadius: "50%", background: "#FEF2F2", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                      <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth={2}>
-                        <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
-                        <line x1="4" y1="22" x2="4" y2="15" />
-                      </svg>
-                    </div>
+                    {r.photo ? (
+                      <img src={r.photo} alt="" style={{ width: 44, height: 44, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
+                    ) : (
+                      <div style={{ width: 44, height: 44, borderRadius: "50%", background: "#FEF2F2", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                        <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth={2}>
+                          <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
+                          <line x1="4" y1="22" x2="4" y2="15" />
+                        </svg>
+                      </div>
+                    )}
                     <div style={{ flex: 1 }}>
-                      <p style={{ fontSize: 14, fontWeight: 600, color: C.text }}>{r.reason || "Report submitted"}</p>
-                      <p style={{ fontSize: 12, color: C.sub }}>Under review</p>
+                      <p style={{ fontSize: 14, fontWeight: 600, color: C.text }}>{r.name || "Reported user"}</p>
+                      <p style={{ fontSize: 12, color: C.sub }}>{r.reason || "Report submitted"} · Under review</p>
                     </div>
                   </div>
                 ))}
