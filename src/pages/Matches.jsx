@@ -607,7 +607,6 @@ export default function Matches() {
                       overflow: "hidden",
                       whiteSpace: "nowrap",
                       textOverflow: "ellipsis",
-                      maxWidth: 180,
                       margin: 0,
                     }}
                   >
