@@ -283,19 +283,6 @@ export default function Discover() {
             </div>
           ))}
 
-          {/* Faith tag */}
-          {profile.denomination && (
-            <div className="faith-tag">
-              <div className="faith-tag-icon">
-                <AgapeCross size={11} strokeWidth={1.5} />
-              </div>
-              <div>
-                <div className="faith-tag-label">{profile.denomination}</div>
-                {profile.location && <div className="faith-tag-sub">{profile.location}</div>}
-              </div>
-            </div>
-          )}
-
           {/* Interests */}
           {profile.interests?.length > 0 && (
             <div className="profile-interests-section">
