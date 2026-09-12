@@ -74,7 +74,7 @@ export default function Discover() {
         <Heart size={48} />
         <h2>You've seen everyone!</h2>
         <p>Check back later for new profiles or adjust your filters.</p>
-        <button className="filter-apply-btn" style={{ marginTop: 16 }} onClick={() => setShowFilter(true)}>
+        <button className="filter-apply-btn" style={{ marginTop: 16, flex: "none" }} onClick={() => setShowFilter(true)}>
           Adjust Filters
         </button>
         {showFilter && (
