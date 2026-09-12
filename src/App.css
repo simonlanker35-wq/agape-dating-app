@@ -59,7 +59,7 @@ button {
 
 input, textarea, select {
   font-family: inherit;
-  font-size: inherit;
+  font-size: 16px;
 }
 
 a {
@@ -74,6 +74,7 @@ a {
   min-height: 100vh;
   background: var(--bg);
   position: relative;
+  padding-top: env(safe-area-inset-top, 0px);
 }
 
 .app-header {
@@ -1397,6 +1398,14 @@ input[type="range"] {
   border: 1px solid rgba(255,255,255,0.2);
 }
 
+.id-comment {
+  background: rgba(255,255,255,0.18);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: white;
+  border: 1px solid rgba(255,255,255,0.2);
+}
+
 .id-heart {
   background: var(--gold);
   color: white;
@@ -1443,6 +1452,12 @@ input[type="range"] {
 }
 
 .prompt-skip {
+  background: var(--surface);
+  color: var(--text-muted);
+  border: none;
+}
+
+.prompt-comment {
   background: var(--surface);
   color: var(--text-muted);
   border: none;
@@ -2279,7 +2294,7 @@ input[type="range"] {
   border: 2px solid var(--border);
   border-radius: var(--radius-md);
   resize: none;
-  font-size: 15px;
+  font-size: 16px;
   line-height: 1.5;
   outline: none;
   transition: border-color 0.2s, box-shadow 0.2s;
@@ -3082,7 +3097,7 @@ input[type="range"] {
   padding: 10px 14px;
   border: 2px solid var(--border);
   border-radius: var(--radius-xl);
-  font-size: 15px;
+  font-size: 16px;
   outline: none;
   background: var(--bg);
 }

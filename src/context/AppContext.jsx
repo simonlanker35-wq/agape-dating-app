@@ -107,6 +107,15 @@ function reducer(state, action) {
     case "UPDATE_FILTERS":
       return { ...state, filters: { ...state.filters, ...action.payload } };
 
+    case "SET_USER_LOCATION":
+      return {
+        ...state,
+        currentUser: {
+          ...state.currentUser,
+          location: { ...state.currentUser?.location, ...action.payload },
+        },
+      };
+
     case "BLOCK_PROFILE":
       return { ...state, blocked: [...state.blocked, action.payload] };
 
@@ -158,6 +167,20 @@ export function AppProvider({ children }) {
       loadMatches();
     }
   }, [state.onboardingComplete, state.currentUser]);
+
+  useEffect(() => {
+    if (state.currentUser && !state.currentUser.location?.lat && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          dispatch({
+            type: "SET_USER_LOCATION",
+            payload: { lat: pos.coords.latitude, lng: pos.coords.longitude },
+          });
+        },
+        () => {}
+      );
+    }
+  }, [state.currentUser?.id]);
 
   const loadDiscover = useCallback(async () => {
     try {

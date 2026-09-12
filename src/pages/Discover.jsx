@@ -28,7 +28,6 @@ export default function Discover() {
   const [matchCelebration, setMatchCelebration] = useState(null);
   const [cardEnter, setCardEnter] = useState(true);
   const [photoIdx, setPhotoIdx] = useState(0);
-  const [likeChoice, setLikeChoice] = useState(null);
   const [localSkips, setLocalSkips] = useState(new Set());
   const [showFilter, setShowFilter] = useState(false);
   const [showReport, setShowReport] = useState(false);
@@ -125,17 +124,11 @@ export default function Discover() {
   };
 
   const onHeartPress = (type, index) => {
-    setLikeChoice({ type, index });
+    handleLike(type, index);
   };
 
-  const onSendHeart = () => {
-    handleLike(likeChoice.type, likeChoice.index);
-    setLikeChoice(null);
-  };
-
-  const onAddComment = () => {
-    setCommentTarget(likeChoice);
-    setLikeChoice(null);
+  const onCommentPress = (type, index) => {
+    setCommentTarget({ type, index });
   };
 
   const handleBlock = () => {
@@ -243,6 +236,9 @@ export default function Discover() {
                 <button className="id-btn id-skip" onClick={handleSkip}>
                   <X size={17} />
                 </button>
+                <button className="id-btn id-comment" onClick={() => onCommentPress("profile", 0)}>
+                  <MessageCircle size={15} />
+                </button>
                 <button className="id-btn id-heart" onClick={() => onHeartPress("profile", 0)}>
                   <Heart size={17} fill="white" stroke="white" />
                 </button>
@@ -268,6 +264,9 @@ export default function Discover() {
                 <div className="prompt-side-actions">
                   <button className="mini-btn prompt-skip" onClick={handleSkip}>
                     <X size={13} />
+                  </button>
+                  <button className="mini-btn prompt-comment" onClick={() => onCommentPress("prompt", i)}>
+                    <MessageCircle size={11} />
                   </button>
                   <button className="mini-btn prompt-heart" onClick={() => onHeartPress("prompt", i)}>
                     <Heart size={13} fill="white" stroke="white" />
@@ -304,21 +303,6 @@ export default function Discover() {
         </div>
       </div>
 
-      {likeChoice && (
-        <div className="like-choice-overlay" onClick={() => setLikeChoice(null)}>
-          <div className="like-choice-sheet" onClick={(e) => e.stopPropagation()}>
-            <div className="like-choice-handle" />
-            <button className="like-choice-btn heart-choice" onClick={onSendHeart}>
-              <Heart size={20} fill="white" stroke="white" />
-              <span>Send Heart</span>
-            </button>
-            <button className="like-choice-btn comment-choice" onClick={onAddComment}>
-              <MessageCircle size={18} />
-              <span>Add a Comment</span>
-            </button>
-          </div>
-        </div>
-      )}
 
       {commentTarget && (
         <div className="comment-modal-overlay" onClick={() => { setCommentTarget(null); setShowDove(false); }}>
