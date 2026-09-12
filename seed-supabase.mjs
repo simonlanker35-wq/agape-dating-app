@@ -38,14 +38,16 @@ const prompts = [
 const femaleNames = ["Sophia", "Lena", "Mia", "Emma", "Anna", "Laura", "Sarah", "Nina", "Lisa", "Julia", "Marie", "Lea", "Nora", "Clara", "Hannah", "Alina", "Amelie", "Chloe", "Elena", "Lara"];
 const maleNames = ["Noah", "Liam", "Elias", "Ben", "Finn", "Jonas", "Leon", "Luca", "Paul", "David", "Felix", "Luis", "Tim", "Max", "Jan", "Tom", "Samuel", "Julian", "Rafael", "Lukas", "Simon"];
 const cities = [
+  { city: "Schwyz", lat: 47.0207, lng: 8.6545 },
+  { city: "Schwyz", lat: 47.0207, lng: 8.6545 },
+  { city: "Lucerne", lat: 47.0502, lng: 8.3093 },
+  { city: "Lucerne", lat: 47.0502, lng: 8.3093 },
   { city: "Zürich", lat: 47.3769, lng: 8.5417 },
+  { city: "Zürich", lat: 47.3769, lng: 8.5417 },
+  { city: "Zug", lat: 47.1724, lng: 8.5174 },
+  { city: "St. Gallen", lat: 47.4245, lng: 9.3767 },
   { city: "Bern", lat: 46.9480, lng: 7.4474 },
   { city: "Basel", lat: 47.5596, lng: 7.5886 },
-  { city: "Lucerne", lat: 47.0502, lng: 8.3093 },
-  { city: "Geneva", lat: 46.2044, lng: 6.1432 },
-  { city: "Lausanne", lat: 46.5197, lng: 6.6323 },
-  { city: "St. Gallen", lat: 47.4245, lng: 9.3767 },
-  { city: "Schwyz", lat: 47.0207, lng: 8.6545 },
 ];
 const jobs = ["Teacher", "Nurse", "Engineer", "Designer", "Architect", "Musician", "Therapist", "Writer", "Developer", "Scientist", "Pastor", "Doctor", "Marketing", "Consultant", "Photographer"];
 const schools = ["University of Zürich", "ETH Zürich", "University of Bern", "University of Basel", "EPFL", "University of Geneva", "HSG St. Gallen", "ZHAW", "FHNW"];
@@ -138,8 +140,8 @@ async function seed() {
       job: jobs[Math.floor(Math.random() * jobs.length)],
       school: schools[Math.floor(Math.random() * schools.length)],
       location_city: city.city,
-      location_lat: city.lat + (Math.random() - 0.5) * 0.5,
-      location_lng: city.lng + (Math.random() - 0.5) * 0.5,
+      location_lat: city.lat + (Math.random() - 0.5) * 0.15,
+      location_lng: city.lng + (Math.random() - 0.5) * 0.15,
       photos: [
         `https://i.pravatar.cc/800?u=demo${i}_a`,
         `https://i.pravatar.cc/800?u=demo${i}_b`,

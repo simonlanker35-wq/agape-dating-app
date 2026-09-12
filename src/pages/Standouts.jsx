@@ -22,6 +22,7 @@ export default function Standouts() {
   const [idx, setIdx] = useState(0);
   const [photoIdx, setPhotoIdx] = useState(0);
   const [likeFlash, setLikeFlash] = useState(null);
+  const [likeChoice, setLikeChoice] = useState(null);
   const [commentTarget, setCommentTarget] = useState(null);
   const [commentText, setCommentText] = useState("");
   const [cardEnter, setCardEnter] = useState(true);
@@ -95,6 +96,7 @@ export default function Standouts() {
 
   const handleSkip = () => {
     setPhotoIdx(0);
+    setLikeChoice(null);
     setCommentTarget(null);
     setCommentText("");
     setIdx((i) => (i + 1) % standoutProfiles.length);
@@ -111,11 +113,17 @@ export default function Standouts() {
   };
 
   const onDovePress = (type, index) => {
-    handleLike(type, index);
+    setLikeChoice({ type, index });
   };
 
-  const onCommentPress = (type, index) => {
-    setCommentTarget({ type, index });
+  const onSendDove = () => {
+    handleLike(likeChoice.type, likeChoice.index);
+    setLikeChoice(null);
+  };
+
+  const onAddComment = () => {
+    setCommentTarget(likeChoice);
+    setLikeChoice(null);
   };
 
   const handleComment = () => {
@@ -218,9 +226,6 @@ export default function Standouts() {
                 <button className="id-btn id-skip" onClick={handleSkip}>
                   <X size={17} />
                 </button>
-                <button className="id-btn id-comment" onClick={() => onCommentPress("profile", 0)}>
-                  <MessageCircle size={15} />
-                </button>
                 <button className="id-btn id-heart" onClick={() => onDovePress("profile", 0)}>
                   <span style={{ fontSize: 18, lineHeight: 1 }}>🕊️</span>
                 </button>
@@ -260,9 +265,6 @@ export default function Standouts() {
                   <button className="mini-btn prompt-skip" onClick={handleSkip}>
                     <X size={13} />
                   </button>
-                  <button className="mini-btn prompt-comment" onClick={() => onCommentPress("prompt", i)}>
-                    <MessageCircle size={11} />
-                  </button>
                   <button className="mini-btn prompt-heart" onClick={() => onDovePress("prompt", i)}>
                     <span style={{ fontSize: 14, lineHeight: 1 }}>🕊️</span>
                   </button>
@@ -297,6 +299,21 @@ export default function Standouts() {
           )}
         </div>
       </div>
+
+      {likeChoice && (
+        <div className="like-choice-overlay" onClick={() => setLikeChoice(null)}>
+          <div className="like-choice-sheet" onClick={(e) => e.stopPropagation()}>
+            <button className="like-choice-btn dove-choice" onClick={onSendDove}>
+              <span style={{ fontSize: 20 }}>🕊️</span>
+              <span>Send Dove</span>
+            </button>
+            <button className="like-choice-btn comment-choice" onClick={onAddComment}>
+              <MessageCircle size={18} />
+              <span>Add a Comment</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Comment modal */}
       {commentTarget && (

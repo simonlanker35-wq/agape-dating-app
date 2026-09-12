@@ -60,7 +60,7 @@ export default function FilterSheet({ filters, onApply, onClose }) {
           <input
             type="range"
             min={5}
-            max={200}
+            max={500}
             value={maxDistance}
             onChange={(e) => setMaxDistance(+e.target.value)}
           />

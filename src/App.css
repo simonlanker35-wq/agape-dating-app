@@ -1492,21 +1492,13 @@ input[type="range"] {
 .like-choice-sheet {
   background: var(--bg-card);
   border-radius: 20px 20px 0 0;
-  padding: 8px 20px 32px;
+  padding: 20px 20px 32px;
   width: 100%;
   max-width: 430px;
   display: flex;
   flex-direction: column;
   gap: 10px;
   animation: sheetSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.like-choice-handle {
-  width: 36px;
-  height: 4px;
-  background: #ddd;
-  border-radius: 2px;
-  margin: 4px auto 14px;
 }
 
 .like-choice-btn {
