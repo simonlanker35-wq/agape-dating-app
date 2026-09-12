@@ -6,6 +6,7 @@ import AgapeCross from "../components/AgapeCross";
 
 const STEPS = [
   "welcome",
+  "consent",
   "name",
   "email",
   "password",
@@ -31,6 +32,7 @@ export default function Onboarding() {
   const [signupError, setSignupError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const inputRef = useRef(null);
+  const [faithConsent, setFaithConsent] = useState(false);
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -146,6 +148,7 @@ export default function Onboarding() {
   const canProceed = () => {
     switch (currentStep) {
       case "welcome": return true;
+      case "consent": return faithConsent;
       case "name": return form.name.trim().length > 0;
       case "email": return form.email.includes("@") && form.email.includes(".");
       case "password": return form.password.length >= 6;
@@ -281,6 +284,32 @@ export default function Onboarding() {
               </button>
               <p className="welcome-terms">By continuing you agree to our Terms & Privacy Policy</p>
             </div>
+          </div>
+        )}
+
+        {currentStep === "consent" && (
+          <div className="onboarding-step single-question consent-step" key="consent">
+            <div className="consent-icon">
+              <Church size={32} />
+            </div>
+            <h2>Faith-Based Matching</h2>
+            <p className="consent-desc">
+              Agape is a Christian dating app. To connect you with people who share your faith, we collect and process information about your religious beliefs, including your denomination.
+            </p>
+            <p className="consent-desc">
+              This data is used solely for matching purposes and will be visible to other users on your profile.
+            </p>
+            <label className="consent-checkbox" onClick={() => setFaithConsent(!faithConsent)}>
+              <div className={`consent-check-box ${faithConsent ? "checked" : ""}`}>
+                {faithConsent && <Check size={14} />}
+              </div>
+              <span>I consent to the processing of my religious beliefs for matching purposes</span>
+            </label>
+            {faithConsent && (
+              <button className="onboarding-cta" onClick={goNext}>
+                Continue <ChevronRight size={18} />
+              </button>
+            )}
           </div>
         )}
 
