@@ -50,6 +50,14 @@ export default function ReportSheet({ profileName, onReport, onBlock, onClose })
         </div>
 
         <div className="report-section">
+          <div className="report-label">Block {profileName}</div>
+          <p className="report-hint">They won't be able to see your profile or contact you.</p>
+          <button className="report-block-btn" onClick={handleBlock}>Block</button>
+        </div>
+
+        <div className="report-divider" />
+
+        <div className="report-section">
           <div className="report-label">Report {profileName}</div>
           <div className="report-reasons">
             {REPORT_REASONS.map((r) => (
@@ -69,14 +77,6 @@ export default function ReportSheet({ profileName, onReport, onBlock, onClose })
           >
             Submit Report
           </button>
-        </div>
-
-        <div className="report-divider" />
-
-        <div className="report-section">
-          <div className="report-label">Block {profileName}</div>
-          <p className="report-hint">They won't be able to see your profile or contact you.</p>
-          <button className="report-block-btn" onClick={handleBlock}>Block</button>
         </div>
       </div>
     </div>
