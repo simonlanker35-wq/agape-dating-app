@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useApp } from "../context/AppContext";
-import { PROMPT_CATEGORIES, TRAITS_POOL, DENOMINATIONS } from "../data/profiles";
+import { PROMPT_CATEGORIES, TRAITS_POOL, LOOKING_FOR_POOL, DENOMINATIONS } from "../data/profiles";
 import { ChevronRight, Sparkles, Church, X, Check } from "lucide-react";
 import AgapeCross from "../components/AgapeCross";
 
@@ -657,7 +657,7 @@ export default function Onboarding() {
             <h2>What are you looking for?</h2>
             <p className="step-hint">Pick 3-8 traits you value in a partner</p>
             <div className="interests-grid">
-              {TRAITS_POOL.map((trait) => (
+              {LOOKING_FOR_POOL.map((trait) => (
                 <button
                   key={trait}
                   className={`interest-chip ${form.lookingFor.includes(trait) ? "selected" : ""}`}

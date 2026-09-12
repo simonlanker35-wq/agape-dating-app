@@ -96,6 +96,15 @@ const TRAITS_POOL = [
 
 const INTERESTS_POOL = TRAITS_POOL;
 
+const LOOKING_FOR_POOL = [
+  "Loyalty", "Ambition", "Femininity", "Masculinity", "Humour",
+  "Kindness", "Patience", "Honesty", "Faith", "Family-oriented",
+  "Adventurous", "Compassion", "Confidence", "Humility", "Intelligence",
+  "Generosity", "Creativity", "Empathy", "Spontaneity", "Discipline",
+  "Trustworthy", "Supportive", "Romantic", "Independent", "Prayerful",
+  "Servant-hearted", "Respectful", "Encouraging", "Joyful", "Hardworking",
+];
+
 const PROMPT_ANSWERS = {
   "My faith means to me": [
     "Everything. It's the foundation I build my life on",
@@ -379,4 +388,4 @@ export function generateProfiles(count = 40) {
   return profiles;
 }
 
-export { PROMPTS, PROMPT_CATEGORIES, INTERESTS_POOL, TRAITS_POOL, DENOMINATIONS };
+export { PROMPTS, PROMPT_CATEGORIES, INTERESTS_POOL, TRAITS_POOL, LOOKING_FOR_POOL, DENOMINATIONS };
