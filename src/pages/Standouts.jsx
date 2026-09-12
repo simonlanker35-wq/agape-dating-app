@@ -3,9 +3,23 @@ import { useApp } from "../context/AppContext";
 import { Heart, X, MessageCircle } from "lucide-react";
 import AgapeCross from "../components/AgapeCross";
 import WaveformBar from "../components/WaveformBar";
+import FilterSheet from "../components/FilterSheet";
+import ReportSheet from "../components/ReportSheet";
+
+function haversine(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
 
 export default function Standouts() {
-  const { state, dispatch } = useApp();
+  const { state, dispatch, actions } = useApp();
   const [idx, setIdx] = useState(0);
   const [photoIdx, setPhotoIdx] = useState(0);
   const [dovePhase, setDovePhase] = useState("idle");
@@ -13,18 +27,41 @@ export default function Standouts() {
   const [commentTarget, setCommentTarget] = useState(null);
   const [commentText, setCommentText] = useState("");
   const [cardEnter, setCardEnter] = useState(true);
+  const [showFilter, setShowFilter] = useState(false);
+  const [showReport, setShowReport] = useState(false);
   const cardRef = useRef(null);
 
+  const userLat = state.currentUser?.location?.lat;
+  const userLng = state.currentUser?.location?.lng;
+  const filters = state.filters;
+
   const standoutProfiles = useMemo(() => {
-    return state.profiles.filter(
-      (p) =>
-        p.isStandout &&
-        !state.likes.some((l) => l.profileId === p.id) &&
-        p.id !== "current_user"
-    );
-  }, [state.profiles, state.likes]);
+    return state.profiles.filter((p) => {
+      if (!p.isStandout) return false;
+      if (state.likes.some((l) => l.profileId === p.id)) return false;
+      if (p.id === "current_user") return false;
+      if (state.blocked.includes(p.id)) return false;
+      if (p.age < filters.minAge || p.age > filters.maxAge) return false;
+      if (filters.denominations.length > 0 && !filters.denominations.includes(p.denomination)) return false;
+      if (userLat && userLng && p.lat && p.lng) {
+        const dist = haversine(userLat, userLng, p.lat, p.lng);
+        if (dist > filters.maxDistance) return false;
+      }
+      return true;
+    });
+  }, [state.profiles, state.likes, state.blocked, filters, userLat, userLng]);
 
   const profile = standoutProfiles[idx];
+
+  const handleApplyFilters = (newFilters) => {
+    dispatch({ type: "UPDATE_FILTERS", payload: newFilters });
+  };
+
+  useEffect(() => {
+    if (idx >= standoutProfiles.length && standoutProfiles.length > 0) {
+      setIdx(0);
+    }
+  }, [standoutProfiles.length, idx]);
 
   useEffect(() => {
     setCardEnter(true);
@@ -38,7 +75,17 @@ export default function Standouts() {
       <div className="discover-empty">
         <span style={{ fontSize: 48 }}>⭐</span>
         <h2>No standouts right now</h2>
-        <p>Check back later for top picks.</p>
+        <p>Check back later for top picks or adjust your filters.</p>
+        <button className="filter-apply-btn" style={{ marginTop: 16 }} onClick={() => setShowFilter(true)}>
+          Adjust Filters
+        </button>
+        {showFilter && (
+          <FilterSheet
+            filters={filters}
+            onApply={handleApplyFilters}
+            onClose={() => setShowFilter(false)}
+          />
+        )}
       </div>
     );
   }
@@ -75,6 +122,16 @@ export default function Standouts() {
 
   const handleSkip = () => {
     advance();
+  };
+
+  const handleBlock = () => {
+    dispatch({ type: "BLOCK_PROFILE", payload: profile.id });
+    actions.skipProfile(profile.id).catch(() => {});
+  };
+
+  const handleReport = (reason) => {
+    dispatch({ type: "BLOCK_PROFILE", payload: profile.id });
+    actions.skipProfile(profile.id).catch(() => {});
   };
 
   const onDovePress = (type, index) => {
@@ -158,12 +215,12 @@ export default function Standouts() {
 
             {/* Shield + filter icons */}
             <div className="photo-overlay-icons">
-              <button className="photo-overlay-btn">
+              <button className="photo-overlay-btn" onClick={() => setShowReport(true)}>
                 <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2.5}>
                   <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                 </svg>
               </button>
-              <button className="photo-overlay-btn">
+              <button className="photo-overlay-btn" onClick={() => setShowFilter(true)}>
                 <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2}>
                   <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
                 </svg>
@@ -332,6 +389,23 @@ export default function Standouts() {
             </button>
           </div>
         </div>
+      )}
+
+      {showFilter && (
+        <FilterSheet
+          filters={filters}
+          onApply={handleApplyFilters}
+          onClose={() => setShowFilter(false)}
+        />
+      )}
+
+      {showReport && (
+        <ReportSheet
+          profileName={profile.name}
+          onReport={handleReport}
+          onBlock={handleBlock}
+          onClose={() => setShowReport(false)}
+        />
       )}
     </div>
   );

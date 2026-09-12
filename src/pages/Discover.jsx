@@ -1,31 +1,70 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useApp } from "../context/AppContext";
-import { Heart, X, MessageCircle, MapPin, Church } from "lucide-react";
+import { Heart, X, MessageCircle } from "lucide-react";
 import DoveIcon from "../components/DoveIcon";
 import AgapeCross from "../components/AgapeCross";
 import WaveformBar from "../components/WaveformBar";
+import FilterSheet from "../components/FilterSheet";
+import ReportSheet from "../components/ReportSheet";
+
+function haversine(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
 
 export default function Discover() {
   const { state, dispatch, actions } = useApp();
   const [commentTarget, setCommentTarget] = useState(null);
   const [commentText, setCommentText] = useState("");
   const [showDove, setShowDove] = useState(false);
-  const exitAnimation = null;
   const [likeFlash, setLikeFlash] = useState(null);
   const [matchCelebration, setMatchCelebration] = useState(null);
   const [cardEnter, setCardEnter] = useState(true);
   const [photoIdx, setPhotoIdx] = useState(0);
   const [likeChoice, setLikeChoice] = useState(null);
+  const [localSkips, setLocalSkips] = useState(new Set());
+  const [showFilter, setShowFilter] = useState(false);
+  const [showReport, setShowReport] = useState(false);
   const cardRef = useRef(null);
 
-  const profile = state.profiles[state.currentProfileIndex];
+  const userLat = state.currentUser?.location?.lat;
+  const userLng = state.currentUser?.location?.lng;
+  const filters = state.filters;
+
+  const filteredProfiles = useMemo(() => {
+    return state.profiles.filter((p) => {
+      if (state.likes.some((l) => l.profileId === p.id)) return false;
+      if (state.blocked.includes(p.id)) return false;
+      if (localSkips.has(p.id)) return false;
+      if (p.age < filters.minAge || p.age > filters.maxAge) return false;
+      if (filters.denominations.length > 0 && !filters.denominations.includes(p.denomination)) return false;
+      if (userLat && userLng && p.lat && p.lng) {
+        const dist = haversine(userLat, userLng, p.lat, p.lng);
+        if (dist > filters.maxDistance) return false;
+      }
+      return true;
+    });
+  }, [state.profiles, state.likes, state.blocked, localSkips, filters, userLat, userLng]);
+
+  const profile = filteredProfiles[0];
+
+  const handleApplyFilters = (newFilters) => {
+    dispatch({ type: "UPDATE_FILTERS", payload: newFilters });
+  };
 
   useEffect(() => {
     setCardEnter(true);
     setPhotoIdx(0);
     const t = setTimeout(() => setCardEnter(false), 400);
     return () => clearTimeout(t);
-  }, [state.currentProfileIndex]);
+  }, [profile?.id]);
 
   if (!profile) {
     return (
@@ -33,6 +72,16 @@ export default function Discover() {
         <Heart size={48} />
         <h2>You've seen everyone!</h2>
         <p>Check back later for new profiles or adjust your filters.</p>
+        <button className="filter-apply-btn" style={{ marginTop: 16 }} onClick={() => setShowFilter(true)}>
+          Adjust Filters
+        </button>
+        {showFilter && (
+          <FilterSheet
+            filters={filters}
+            onApply={handleApplyFilters}
+            onClose={() => setShowFilter(false)}
+          />
+        )}
       </div>
     );
   }
@@ -62,6 +111,7 @@ export default function Discover() {
 
   const handleSkip = async () => {
     try {
+      setLocalSkips((prev) => new Set(prev).add(profile.id));
       await actions.skipProfile(profile.id);
     } catch (err) {
       console.error("Skip failed:", err);
@@ -88,8 +138,18 @@ export default function Discover() {
     setLikeChoice(null);
   };
 
+  const handleBlock = () => {
+    dispatch({ type: "BLOCK_PROFILE", payload: profile.id });
+    actions.skipProfile(profile.id).catch(() => {});
+  };
+
+  const handleReport = (reason) => {
+    dispatch({ type: "BLOCK_PROFILE", payload: profile.id });
+    actions.skipProfile(profile.id).catch(() => {});
+  };
+
   const photos = profile.photos || [];
-  const prompts = (profile.prompts || []).filter(p => p.prompt && p.answer);
+  const prompts = (profile.prompts || []).filter((p) => p.prompt && p.answer);
 
   return (
     <div className="discover">
@@ -100,7 +160,7 @@ export default function Discover() {
           </span>
         </div>
       )}
-      <div className={`profile-card ${exitAnimation || ""} ${cardEnter ? "enter" : ""}`} ref={cardRef}>
+      <div className={`profile-card ${cardEnter ? "enter" : ""}`} ref={cardRef}>
         {/* Hero photo — full bleed with overlay */}
         <div className="hero-section">
           <div className="hero-photo-block">
@@ -131,12 +191,12 @@ export default function Discover() {
 
             {/* Shield + filter icons */}
             <div className="photo-overlay-icons">
-              <button className="photo-overlay-btn">
+              <button className="photo-overlay-btn" onClick={() => setShowReport(true)}>
                 <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2.5}>
                   <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                 </svg>
               </button>
-              <button className="photo-overlay-btn">
+              <button className="photo-overlay-btn" onClick={() => setShowFilter(true)}>
                 <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2}>
                   <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
                 </svg>
@@ -145,8 +205,8 @@ export default function Discover() {
 
             {/* Tap zones for photo navigation */}
             <div className="hero-tap-zones">
-              <div className="hero-tap-zone" onClick={() => setPhotoIdx(p => Math.max(0, p - 1))} />
-              <div className="hero-tap-zone" onClick={() => setPhotoIdx(p => Math.min(photos.length - 1, p + 1))} />
+              <div className="hero-tap-zone" onClick={() => setPhotoIdx((p) => Math.max(0, p - 1))} />
+              <div className="hero-tap-zone" onClick={() => setPhotoIdx((p) => Math.min(photos.length - 1, p + 1))} />
             </div>
 
             {/* Bottom gradient */}
@@ -242,7 +302,6 @@ export default function Discover() {
             </div>
           )}
         </div>
-
       </div>
 
       {likeChoice && (
@@ -295,9 +354,25 @@ export default function Discover() {
         </div>
       )}
 
+      {showFilter && (
+        <FilterSheet
+          filters={filters}
+          onApply={handleApplyFilters}
+          onClose={() => setShowFilter(false)}
+        />
+      )}
+
+      {showReport && (
+        <ReportSheet
+          profileName={profile.name}
+          onReport={handleReport}
+          onBlock={handleBlock}
+          onClose={() => setShowReport(false)}
+        />
+      )}
+
       {matchCelebration && (
         <div className="match-celebration-overlay" onClick={() => setMatchCelebration(null)}>
-          {/* Confetti */}
           <div className="match-confetti">
             {Array.from({ length: 28 }, (_, i) => {
               const colors = ["#B8912A", "#F5D878", "#E8C44A", "#ffffff", "#111111", "#D4AF37"];
@@ -319,7 +394,6 @@ export default function Discover() {
               );
             })}
           </div>
-
           <div className="match-reveal">
             <div className="match-cross">
               <AgapeCross size={22} strokeWidth={1.5} />
@@ -327,7 +401,6 @@ export default function Discover() {
             <div className="match-label">It's a Match</div>
             <h2 className="match-title shimmer-gold">You & {matchCelebration.name}</h2>
             <div className="match-subtitle">You both liked each other ✦</div>
-
             <div className="match-photos">
               <div className="pulse-ring">
                 <img
@@ -345,7 +418,6 @@ export default function Discover() {
                 />
               </div>
             </div>
-
             <button
               className="match-celebration-btn"
               onClick={(e) => {

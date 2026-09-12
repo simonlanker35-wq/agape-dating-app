@@ -13,9 +13,12 @@ const initialState = {
   matches: [],
   conversations: {},
   doves: 3,
+  blocked: [],
   filters: {
+    minAge: 18,
     maxAge: 35,
     maxDistance: 80,
+    denominations: [],
   },
   onboardingComplete: false,
   activeTab: "discover",
@@ -103,6 +106,9 @@ function reducer(state, action) {
 
     case "UPDATE_FILTERS":
       return { ...state, filters: { ...state.filters, ...action.payload } };
+
+    case "BLOCK_PROFILE":
+      return { ...state, blocked: [...state.blocked, action.payload] };
 
     case "SET_LOADING":
       return { ...state, loading: action.payload };
