@@ -7,7 +7,6 @@ const ALL_DENOMINATIONS = [
 ];
 
 export default function FilterSheet({ filters, onApply, onClose }) {
-  const [minAge, setMinAge] = useState(filters.minAge ?? 18);
   const [maxAge, setMaxAge] = useState(filters.maxAge ?? 35);
   const [maxDistance, setMaxDistance] = useState(filters.maxDistance ?? 80);
   const [denominations, setDenominations] = useState(filters.denominations || []);
@@ -19,12 +18,11 @@ export default function FilterSheet({ filters, onApply, onClose }) {
   };
 
   const handleApply = () => {
-    onApply({ minAge, maxAge, maxDistance, denominations });
+    onApply({ minAge: 18, maxAge, maxDistance, denominations });
     onClose();
   };
 
   const handleReset = () => {
-    setMinAge(18);
     setMaxAge(35);
     setMaxDistance(80);
     setDenominations([]);
@@ -42,25 +40,16 @@ export default function FilterSheet({ filters, onApply, onClose }) {
 
         <div className="filter-section">
           <div className="filter-label">
-            Age Range
-            <span className="filter-value">{minAge} – {maxAge}</span>
+            Maximum Age
+            <span className="filter-value">{maxAge}</span>
           </div>
-          <div className="filter-dual-range">
-            <input
-              type="range"
-              min={18}
-              max={60}
-              value={minAge}
-              onChange={(e) => setMinAge(Math.min(+e.target.value, maxAge - 1))}
-            />
-            <input
-              type="range"
-              min={18}
-              max={60}
-              value={maxAge}
-              onChange={(e) => setMaxAge(Math.max(+e.target.value, minAge + 1))}
-            />
-          </div>
+          <input
+            type="range"
+            min={18}
+            max={60}
+            value={maxAge}
+            onChange={(e) => setMaxAge(+e.target.value)}
+          />
         </div>
 
         <div className="filter-section">
