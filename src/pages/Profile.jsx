@@ -442,7 +442,7 @@ export default function Profile() {
       <div
         className="profile-hero-photo"
         style={{ position: "relative", height: 260, flexShrink: 0, cursor: "pointer" }}
-        onClick={() => { setEditPhotos(true); photosRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }); }}
+        onClick={() => { setEditPhotos((v) => { if (!v) setTimeout(() => photosRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 50); return !v; }); }}
       >
         <img
           src={currentUser.photos?.[0]}
@@ -675,15 +675,16 @@ export default function Profile() {
             </span>
           </div>
 
-          {/* Photos */}
+          {/* Photos — only visible after clicking hero photo */}
+          {editPhotos && (
           <div ref={photosRef} style={{ borderRadius: 16, padding: 16, background: C.card, border: `1px solid ${C.border}` }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
               <p style={{ fontSize: 10, fontWeight: 600, color: C.primary, textTransform: "uppercase", letterSpacing: "0.1em" }}>My Photos</p>
               <button
-                onClick={() => setEditPhotos(!editPhotos)}
-                style={{ fontSize: 12, fontWeight: 600, color: editPhotos ? "#EF4444" : C.primary, background: "none", border: "none", cursor: "pointer" }}
+                onClick={() => setEditPhotos(false)}
+                style={{ fontSize: 12, fontWeight: 600, color: "#EF4444", background: "none", border: "none", cursor: "pointer" }}
               >
-                {editPhotos ? "Done" : "Edit"}
+                Done
               </button>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
@@ -747,6 +748,7 @@ export default function Profile() {
             </div>
             <input ref={fileInputRef} type="file" accept="image/*" onChange={handleAddPhoto} style={{ display: "none" }} />
           </div>
+          )}
 
           {/* Prompts */}
           {(editMode ? editPrompts : prompts).map((p, i) => (
