@@ -623,9 +623,17 @@ export default function Profile() {
   const [editPhotos, setEditPhotos] = useState(false);
   const [editingPromptIdx, setEditingPromptIdx] = useState(null);
   const [editingPromptData, setEditingPromptData] = useState(null);
+  const [cropSrc, setCropSrc] = useState(null);
+  const [cropOffset, setCropOffset] = useState({ x: 0, y: 0 });
+  const [cropScale, setCropScale] = useState(1);
+  const [cropDragging, setCropDragging] = useState(false);
+  const [cropStart, setCropStart] = useState({ x: 0, y: 0 });
+  const [cropImgSize, setCropImgSize] = useState({ w: 0, h: 0 });
+  const [cropIdx, setCropIdx] = useState(null);
   const fileInputRef = useRef(null);
   const photosRef = useRef(null);
   const answerRef = useRef(null);
+  const cropCanvasRef = useRef(null);
 
   if (!currentUser) return null;
 
@@ -705,30 +713,75 @@ export default function Profile() {
 
   const photos = currentUser.photos || [];
 
+  const openCropper = (src, idx = null) => {
+    setCropSrc(src);
+    setCropIdx(idx);
+    setCropOffset({ x: 0, y: 0 });
+    setCropScale(1);
+  };
+
   const handleAddPhoto = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setUploading(true);
-    try {
-      const dataUrl = await compressPhoto(file);
-      await actions.updateProfile({ photos: [...photos, dataUrl] });
-    } catch (err) {
-      console.error("Upload failed:", err);
-    }
-    setUploading(false);
+    const reader = new FileReader();
+    reader.onload = () => openCropper(reader.result, null);
+    reader.readAsDataURL(file);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
+
+  const saveCrop = async () => {
+    const canvas = document.createElement("canvas");
+    const size = 800;
+    canvas.width = size;
+    canvas.height = Math.round(size * (4 / 3));
+    const ctx = canvas.getContext("2d");
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    await new Promise((resolve, reject) => { img.onload = resolve; img.onerror = reject; img.src = cropSrc; });
+    const scale = cropScale;
+    const drawW = img.width * scale;
+    const drawH = img.height * scale;
+    const dx = (canvas.width - drawW) / 2 + cropOffset.x * scale;
+    const dy = (canvas.height - drawH) / 2 + cropOffset.y * scale;
+    ctx.drawImage(img, dx, dy, drawW, drawH);
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.75);
+    setUploading(true);
+    try {
+      if (cropIdx !== null) {
+        const updated = [...photos];
+        updated[cropIdx] = dataUrl;
+        await actions.updateProfile({ photos: updated });
+      } else {
+        await actions.updateProfile({ photos: [...photos, dataUrl] });
+      }
+    } catch (err) {
+      console.error("Save failed:", err);
+    }
+    setUploading(false);
+    setCropSrc(null);
+    setCropIdx(null);
+  };
+
+  const handleCropPointerDown = (e) => {
+    setCropDragging(true);
+    setCropStart({ x: e.clientX - cropOffset.x, y: e.clientY - cropOffset.y });
+  };
+  const handleCropPointerMove = (e) => {
+    if (!cropDragging) return;
+    setCropOffset({ x: e.clientX - cropStart.x, y: e.clientY - cropStart.y });
+  };
+  const handleCropPointerUp = () => setCropDragging(false);
 
   const handleRemovePhoto = async (idx) => {
     const updated = photos.filter((_, i) => i !== idx);
     await actions.updateProfile({ photos: updated });
   };
 
-  const handleSetMain = async (idx) => {
-    if (idx === 0) return;
+  const handleMovePhoto = async (idx, dir) => {
+    const newIdx = idx + dir;
+    if (newIdx < 0 || newIdx >= photos.length) return;
     const updated = [...photos];
-    const [moved] = updated.splice(idx, 1);
-    updated.unshift(moved);
+    [updated[idx], updated[newIdx]] = [updated[newIdx], updated[idx]];
     await actions.updateProfile({ photos: updated });
   };
 
@@ -992,21 +1045,30 @@ export default function Profile() {
                   )}
                   {editPhotos && (
                     <>
-                      {i !== 0 && (
-                        <button
-                          onClick={() => handleSetMain(i)}
-                          style={{ position: "absolute", bottom: 4, left: 4, width: 24, height: 24, borderRadius: "50%", background: "rgba(0,0,0,0.6)", color: "white", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10 }}
-                          title="Set as main"
-                        >
-                          <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2.5}><path d="M12 19V5M5 12l7-7 7 7" /></svg>
-                        </button>
-                      )}
+                      <button
+                        onClick={() => openCropper(url, i)}
+                        style={{ position: "absolute", bottom: 4, left: "50%", transform: "translateX(-50%)", padding: "3px 8px", borderRadius: 6, background: "rgba(0,0,0,0.6)", color: "white", border: "none", cursor: "pointer", fontSize: 9, fontWeight: 600 }}
+                      >
+                        Crop
+                      </button>
+                      <div style={{ position: "absolute", bottom: 4, left: 4, display: "flex", gap: 2 }}>
+                        {i > 0 && (
+                          <button onClick={() => handleMovePhoto(i, -1)} style={{ width: 22, height: 22, borderRadius: "50%", background: "rgba(0,0,0,0.6)", color: "white", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            <svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={3}><path d="M15 18l-6-6 6-6" /></svg>
+                          </button>
+                        )}
+                        {i < photos.length - 1 && (
+                          <button onClick={() => handleMovePhoto(i, 1)} style={{ width: 22, height: 22, borderRadius: "50%", background: "rgba(0,0,0,0.6)", color: "white", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                            <svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={3}><path d="M9 18l6-6-6-6" /></svg>
+                          </button>
+                        )}
+                      </div>
                       {photos.length > 1 && (
                         <button
                           onClick={() => handleRemovePhoto(i)}
-                          style={{ position: "absolute", top: 4, right: 4, width: 24, height: 24, borderRadius: "50%", background: "rgba(239,68,68,0.9)", color: "white", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                          style={{ position: "absolute", top: 4, right: 4, width: 22, height: 22, borderRadius: "50%", background: "rgba(239,68,68,0.9)", color: "white", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
                         >
-                          <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={3}><path d="M18 6L6 18M6 6l12 12" /></svg>
+                          <svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={3}><path d="M18 6L6 18M6 6l12 12" /></svg>
                         </button>
                       )}
                     </>
@@ -1295,6 +1357,60 @@ export default function Profile() {
           </button>
         </div>
       </div>
+
+      {/* Photo crop modal */}
+      {cropSrc && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.9)", zIndex: 9999, display: "flex", flexDirection: "column" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px" }}>
+            <button onClick={() => { setCropSrc(null); setCropIdx(null); }} style={{ fontSize: 14, fontWeight: 600, color: "white", background: "none", border: "none", cursor: "pointer" }}>Cancel</button>
+            <p style={{ fontSize: 14, fontWeight: 700, color: "white" }}>Crop Photo</p>
+            <button onClick={saveCrop} disabled={uploading} style={{ fontSize: 14, fontWeight: 700, color: uploading ? "#666" : "#4ADE80", background: "none", border: "none", cursor: "pointer" }}>{uploading ? "Saving..." : "Save"}</button>
+          </div>
+          <div
+            style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", touchAction: "none" }}
+            onPointerDown={handleCropPointerDown}
+            onPointerMove={handleCropPointerMove}
+            onPointerUp={handleCropPointerUp}
+            onPointerLeave={handleCropPointerUp}
+          >
+            <div style={{ position: "relative", width: "80vw", maxWidth: 350, aspectRatio: "3/4", overflow: "hidden", borderRadius: 16, border: "2px solid rgba(255,255,255,0.3)" }}>
+              <img
+                src={cropSrc}
+                alt="Crop"
+                draggable={false}
+                onLoad={(e) => setCropImgSize({ w: e.target.naturalWidth, h: e.target.naturalHeight })}
+                style={{
+                  position: "absolute",
+                  left: "50%",
+                  top: "50%",
+                  transform: `translate(calc(-50% + ${cropOffset.x}px), calc(-50% + ${cropOffset.y}px)) scale(${cropScale})`,
+                  maxWidth: "none",
+                  maxHeight: "none",
+                  width: "100%",
+                  minHeight: "100%",
+                  objectFit: "cover",
+                  pointerEvents: "none",
+                  userSelect: "none",
+                }}
+              />
+            </div>
+          </div>
+          <div style={{ padding: "12px 32px 24px", display: "flex", alignItems: "center", gap: 12 }}>
+            <span style={{ fontSize: 11, color: "rgba(255,255,255,0.6)" }}>−</span>
+            <input
+              type="range"
+              min={0.5}
+              max={3}
+              step={0.05}
+              value={cropScale}
+              onChange={(e) => setCropScale(parseFloat(e.target.value))}
+              style={{ flex: 1 }}
+            />
+            <span style={{ fontSize: 11, color: "rgba(255,255,255,0.6)" }}>+</span>
+          </div>
+          <p style={{ textAlign: "center", fontSize: 12, color: "rgba(255,255,255,0.5)", paddingBottom: 16 }}>Drag to move · Slide to zoom</p>
+        </div>
+      )}
 
       {/* Prompt editor bottom sheet */}
       {editingPromptIdx !== null && editingPromptData && (
