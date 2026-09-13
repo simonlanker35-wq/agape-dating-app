@@ -112,6 +112,7 @@ function SettingsScreen({ onBack, initialSection = null }) {
   const [editValue, setEditValue] = useState("");
   const [saving, setSaving] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [editLocationData, setEditLocationData] = useState(null);
   const [distanceVal, setDistanceVal] = useState(currentUser?.filters?.maxDistance || 80);
 
   const saveField = async () => {
@@ -403,14 +404,25 @@ function SettingsScreen({ onBack, initialSection = null }) {
                   <div style={{ borderRadius: 16, padding: 16, background: C.card, marginTop: 8 }}>
                     <LocationPicker
                       value={editValue}
-                      onChange={(text) => setEditValue(text)}
-                      onSelect={(item) => setEditValue(item.display)}
+                      onChange={(text) => { setEditValue(text); setEditLocationData(null); }}
+                      onSelect={(item) => { setEditValue(item.display); setEditLocationData(item); }}
                       placeholder="Search city..."
                       inputStyle={{ width: "100%", padding: "12px 14px", fontSize: 16, fontWeight: 600, fontFamily: FONT, borderRadius: 12, border: `1.5px solid ${C.border}`, background: C.surface, outline: "none", color: C.text }}
                     />
                     <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-                      <button onClick={() => { setEditField(null); setEditValue(""); }} style={{ flex: 1, padding: "10px 0", borderRadius: 12, fontSize: 14, fontWeight: 600, background: C.surface, color: C.sub, border: "none", cursor: "pointer" }}>Cancel</button>
-                      <button onClick={async () => { setSaving(true); await actions.updateProfile({ location: editValue }); setEditField(null); setEditValue(""); setSaving(false); }} disabled={saving} style={{ flex: 1, padding: "10px 0", borderRadius: 12, fontSize: 14, fontWeight: 600, background: C.primary, color: "white", border: "none", cursor: "pointer", opacity: saving ? 0.5 : 1 }}>{saving ? "Saving..." : "Save"}</button>
+                      <button onClick={() => { setEditField(null); setEditValue(""); setEditLocationData(null); }} style={{ flex: 1, padding: "10px 0", borderRadius: 12, fontSize: 14, fontWeight: 600, background: C.surface, color: C.sub, border: "none", cursor: "pointer" }}>Cancel</button>
+                      <button onClick={async () => {
+                        setSaving(true);
+                        const locUpdate = { location: editValue };
+                        if (editLocationData) {
+                          locUpdate.locationLat = editLocationData.lat;
+                          locUpdate.locationLng = editLocationData.lng;
+                          dispatch({ type: "SET_USER_LOCATION", payload: { lat: editLocationData.lat, lng: editLocationData.lng, city: editValue } });
+                        }
+                        await actions.updateProfile(locUpdate);
+                        actions.refreshDiscover();
+                        setEditField(null); setEditValue(""); setEditLocationData(null); setSaving(false);
+                      }} disabled={saving} style={{ flex: 1, padding: "10px 0", borderRadius: 12, fontSize: 14, fontWeight: 600, background: C.primary, color: "white", border: "none", cursor: "pointer", opacity: saving ? 0.5 : 1 }}>{saving ? "Saving..." : "Save"}</button>
                     </div>
                   </div>
                 )}

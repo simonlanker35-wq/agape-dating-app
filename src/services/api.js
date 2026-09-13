@@ -116,6 +116,8 @@ export async function updateProfile(data) {
   if (data.job !== undefined) updates.job = data.job;
   if (data.school !== undefined) updates.school = data.school;
   if (data.location !== undefined) updates.location_city = data.location;
+  if (data.locationLat !== undefined) updates.location_lat = data.locationLat;
+  if (data.locationLng !== undefined) updates.location_lng = data.locationLng;
   if (data.prompts !== undefined) updates.prompts = data.prompts;
   if (data.interests !== undefined) updates.interests = data.interests;
   if (data.traits !== undefined) updates.traits = data.traits;
@@ -137,6 +139,14 @@ export async function updateProfile(data) {
 
 // ─── DISCOVER ───
 
+function haversineKm(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 export async function getDiscover() {
   const { data: { user } } = await supabase.auth.getUser();
   const { data: me } = await supabase.from("profiles").select("*").eq("id", user.id).single();
@@ -144,6 +154,9 @@ export async function getDiscover() {
   const targetGender = me.gender === "male" ? "female" : "male";
   const minAge = me.filters?.minAge || 18;
   const maxAge = me.filters?.maxAge || 50;
+  const maxDistance = me.filters?.maxDistance || 80;
+  const myLat = me.location_lat;
+  const myLng = me.location_lng;
 
   const { data: likedIds } = await supabase.from("likes").select("to_user").eq("from_user", user.id);
   const { data: skippedIds } = await supabase.from("skips").select("to_user").eq("from_user", user.id);
@@ -161,7 +174,7 @@ export async function getDiscover() {
     .eq("is_active", true)
     .gte("age", minAge)
     .lte("age", maxAge)
-    .limit(20);
+    .limit(100);
 
   if (excludeIds.length > 0) {
     query = query.not("id", "in", `(${excludeIds.join(",")})`);
@@ -170,7 +183,15 @@ export async function getDiscover() {
   const { data: profiles, error } = await query;
   if (error) throw new Error(error.message);
 
-  return (profiles || []).map(mapProfile);
+  let filtered = (profiles || []).map(mapProfile);
+  if (myLat && myLng) {
+    filtered = filtered.filter((p) => {
+      if (!p.lat || !p.lng) return true;
+      return haversineKm(myLat, myLng, p.lat, p.lng) <= maxDistance;
+    });
+  }
+
+  return filtered;
 }
 
 // ─── LIKES ───

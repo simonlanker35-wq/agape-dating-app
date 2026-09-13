@@ -57,8 +57,10 @@ export default function Discover() {
 
   const profile = filteredProfiles[0];
 
-  const handleApplyFilters = (newFilters) => {
+  const handleApplyFilters = async (newFilters) => {
     dispatch({ type: "UPDATE_FILTERS", payload: newFilters });
+    await actions.updateProfile({ filters: { ...state.currentUser?.filters, ...newFilters } });
+    actions.refreshDiscover();
   };
 
   useEffect(() => {

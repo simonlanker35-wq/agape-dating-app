@@ -25,15 +25,33 @@ const interests = [
   "Gardening", "Dogs", "Cats",
 ];
 
-const prompts = [
-  { q: "My idea of a perfect Sunday", answers: ["Church in the morning, brunch with friends, and a long walk", "Sleeping in, then heading to a cozy café with my Bible", "Worship service, beach walk, cooking a big dinner"] },
-  { q: "I'm looking for someone who", answers: ["Shares my faith and loves a good adventure", "Can make me laugh and isn't afraid to be vulnerable", "Loves Jesus and also loves tacos"] },
-  { q: "A verse that guides me", answers: ["Love is patient, love is kind - 1 Cor 13:4", "For I know the plans I have for you - Jeremiah 29:11", "Be strong and courageous - Joshua 1:9"] },
-  { q: "I could stay up all night talking about", answers: ["The best albums of all time, no skips", "Theology and why pineapple belongs on pizza", "Travel stories and bucket list adventures"] },
-  { q: "I go crazy for", answers: ["Homemade pasta and a good sunset", "Live worship music and rainy days with coffee", "A perfectly planned road trip"] },
-  { q: "Green flags I look for", answers: ["You have a genuine faith, not just Sunday mornings", "You remember the little things", "You can be silly and serious in the same conversation"] },
-  { q: "A non-negotiable in my faith life", answers: ["Weekly worship — it recharges everything", "Praying together, not just alone", "Serving the community side by side"] },
-];
+const promptCategories = {
+  Faith: [
+    { q: "My faith means to me", answers: ["Everything — it's the foundation of who I am", "A compass that guides every decision I make", "The reason I have hope even on the hard days"] },
+    { q: "A Bible verse I live by", answers: ["Love is patient, love is kind - 1 Cor 13:4", "For I know the plans I have for you - Jeremiah 29:11", "Be strong and courageous - Joshua 1:9"] },
+    { q: "How I live out my faith", answers: ["Through serving others and staying in community", "Daily prayer and trying to love like Jesus did", "Small acts of kindness every single day"] },
+    { q: "I feel closest to God when", answers: ["I'm in nature, surrounded by His creation", "I'm worshipping with my church family", "I'm praying quietly in the early morning"] },
+    { q: "What worship looks like for me", answers: ["Singing loudly, hands up, full heart", "Quiet reflection with a candle and my Bible", "Being in community and serving together"] },
+    { q: "How my faith shapes my relationships", answers: ["It teaches me patience, grace, and forgiveness", "I lead with love and seek someone who does the same", "It's the foundation — everything else is built on it"] },
+  ],
+  Future: [
+    { q: "In 5 years I see myself", answers: ["Married, travelling, and deeply rooted in community", "Building a home full of love, laughter, and faith", "Growing in my career while serving my church"] },
+    { q: "A life goal of mine", answers: ["Start a family rooted in faith and adventure", "Visit every continent and serve in each one", "Build something that outlasts me"] },
+    { q: "The kind of family I dream of", answers: ["Loud dinners, Sunday church, lots of love", "One where faith and fun go hand in hand", "A home that's always open to others"] },
+    { q: "Together, we could", answers: ["Build a life full of adventure and purpose", "Travel the world and grow closer to God", "Start traditions that last generations"] },
+    { q: "The adventure I want to go on next", answers: ["Backpacking through the Swiss Alps", "A road trip with no set destination", "A mission trip to somewhere I've never been"] },
+    { q: "The legacy I want to leave", answers: ["That I loved well and lived with purpose", "A family that knows God and serves others", "Kindness wherever I went"] },
+  ],
+  "About Me": [
+    { q: "In my friend group, I'm the one who", answers: ["Plans everything and shows up early", "Makes everyone laugh at the worst times", "Remembers everyone's birthday and sends voice notes"] },
+    { q: "I'm in my element when", answers: ["I'm hiking with a podcast and a coffee", "I'm cooking for people I love", "I'm exploring a new city with no plan"] },
+    { q: "Dating me is like", answers: ["A cozy Sunday with a surprise adventure thrown in", "Finding someone who actually listens and remembers", "Good coffee, deep talks, and a lot of laughter"] },
+    { q: "Typical Sunday", answers: ["Church in the morning, brunch with friends, long walk", "Sleeping in, cozy café, open Bible", "Worship, beach walk, cooking a big dinner"] },
+    { q: "I go crazy for", answers: ["Homemade pasta and a good sunset", "Live worship music and rainy days with coffee", "A perfectly planned road trip"] },
+    { q: "I could stay up all night talking about", answers: ["The best albums of all time, no skips", "Theology and why pineapple belongs on pizza", "Travel stories and bucket list adventures"] },
+  ],
+};
+const allPrompts = Object.values(promptCategories).flat();
 
 const femaleNames = ["Sophia", "Lena", "Mia", "Emma", "Anna", "Laura", "Sarah", "Nina", "Lisa", "Julia", "Marie", "Lea", "Nora", "Clara", "Hannah", "Alina", "Amelie", "Chloe", "Elena", "Lara"];
 const maleNames = ["Noah", "Liam", "Elias", "Ben", "Finn", "Jonas", "Leon", "Luca", "Paul", "David", "Felix", "Luis", "Tim", "Max", "Jan", "Tom", "Samuel", "Julian", "Rafael", "Lukas", "Simon"];
@@ -124,9 +142,9 @@ async function seed() {
       "https://i.pravatar.cc/800?u=simon_c",
     ],
     prompts: [
-      { prompt: "My idea of a perfect Sunday", answer: "Church in the morning, brunch with friends, and a long walk" },
-      { prompt: "I'm looking for someone who", answer: "Shares my faith and loves a good adventure" },
-      { prompt: "A verse that guides me", answer: "Love is patient, love is kind - 1 Cor 13:4" },
+      { prompt: "A Bible verse I live by", answer: "Love is patient, love is kind - 1 Cor 13:4" },
+      { prompt: "In 5 years I see myself", answer: "Married, travelling, and deeply rooted in community" },
+      { prompt: "Typical Sunday", answer: "Church in the morning, brunch with friends, then a long walk by the lake" },
     ],
     interests: ["Hiking", "Coffee", "Photography", "Travel"],
     is_standout: false,
@@ -149,10 +167,10 @@ async function seed() {
     });
     if (authErr) { console.error(`Failed user ${i}:`, authErr.message); continue; }
 
-    const userPrompts = pickN(prompts, 3).map((p) => ({
-      prompt: p.q,
-      answer: p.answers[Math.floor(Math.random() * p.answers.length)],
-    }));
+    const userPrompts = Object.values(promptCategories).map((catPrompts) => {
+      const p = catPrompts[Math.floor(Math.random() * catPrompts.length)];
+      return { prompt: p.q, answer: p.answers[Math.floor(Math.random() * p.answers.length)] };
+    });
 
     const profile = {
       id: authUser.user.id,
@@ -211,9 +229,9 @@ async function seed() {
         "https://i.pravatar.cc/800?u=bg_test_b",
       ],
       prompts: [
-        { prompt: "My idea of a perfect Sunday", answer: "Liturgy at Alexander Nevsky, then a walk through Borisova Gradina" },
-        { prompt: "I'm looking for someone who", answer: "Loves God and can appreciate a good banitsa" },
-        { prompt: "A verse that guides me", answer: "Be strong and courageous - Joshua 1:9" },
+        { prompt: "I feel closest to God when", answer: "I'm at liturgy in Alexander Nevsky, surrounded by icons and incense" },
+        { prompt: "Together, we could", answer: "Explore the mountains, share banitsa, and grow in faith together" },
+        { prompt: "Typical Sunday", answer: "Liturgy at Alexander Nevsky, then a walk through Borisova Gradina" },
       ],
       interests: ["Hiking", "Coffee", "Travel", "Photography"],
       is_standout: false,
@@ -236,10 +254,10 @@ async function seed() {
     });
     if (authErr) { console.error(`Failed BG user ${i}:`, authErr.message); continue; }
 
-    const userPrompts = pickN(prompts, 3).map((p) => ({
-      prompt: p.q,
-      answer: p.answers[Math.floor(Math.random() * p.answers.length)],
-    }));
+    const userPrompts = Object.values(promptCategories).map((catPrompts) => {
+      const p = catPrompts[Math.floor(Math.random() * catPrompts.length)];
+      return { prompt: p.q, answer: p.answers[Math.floor(Math.random() * p.answers.length)] };
+    });
 
     const profile = {
       id: authUser.user.id,
