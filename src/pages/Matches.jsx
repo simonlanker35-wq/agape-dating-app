@@ -3,6 +3,8 @@ import { useApp } from "../context/AppContext";
 import * as api from "../services/api";
 import AgapeCross from "../components/AgapeCross";
 import LocationPicker from "../components/LocationPicker";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 
 const C = { bg: "#FFFFFF", card: "#FAFAF8", surface: "#F4F2EE", primary: "#B8912A", primarySoft: "#FBF5E6", text: "#1A1612", sub: "#8C857C", border: "#E8E4DF", sent: "#111111" };
 const FONT = "'Outfit', system-ui, sans-serif";
@@ -55,6 +57,53 @@ function BackIcon() {
       <polyline points="15 18 9 12 15 6" />
     </svg>
   );
+}
+
+function MiniMap({ center, onPick }) {
+  const mapRef = useRef(null);
+  const mapInst = useRef(null);
+  const markerRef = useRef(null);
+
+  useEffect(() => {
+    if (!mapRef.current || mapInst.current) return;
+    const map = L.map(mapRef.current, { zoomControl: false }).setView([center.lat, center.lng], 14);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "&copy; OSM",
+    }).addTo(map);
+    L.control.zoom({ position: "bottomright" }).addTo(map);
+
+    const marker = L.circleMarker([center.lat, center.lng], {
+      radius: 10, fillColor: "#B8912A", fillOpacity: 1, color: "white", weight: 3,
+    }).addTo(map);
+
+    map.on("click", async (e) => {
+      const { lat, lng } = e.latlng;
+      marker.setLatLng([lat, lng]);
+      try {
+        const resp = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=18&accept-language=en`);
+        const data = await resp.json();
+        const a = data.address || {};
+        const name = [a.amenity || a.building || a.road || "", a.city || a.town || a.village || ""].filter(Boolean).join(", ") || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+        onPick({ lat, lng, name });
+      } catch {
+        onPick({ lat, lng, name: `${lat.toFixed(4)}, ${lng.toFixed(4)}` });
+      }
+    });
+
+    mapInst.current = map;
+    markerRef.current = marker;
+    setTimeout(() => map.invalidateSize(), 100);
+    return () => { map.remove(); mapInst.current = null; };
+  }, []);
+
+  useEffect(() => {
+    if (mapInst.current) {
+      mapInst.current.setView([center.lat, center.lng], 14);
+      markerRef.current?.setLatLng([center.lat, center.lng]);
+    }
+  }, [center.lat, center.lng]);
+
+  return <div ref={mapRef} style={{ width: "100%", height: "100%" }} />;
 }
 
 function DateBuilder({ profileName, userLocation, onSend, onClose }) {
@@ -152,16 +201,16 @@ function DateBuilder({ profileName, userLocation, onSend, onClose }) {
                 boxSizing: "border-box",
               }}
             />
-            <div style={{ marginTop: 12, borderRadius: 14, overflow: "hidden", border: `1.5px solid ${C.border}`, height: 180 }}>
-              <iframe
-                title="Map"
-                width="100%"
-                height="100%"
-                frameBorder="0"
-                style={{ border: 0 }}
-                src={`https://www.openstreetmap.org/export/embed.html?bbox=${mapCenter.lng - 0.03},${mapCenter.lat - 0.02},${mapCenter.lng + 0.03},${mapCenter.lat + 0.02}&layer=mapnik&marker=${mapCenter.lat},${mapCenter.lng}`}
+            <div style={{ marginTop: 12, borderRadius: 14, overflow: "hidden", border: `1.5px solid ${C.border}`, height: 200 }}>
+              <MiniMap
+                center={mapCenter}
+                onPick={(spot) => {
+                  setLocation(spot.name);
+                  setMapCenter({ lat: spot.lat, lng: spot.lng });
+                }}
               />
             </div>
+            <p style={{ fontSize: 11, color: C.sub, marginTop: 6, textAlign: "center" }}>Tap the map to pick a spot</p>
           </>
         )}
 
@@ -485,12 +534,29 @@ function ChatThread({ match, onBack }) {
 
   const messages = conversation?.messages || [];
 
+  const [nudgeSent, setNudgeSent] = useState(!!match.nudgeAt);
+  const [nudgeSending, setNudgeSending] = useState(false);
+
   const firstMessageTime = messages.length > 0 ? messages[0].timestamp : null;
   const THREE_DAYS = 3 * 24 * 60 * 60 * 1000;
-  const deadlineMs = firstMessageTime ? firstMessageTime + THREE_DAYS : null;
+  const NUDGE_BONUS = 36 * 60 * 60 * 1000;
+  const baseDeadline = firstMessageTime ? firstMessageTime + THREE_DAYS : null;
+  const deadlineMs = baseDeadline ? baseDeadline + (nudgeSent || match.nudgeAt ? NUDGE_BONUS : 0) : null;
   const timeLeftMs = deadlineMs ? deadlineMs - Date.now() : null;
   const hasConfirmedDate = dateInvitations.some((inv) => inv.status === "confirmed");
+  const hasPendingDate = dateInvitations.some((inv) => inv.status === "pending" || inv.status === "responded");
   const chatLocked = timeLeftMs !== null && timeLeftMs <= 0 && !hasConfirmedDate;
+
+  const handleNudge = async () => {
+    setNudgeSending(true);
+    try {
+      await api.sendNudge(match.id);
+      setNudgeSent(true);
+    } catch (err) {
+      console.error("Nudge failed:", err);
+    }
+    setNudgeSending(false);
+  };
 
   const timeline = useMemo(() => {
     const items = [];
@@ -582,7 +648,7 @@ function ChatThread({ match, onBack }) {
             <span style={{ fontSize: 14 }}>⏰</span>
             <p style={{ fontSize: 12, fontWeight: 600, color: timeLeftMs < 86400000 ? "#EF4444" : C.sub, margin: 0 }}>
               {isMale
-                ? `${formatTimeLeft(timeLeftMs)} left to set a date`
+                ? `${formatTimeLeft(timeLeftMs)} left to set a date${nudgeSent || match.nudgeAt ? " — she wants to go out!" : ""}`
                 : `${formatTimeLeft(timeLeftMs)} left — waiting for him to plan a date`
               }
             </p>
@@ -670,26 +736,67 @@ function ChatThread({ match, onBack }) {
           </div>
         ) : (
           <>
-            {/* Quick replies */}
-            <div style={{ display: "flex", gap: 8, marginBottom: 12, overflowX: "auto" }}>
-              {["Amen to that 🙏", "Tell me more!", "That's beautiful ✨", "Same here!"].map((q) => (
-                <button key={q} onClick={() => setText(q)} style={{ flexShrink: 0, fontSize: 12, fontWeight: 600, padding: "6px 12px", borderRadius: 9999, whiteSpace: "nowrap", background: C.primarySoft, color: C.primary, border: "none", cursor: "pointer" }}>{q}</button>
-              ))}
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 12, borderRadius: 16, padding: "12px 16px", background: C.surface }}>
-              {/* Date button — men only */}
-              {isMale && (
-                <button onClick={() => setShowDateBuilder(true)} style={{ flexShrink: 0, width: 36, height: 36, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: C.primarySoft, border: `1.5px solid ${C.primary}`, cursor: "pointer" }}>
-                  <span style={{ fontSize: 16 }}>📅</span>
-                </button>
-              )}
-              {/* Mic button */}
-              <button style={{ flexShrink: 0, color: C.sub, background: "none", border: "none", cursor: "pointer" }}>
-                <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
-                  <path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8" />
-                </svg>
+            {/* Date invite button — men only, above input */}
+            {isMale && !hasConfirmedDate && (
+              <button
+                onClick={() => setShowDateBuilder(true)}
+                style={{
+                  width: "100%",
+                  padding: "14px 0",
+                  marginBottom: 10,
+                  borderRadius: 14,
+                  fontSize: 15,
+                  fontWeight: 700,
+                  fontFamily: FONT,
+                  background: C.primary,
+                  color: "white",
+                  border: "none",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
+                }}
+              >
+                <span style={{ fontSize: 18 }}>📅</span>
+                Plan a Date
               </button>
+            )}
+            {/* Nudge button — women only, when no date yet and nudge not sent */}
+            {!isMale && !hasConfirmedDate && !hasPendingDate && !nudgeSent && firstMessageTime && (
+              <button
+                onClick={handleNudge}
+                disabled={nudgeSending}
+                style={{
+                  width: "100%",
+                  padding: "12px 0",
+                  marginBottom: 10,
+                  borderRadius: 14,
+                  fontSize: 14,
+                  fontWeight: 700,
+                  fontFamily: FONT,
+                  background: C.primarySoft,
+                  color: C.primary,
+                  border: `1.5px solid ${C.primary}`,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
+                }}
+              >
+                <span style={{ fontSize: 16 }}>💛</span>
+                {nudgeSending ? "Sending..." : "I'd love to go on a date!"}
+              </button>
+            )}
+            {!isMale && nudgeSent && !hasConfirmedDate && !hasPendingDate && (
+              <div style={{ textAlign: "center", padding: "8px 0", marginBottom: 8 }}>
+                <p style={{ fontSize: 12, color: C.primary, fontWeight: 600, fontFamily: FONT, margin: 0 }}>
+                  💛 You let him know — he has extra time to plan a date
+                </p>
+              </div>
+            )}
+            <div style={{ display: "flex", alignItems: "center", gap: 12, borderRadius: 16, padding: "12px 16px", background: C.surface }}>
               <input
                 style={{ flex: 1, fontSize: 14, background: "transparent", outline: "none", border: "none", color: C.text, fontFamily: FONT }}
                 placeholder={`Message ${profile.name}...`}

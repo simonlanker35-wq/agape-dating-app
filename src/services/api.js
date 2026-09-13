@@ -329,6 +329,7 @@ export async function getMatches() {
       profile: otherProfile ? mapProfile(otherProfile) : null,
       timestamp: new Date(m.last_activity || m.created_at).getTime(),
       lastMessage: lastMsg ? { text: lastMsg.text, sender: lastMsg.sender } : null,
+      nudgeAt: m.nudge_at ? new Date(m.nudge_at).getTime() : null,
     });
   }
 
@@ -424,6 +425,17 @@ export async function confirmDate(invitationId, confirmedTime) {
     .from("date_invitations")
     .update({ confirmed_time: confirmedTime, status: "confirmed" })
     .eq("id", invitationId)
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function sendNudge(matchId) {
+  const { data, error } = await supabase
+    .from("matches")
+    .update({ nudge_at: new Date().toISOString() })
+    .eq("id", matchId)
     .select()
     .single();
   if (error) throw new Error(error.message);
