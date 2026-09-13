@@ -34,8 +34,12 @@ export default function Standouts() {
   const userLng = state.currentUser?.location?.lng;
   const filters = state.filters;
 
-  const standoutProfiles = useMemo(() => {
-    return state.profiles.filter((p) => {
+  const now = new Date();
+  const isWednesday = now.getDay() === 3;
+  const weekKey = `${now.getFullYear()}-W${Math.ceil(((now - new Date(now.getFullYear(),0,1)) / 86400000 + new Date(now.getFullYear(),0,1).getDay() + 1) / 7)}`;
+
+  const weeklyPick = useMemo(() => {
+    const eligible = state.profiles.filter((p) => {
       if (!p.isStandout) return false;
       if (state.likes.some((l) => l.profileId === p.id)) return false;
       if (localLikes.has(p.id)) return false;
@@ -49,15 +53,13 @@ export default function Standouts() {
       }
       return true;
     });
-  }, [state.profiles, state.likes, state.blocked, localLikes, filters, userLat, userLng]);
+    if (eligible.length === 0) return null;
+    let hash = 0;
+    for (let i = 0; i < weekKey.length; i++) hash = ((hash << 5) - hash + weekKey.charCodeAt(i)) | 0;
+    return eligible[Math.abs(hash) % eligible.length];
+  }, [state.profiles, state.likes, state.blocked, localLikes, filters, userLat, userLng, weekKey]);
 
-  const profile = standoutProfiles[idx];
-
-  useEffect(() => {
-    if (idx >= standoutProfiles.length && standoutProfiles.length > 0) {
-      setIdx(0);
-    }
-  }, [standoutProfiles.length, idx]);
+  const profile = isWednesday ? weeklyPick : null;
 
   useEffect(() => {
     setCardEnter(true);
@@ -66,12 +68,15 @@ export default function Standouts() {
     return () => clearTimeout(t);
   }, [idx]);
 
-  if (!profile || standoutProfiles.length === 0) {
+  if (!profile) {
+    const nextWed = new Date(now);
+    nextWed.setDate(now.getDate() + ((3 - now.getDay() + 7) % 7 || 7));
+    const dayName = nextWed.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
     return (
       <div className="discover-empty">
         <span style={{ fontSize: 48 }}>⭐</span>
-        <h2>No standouts right now</h2>
-        <p>Check back later for top picks.</p>
+        <h2>Your next pick arrives Wednesday</h2>
+        <p>Every Wednesday you get 1 handpicked profile chosen just for you. Come back {dayName}.</p>
       </div>
     );
   }
@@ -103,7 +108,7 @@ export default function Standouts() {
     setLikeChoice(null);
     setCommentTarget(null);
     setCommentText("");
-    setIdx((i) => (i + 1) % standoutProfiles.length);
+    actions.skipProfile(profile.id).catch(() => {});
   };
 
   const handleBlock = () => {
