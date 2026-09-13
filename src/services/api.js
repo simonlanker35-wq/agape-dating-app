@@ -377,6 +377,59 @@ export async function unmatch(matchId) {
   await supabase.from("matches").delete().eq("id", matchId);
 }
 
+// ─── DATE INVITATIONS ───
+
+export async function createDateInvitation(matchId, data) {
+  const { data: { user } } = await supabase.auth.getUser();
+  const { data: invitation, error } = await supabase
+    .from("date_invitations")
+    .insert({
+      match_id: matchId,
+      from_user: user.id,
+      date_type: data.dateType,
+      location: data.location,
+      wardrobe: data.wardrobe,
+      proposed_times: data.proposedTimes,
+      status: "pending",
+    })
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  return invitation;
+}
+
+export async function getDateInvitations(matchId) {
+  const { data, error } = await supabase
+    .from("date_invitations")
+    .select("*")
+    .eq("match_id", matchId)
+    .order("created_at", { ascending: true });
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
+export async function respondToDate(invitationId, selectedTimes) {
+  const { data, error } = await supabase
+    .from("date_invitations")
+    .update({ response_times: selectedTimes, status: "responded" })
+    .eq("id", invitationId)
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function confirmDate(invitationId, confirmedTime) {
+  const { data, error } = await supabase
+    .from("date_invitations")
+    .update({ confirmed_time: confirmedTime, status: "confirmed" })
+    .eq("id", invitationId)
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
 // ─── HELPERS ───
 
 function mapProfileToUser(p) {

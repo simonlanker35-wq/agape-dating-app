@@ -1,15 +1,439 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useApp } from "../context/AppContext";
+import * as api from "../services/api";
 import AgapeCross from "../components/AgapeCross";
 
 const C = { bg: "#FFFFFF", card: "#FAFAF8", surface: "#F4F2EE", primary: "#B8912A", primarySoft: "#FBF5E6", text: "#1A1612", sub: "#8C857C", border: "#E8E4DF", sent: "#111111" };
 const FONT = "'Outfit', system-ui, sans-serif";
+
+const DATE_TYPES = [
+  { id: "dinner", emoji: "🍽️", label: "Dinner" },
+  { id: "walk", emoji: "🚶", label: "Walk" },
+  { id: "coffee", emoji: "☕", label: "Coffee" },
+  { id: "adventure", emoji: "🏔️", label: "Adventure" },
+];
+
+const WARDROBE_OPTIONS = [
+  { id: "casual", emoji: "👕", label: "Casual" },
+  { id: "smart", emoji: "👔", label: "Smart Casual" },
+  { id: "formal", emoji: "🎩", label: "Formal" },
+  { id: "sporty", emoji: "🏃", label: "Sporty" },
+];
+
+const TIME_SLOTS = ["12:00", "14:00", "16:00", "18:00", "19:30", "21:00"];
+
+function getNext7Days() {
+  const days = [];
+  const now = new Date();
+  for (let i = 1; i <= 7; i++) {
+    const d = new Date(now);
+    d.setDate(d.getDate() + i);
+    days.push({
+      date: d.toISOString().split("T")[0],
+      dayName: d.toLocaleDateString("en", { weekday: "short" }),
+      dayNum: d.getDate(),
+      month: d.toLocaleDateString("en", { month: "short" }),
+    });
+  }
+  return days;
+}
+
+function formatTimeLeft(ms) {
+  if (ms <= 0) return "Expired";
+  const hours = Math.floor(ms / 3600000);
+  const days = Math.floor(hours / 24);
+  const h = hours % 24;
+  if (days > 0) return `${days}d ${h}h`;
+  if (h > 0) return `${h}h`;
+  return `${Math.floor(ms / 60000)}m`;
+}
 
 function BackIcon() {
   return (
     <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
       <polyline points="15 18 9 12 15 6" />
     </svg>
+  );
+}
+
+function DateBuilder({ profileName, onSend, onClose }) {
+  const [step, setStep] = useState(1);
+  const [dateType, setDateType] = useState(null);
+  const [location, setLocation] = useState("");
+  const [wardrobe, setWardrobe] = useState(null);
+  const [selections, setSelections] = useState([]);
+  const [pickingDay, setPickingDay] = useState(null);
+  const days = useMemo(getNext7Days, []);
+
+  const addSelection = (day, time) => {
+    if (selections.length >= 3) return;
+    if (selections.some((s) => s.date === day.date && s.time === time)) return;
+    setSelections([...selections, { date: day.date, label: `${day.dayName} ${day.dayNum} ${day.month}`, time }]);
+    setPickingDay(null);
+  };
+
+  const removeSelection = (idx) => setSelections(selections.filter((_, i) => i !== idx));
+
+  const canProceed =
+    (step === 1 && dateType) ||
+    (step === 2 && location.trim()) ||
+    (step === 3 && wardrobe) ||
+    (step === 4 && selections.length >= 2);
+
+  const handleNext = () => {
+    if (step < 4) setStep(step + 1);
+    else onSend({ dateType, location: location.trim(), wardrobe, proposedTimes: selections });
+  };
+
+  return (
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, maxWidth: 430, margin: "0 auto", zIndex: 500, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end" }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", borderRadius: "24px 24px 0 0", background: C.bg, padding: "20px 16px 32px", maxHeight: "80vh", overflowY: "auto" }}>
+        <div style={{ width: 36, height: 4, borderRadius: 2, background: C.border, margin: "0 auto 16px" }} />
+
+        <div style={{ display: "flex", gap: 4, marginBottom: 20 }}>
+          {[1, 2, 3, 4].map((s) => (
+            <div key={s} style={{ flex: 1, height: 3, borderRadius: 2, background: s <= step ? C.primary : C.border }} />
+          ))}
+        </div>
+
+        {step === 1 && (
+          <>
+            <p style={{ fontSize: 18, fontWeight: 700, color: C.text, fontFamily: FONT, marginBottom: 4 }}>What kind of date?</p>
+            <p style={{ fontSize: 13, color: C.sub, marginBottom: 16 }}>Pick something {profileName} would enjoy</p>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              {DATE_TYPES.map((dt) => (
+                <button
+                  key={dt.id}
+                  onClick={() => setDateType(dt.id)}
+                  style={{
+                    padding: "20px 16px",
+                    borderRadius: 16,
+                    border: dateType === dt.id ? `2px solid ${C.primary}` : `1.5px solid ${C.border}`,
+                    background: dateType === dt.id ? C.primarySoft : C.card,
+                    cursor: "pointer",
+                    textAlign: "center",
+                  }}
+                >
+                  <span style={{ fontSize: 32, display: "block", marginBottom: 8 }}>{dt.emoji}</span>
+                  <span style={{ fontSize: 14, fontWeight: 600, color: C.text, fontFamily: FONT }}>{dt.label}</span>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+
+        {step === 2 && (
+          <>
+            <p style={{ fontSize: 18, fontWeight: 700, color: C.text, fontFamily: FONT, marginBottom: 4 }}>Where to meet?</p>
+            <p style={{ fontSize: 13, color: C.sub, marginBottom: 16 }}>Name a place or area</p>
+            <input
+              type="text"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              placeholder="e.g. Café Central, Schwyz"
+              autoFocus
+              style={{
+                width: "100%",
+                padding: "14px 16px",
+                fontSize: 16,
+                fontWeight: 600,
+                fontFamily: FONT,
+                borderRadius: 14,
+                border: `1.5px solid ${C.border}`,
+                background: C.surface,
+                outline: "none",
+                color: C.text,
+                boxSizing: "border-box",
+              }}
+            />
+          </>
+        )}
+
+        {step === 3 && (
+          <>
+            <p style={{ fontSize: 18, fontWeight: 700, color: C.text, fontFamily: FONT, marginBottom: 4 }}>Dress code</p>
+            <p style={{ fontSize: 13, color: C.sub, marginBottom: 16 }}>So she knows what to wear</p>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              {WARDROBE_OPTIONS.map((w) => (
+                <button
+                  key={w.id}
+                  onClick={() => setWardrobe(w.id)}
+                  style={{
+                    padding: "20px 16px",
+                    borderRadius: 16,
+                    border: wardrobe === w.id ? `2px solid ${C.primary}` : `1.5px solid ${C.border}`,
+                    background: wardrobe === w.id ? C.primarySoft : C.card,
+                    cursor: "pointer",
+                    textAlign: "center",
+                  }}
+                >
+                  <span style={{ fontSize: 32, display: "block", marginBottom: 8 }}>{w.emoji}</span>
+                  <span style={{ fontSize: 14, fontWeight: 600, color: C.text, fontFamily: FONT }}>{w.label}</span>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+
+        {step === 4 && (
+          <>
+            <p style={{ fontSize: 18, fontWeight: 700, color: C.text, fontFamily: FONT, marginBottom: 4 }}>When works for you?</p>
+            <p style={{ fontSize: 13, color: C.sub, marginBottom: 16 }}>Pick 2–3 options for her to choose from</p>
+
+            {selections.length > 0 && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
+                {selections.map((s, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 9999, background: C.primarySoft, fontSize: 13, fontWeight: 600, color: C.primary }}>
+                    <span>{s.label} · {s.time}</span>
+                    <button onClick={() => removeSelection(i)} style={{ background: "none", border: "none", cursor: "pointer", color: C.primary, fontSize: 14, fontWeight: 700, padding: 0 }}>×</button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 8, marginBottom: 8 }}>
+              {days.map((d) => (
+                <button
+                  key={d.date}
+                  onClick={() => setPickingDay(pickingDay?.date === d.date ? null : d)}
+                  style={{
+                    flexShrink: 0,
+                    padding: "10px 14px",
+                    borderRadius: 14,
+                    border: pickingDay?.date === d.date ? `2px solid ${C.primary}` : `1.5px solid ${C.border}`,
+                    background: pickingDay?.date === d.date ? C.primarySoft : C.card,
+                    cursor: "pointer",
+                    textAlign: "center",
+                    minWidth: 60,
+                  }}
+                >
+                  <span style={{ fontSize: 11, color: C.sub, display: "block", fontWeight: 600 }}>{d.dayName}</span>
+                  <span style={{ fontSize: 18, fontWeight: 700, color: C.text, display: "block" }}>{d.dayNum}</span>
+                  <span style={{ fontSize: 10, color: C.sub }}>{d.month}</span>
+                </button>
+              ))}
+            </div>
+
+            {pickingDay && selections.length < 3 && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, padding: "8px 0" }}>
+                {TIME_SLOTS.map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => addSelection(pickingDay, t)}
+                    disabled={selections.some((s) => s.date === pickingDay.date && s.time === t)}
+                    style={{
+                      padding: "8px 16px",
+                      borderRadius: 10,
+                      border: `1.5px solid ${C.border}`,
+                      background: C.card,
+                      cursor: "pointer",
+                      fontSize: 14,
+                      fontWeight: 600,
+                      color: C.text,
+                      fontFamily: FONT,
+                      opacity: selections.some((s) => s.date === pickingDay.date && s.time === t) ? 0.4 : 1,
+                    }}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        <div style={{ display: "flex", gap: 8, marginTop: 24 }}>
+          {step > 1 && (
+            <button onClick={() => setStep(step - 1)} style={{ flex: 1, padding: "14px 0", borderRadius: 14, fontSize: 14, fontWeight: 700, background: C.surface, color: C.sub, border: "none", cursor: "pointer" }}>
+              Back
+            </button>
+          )}
+          <button
+            onClick={handleNext}
+            disabled={!canProceed}
+            style={{
+              flex: 2,
+              padding: "14px 0",
+              borderRadius: 14,
+              fontSize: 14,
+              fontWeight: 700,
+              background: canProceed ? C.primary : C.border,
+              color: "white",
+              border: "none",
+              cursor: canProceed ? "pointer" : "default",
+            }}
+          >
+            {step === 4 ? "Send Invitation ✨" : "Next"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DateCard({ invitation, isMe, isMale, onRespond, onConfirm }) {
+  const [selectedTimes, setSelectedTimes] = useState([]);
+  const [sending, setSending] = useState(false);
+  const dt = DATE_TYPES.find((d) => d.id === invitation.date_type);
+  const wb = WARDROBE_OPTIONS.find((w) => w.id === invitation.wardrobe);
+
+  const toggleTime = (t) => {
+    setSelectedTimes((prev) =>
+      prev.some((s) => s.date === t.date && s.time === t.time)
+        ? prev.filter((s) => !(s.date === t.date && s.time === t.time))
+        : [...prev, t]
+    );
+  };
+
+  const handleRespond = async () => {
+    if (selectedTimes.length === 0) return;
+    setSending(true);
+    await onRespond(invitation.id, selectedTimes);
+    setSending(false);
+  };
+
+  const handleConfirm = async (time) => {
+    setSending(true);
+    await onConfirm(invitation.id, time);
+    setSending(false);
+  };
+
+  return (
+    <div style={{ margin: "8px 0", borderRadius: 20, overflow: "hidden", border: `1.5px solid ${invitation.status === "confirmed" ? "#22C55E" : C.primary}`, background: C.card }}>
+      <div style={{ padding: "14px 16px", background: invitation.status === "confirmed" ? "#F0FDF4" : C.primarySoft, display: "flex", alignItems: "center", gap: 10 }}>
+        <span style={{ fontSize: 20 }}>{invitation.status === "confirmed" ? "✅" : "📅"}</span>
+        <span style={{ fontSize: 14, fontWeight: 700, color: invitation.status === "confirmed" ? "#16A34A" : C.primary, fontFamily: FONT }}>
+          {invitation.status === "confirmed" ? "Date Confirmed!" : "Date Invitation"}
+        </span>
+      </div>
+
+      <div style={{ padding: "14px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ fontSize: 22 }}>{dt?.emoji}</span>
+          <span style={{ fontSize: 15, fontWeight: 700, color: C.text, fontFamily: FONT }}>{dt?.label}</span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ fontSize: 16 }}>📍</span>
+          <span style={{ fontSize: 14, color: C.text, fontFamily: FONT }}>{invitation.location}</span>
+        </div>
+        {wb && (
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: 16 }}>{wb.emoji}</span>
+            <span style={{ fontSize: 14, color: C.text, fontFamily: FONT }}>{wb.label}</span>
+          </div>
+        )}
+      </div>
+
+      <div style={{ padding: "0 16px 14px" }}>
+        {invitation.status === "confirmed" && invitation.confirmed_time && (
+          <div style={{ padding: "10px 14px", borderRadius: 12, background: "#DCFCE7", textAlign: "center" }}>
+            <span style={{ fontSize: 14, fontWeight: 700, color: "#16A34A", fontFamily: FONT }}>
+              {invitation.confirmed_time.label} · {invitation.confirmed_time.time}
+            </span>
+          </div>
+        )}
+
+        {invitation.status === "pending" && !isMale && (
+          <>
+            <p style={{ fontSize: 12, fontWeight: 600, color: C.sub, marginBottom: 8 }}>Select times that work for you:</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {(invitation.proposed_times || []).map((t, i) => {
+                const isSelected = selectedTimes.some((s) => s.date === t.date && s.time === t.time);
+                return (
+                  <button
+                    key={i}
+                    onClick={() => toggleTime(t)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      padding: "10px 14px",
+                      borderRadius: 12,
+                      border: isSelected ? `2px solid ${C.primary}` : `1.5px solid ${C.border}`,
+                      background: isSelected ? C.primarySoft : "white",
+                      cursor: "pointer",
+                      textAlign: "left",
+                    }}
+                  >
+                    <span style={{ width: 20, height: 20, borderRadius: 6, border: isSelected ? `2px solid ${C.primary}` : `2px solid ${C.border}`, background: isSelected ? C.primary : "white", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      {isSelected && <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={3}><path d="M20 6L9 17l-5-5" /></svg>}
+                    </span>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: C.text, fontFamily: FONT }}>{t.label} · {t.time}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              onClick={handleRespond}
+              disabled={selectedTimes.length === 0 || sending}
+              style={{
+                width: "100%",
+                marginTop: 12,
+                padding: "12px 0",
+                borderRadius: 14,
+                fontSize: 14,
+                fontWeight: 700,
+                background: selectedTimes.length > 0 ? C.primary : C.border,
+                color: "white",
+                border: "none",
+                cursor: selectedTimes.length > 0 ? "pointer" : "default",
+              }}
+            >
+              {sending ? "Sending..." : "Send availability"}
+            </button>
+          </>
+        )}
+
+        {invitation.status === "pending" && isMale && (
+          <>
+            <p style={{ fontSize: 12, fontWeight: 600, color: C.sub, marginBottom: 8 }}>Proposed times:</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {(invitation.proposed_times || []).map((t, i) => (
+                <div key={i} style={{ padding: "10px 14px", borderRadius: 12, background: C.surface }}>
+                  <span style={{ fontSize: 14, fontWeight: 600, color: C.text, fontFamily: FONT }}>{t.label} · {t.time}</span>
+                </div>
+              ))}
+            </div>
+            <p style={{ fontSize: 12, color: C.sub, textAlign: "center", marginTop: 8 }}>Waiting for her response...</p>
+          </>
+        )}
+
+        {invitation.status === "responded" && isMale && (
+          <>
+            <p style={{ fontSize: 12, fontWeight: 600, color: C.sub, marginBottom: 8 }}>She's available:</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {(invitation.response_times || []).map((t, i) => (
+                <button
+                  key={i}
+                  onClick={() => handleConfirm(t)}
+                  disabled={sending}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "10px 14px",
+                    borderRadius: 12,
+                    border: `1.5px solid ${C.primary}`,
+                    background: C.primarySoft,
+                    cursor: "pointer",
+                    textAlign: "left",
+                  }}
+                >
+                  <span style={{ fontSize: 14, fontWeight: 600, color: C.text, fontFamily: FONT }}>{t.label} · {t.time}</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: C.primary }}>Confirm</span>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+
+        {invitation.status === "responded" && !isMale && (
+          <>
+            <p style={{ fontSize: 12, color: C.sub, textAlign: "center" }}>You responded — waiting for him to confirm</p>
+          </>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -22,9 +446,12 @@ function ChatThread({ match, onBack }) {
   const [showReportMenu, setShowReportMenu] = useState(false);
   const [reportDone, setReportDone] = useState(null);
   const [blockFlash, setBlockFlash] = useState(false);
+  const [showDateBuilder, setShowDateBuilder] = useState(false);
+  const [dateInvitations, setDateInvitations] = useState([]);
   const bottomRef = useRef(null);
 
   const currentUserId = state.currentUser?._id || state.currentUser?.id;
+  const isMale = state.currentUser?.gender === "male";
   const conversation = state.conversations[match.id];
   const profile = match.profile;
 
@@ -32,14 +459,32 @@ function ChatThread({ match, onBack }) {
 
   useEffect(() => {
     actions.loadMessages(match.id).catch(console.error);
+    api.getDateInvitations(match.id).then(setDateInvitations).catch(console.error);
   }, [match.id]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [conversation?.messages?.length, localMessages.length]);
+  }, [conversation?.messages?.length, localMessages.length, dateInvitations.length]);
+
+  const messages = conversation?.messages || [];
+
+  const firstMessageTime = messages.length > 0 ? messages[0].timestamp : null;
+  const THREE_DAYS = 3 * 24 * 60 * 60 * 1000;
+  const deadlineMs = firstMessageTime ? firstMessageTime + THREE_DAYS : null;
+  const timeLeftMs = deadlineMs ? deadlineMs - Date.now() : null;
+  const hasConfirmedDate = dateInvitations.some((inv) => inv.status === "confirmed");
+  const chatLocked = timeLeftMs !== null && timeLeftMs <= 0 && !hasConfirmedDate;
+
+  const timeline = useMemo(() => {
+    const items = [];
+    messages.forEach((msg) => items.push({ ...msg, _type: "message" }));
+    dateInvitations.forEach((inv) => items.push({ ...inv, _type: "date", timestamp: new Date(inv.created_at).getTime() }));
+    items.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+    return items;
+  }, [messages, dateInvitations]);
 
   const send = async () => {
-    if (!text.trim()) return;
+    if (!text.trim() || chatLocked) return;
     const msg = text.trim();
     setText("");
     try {
@@ -49,7 +494,33 @@ function ChatThread({ match, onBack }) {
     }
   };
 
-  const messages = conversation?.messages || [];
+  const handleSendDate = async (data) => {
+    setShowDateBuilder(false);
+    try {
+      const inv = await api.createDateInvitation(match.id, data);
+      setDateInvitations((prev) => [...prev, inv]);
+    } catch (err) {
+      console.error("Date invite failed:", err);
+    }
+  };
+
+  const handleRespondDate = async (invId, selectedTimes) => {
+    try {
+      const updated = await api.respondToDate(invId, selectedTimes);
+      setDateInvitations((prev) => prev.map((inv) => (inv.id === invId ? updated : inv)));
+    } catch (err) {
+      console.error("Respond failed:", err);
+    }
+  };
+
+  const handleConfirmDate = async (invId, confirmedTime) => {
+    try {
+      const updated = await api.confirmDate(invId, confirmedTime);
+      setDateInvitations((prev) => prev.map((inv) => (inv.id === invId ? updated : inv)));
+    } catch (err) {
+      console.error("Confirm failed:", err);
+    }
+  };
 
   const formatTime = (ts) => {
     const d = new Date(ts);
@@ -64,132 +535,84 @@ function ChatThread({ match, onBack }) {
         </div>
       )}
       {/* Header */}
-      <div
-        style={{
-          flexShrink: 0,
-          padding: "40px 16px 12px",
-          background: C.card,
-          borderBottom: `1px solid ${C.border}`,
-        }}
-      >
+      <div style={{ flexShrink: 0, padding: "40px 16px 12px", background: C.card, borderBottom: `1px solid ${C.border}` }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <button
-            onClick={onBack}
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: "50%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              background: C.surface,
-              color: C.text,
-              border: "none",
-              cursor: "pointer",
-            }}
-          >
+          <button onClick={onBack} style={{ width: 36, height: 36, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: C.surface, color: C.text, border: "none", cursor: "pointer" }}>
             <BackIcon />
           </button>
           <div style={{ position: "relative", flexShrink: 0, cursor: "pointer" }} onClick={() => setViewProfile(true)}>
-            <img
-              src={profile.photos[0]}
-              alt={profile.name}
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: "50%",
-                objectFit: "cover",
-                border: `2px solid ${C.primary}`,
-              }}
-              onError={(e) => {
-                e.target.src = `https://ui-avatars.com/api/?name=${profile.name}&size=40&background=random`;
-              }}
-            />
-            <div
-              style={{
-                position: "absolute",
-                bottom: -2,
-                right: -2,
-                width: 12,
-                height: 12,
-                borderRadius: "50%",
-                background: "#22C55E",
-                border: "2px solid white",
-              }}
-            />
+            <img src={profile.photos[0]} alt={profile.name} style={{ width: 40, height: 40, borderRadius: "50%", objectFit: "cover", border: `2px solid ${C.primary}` }} onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${profile.name}&size=40&background=random`; }} />
+            <div style={{ position: "absolute", bottom: -2, right: -2, width: 12, height: 12, borderRadius: "50%", background: "#22C55E", border: "2px solid white" }} />
           </div>
           <div style={{ flex: 1, minWidth: 0, cursor: "pointer" }} onClick={() => setViewProfile(true)}>
-            <p style={{ fontWeight: 700, fontSize: 16, lineHeight: 1, color: C.text, fontFamily: FONT, margin: 0 }}>
-              {profile.name}
-            </p>
+            <p style={{ fontWeight: 700, fontSize: 16, lineHeight: 1, color: C.text, fontFamily: FONT, margin: 0 }}>{profile.name}</p>
             <p style={{ fontSize: 12, color: "#22C55E", marginTop: 2 }}>Active now</p>
           </div>
-          <button
-            onClick={() => setShowReportMenu(true)}
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: "50%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              background: "#FEF2F2",
-              border: "none",
-              cursor: "pointer",
-            }}
-          >
-            <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth={2.5}>
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-            </svg>
+          <button onClick={() => setShowReportMenu(true)} style={{ width: 36, height: 36, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: "#FEF2F2", border: "none", cursor: "pointer" }}>
+            <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth={2.5}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
           </button>
         </div>
+
         {/* Match banner */}
-        <div
-          style={{
-            marginTop: 12,
-            borderRadius: 12,
-            padding: "8px 16px",
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            background: C.primarySoft,
-          }}
-        >
-          <span style={{ color: C.primary }}>
-            <AgapeCross size={11} strokeWidth={1.5} />
-          </span>
-          <p style={{ fontSize: 12, fontWeight: 600, color: C.primary, margin: 0 }}>
-            You matched with {profile.name}{profile.denomination ? ` · ${profile.denomination}` : ""}
-          </p>
+        <div style={{ marginTop: 12, borderRadius: 12, padding: "8px 16px", display: "flex", alignItems: "center", gap: 8, background: C.primarySoft }}>
+          <span style={{ color: C.primary }}><AgapeCross size={11} strokeWidth={1.5} /></span>
+          <p style={{ fontSize: 12, fontWeight: 600, color: C.primary, margin: 0 }}>You matched with {profile.name}{profile.denomination ? ` · ${profile.denomination}` : ""}</p>
         </div>
+
+        {/* Deadline banner */}
+        {firstMessageTime && !hasConfirmedDate && !chatLocked && (
+          <div style={{ marginTop: 8, borderRadius: 12, padding: "8px 16px", display: "flex", alignItems: "center", gap: 8, background: timeLeftMs < 86400000 ? "#FEF2F2" : C.surface }}>
+            <span style={{ fontSize: 14 }}>⏰</span>
+            <p style={{ fontSize: 12, fontWeight: 600, color: timeLeftMs < 86400000 ? "#EF4444" : C.sub, margin: 0 }}>
+              {isMale
+                ? `${formatTimeLeft(timeLeftMs)} left to set a date`
+                : `${formatTimeLeft(timeLeftMs)} left — waiting for him to plan a date`
+              }
+            </p>
+          </div>
+        )}
+        {chatLocked && (
+          <div style={{ marginTop: 8, borderRadius: 12, padding: "8px 16px", display: "flex", alignItems: "center", gap: 8, background: "#FEF2F2" }}>
+            <span style={{ fontSize: 14 }}>🔒</span>
+            <p style={{ fontSize: 12, fontWeight: 600, color: "#EF4444", margin: 0 }}>Chat closed — no date was set within 3 days</p>
+          </div>
+        )}
+        {hasConfirmedDate && (
+          <div style={{ marginTop: 8, borderRadius: 12, padding: "8px 16px", display: "flex", alignItems: "center", gap: 8, background: "#F0FDF4" }}>
+            <span style={{ fontSize: 14 }}>✅</span>
+            <p style={{ fontSize: 12, fontWeight: 600, color: "#16A34A", margin: 0 }}>Date confirmed! Have a wonderful time</p>
+          </div>
+        )}
       </div>
 
-      {/* Messages */}
+      {/* Messages + Date Cards */}
       <div style={{ flex: 1, overflowY: "auto", padding: "16px 16px", display: "flex", flexDirection: "column", gap: 12 }}>
-        {/* Date divider */}
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <div style={{ flex: 1, height: 1, background: C.border }} />
           <span style={{ fontSize: 11, fontWeight: 600, color: C.sub }}>Today</span>
           <div style={{ flex: 1, height: 1, background: C.border }} />
         </div>
 
-        {messages.map((msg) => {
-          const isMe = msg.sender === currentUserId;
+        {timeline.map((item) => {
+          if (item._type === "date") {
+            return (
+              <DateCard
+                key={`date-${item.id}`}
+                invitation={item}
+                isMe={item.from_user === currentUserId}
+                isMale={isMale}
+                onRespond={handleRespondDate}
+                onConfirm={handleConfirmDate}
+              />
+            );
+          }
+
+          const isMe = item.sender === currentUserId;
           return (
-            <div
-              key={msg.id}
-              style={{ display: "flex", flexDirection: "column", alignItems: isMe ? "flex-end" : "flex-start" }}
-            >
+            <div key={item.id} style={{ display: "flex", flexDirection: "column", alignItems: isMe ? "flex-end" : "flex-start" }}>
               <div style={{ display: "flex", alignItems: "flex-end", gap: 8, maxWidth: "80%" }}>
                 {!isMe && (
-                  <img
-                    src={profile.photos[0]}
-                    alt={profile.name}
-                    style={{ width: 24, height: 24, borderRadius: "50%", objectFit: "cover", flexShrink: 0, marginBottom: 4 }}
-                    onError={(e) => {
-                      e.target.src = `https://ui-avatars.com/api/?name=${profile.name}&size=24&background=random`;
-                    }}
-                  />
+                  <img src={profile.photos[0]} alt={profile.name} style={{ width: 24, height: 24, borderRadius: "50%", objectFit: "cover", flexShrink: 0, marginBottom: 4 }} onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${profile.name}&size=24&background=random`; }} />
                 )}
                 <div
                   style={{
@@ -202,40 +625,17 @@ function ChatThread({ match, onBack }) {
                     boxShadow: !isMe ? "0 1px 4px rgba(0,0,0,0.06)" : undefined,
                     cursor: "pointer",
                   }}
-                  onDoubleClick={() => setReacting(reacting === msg.id ? null : msg.id)}
+                  onDoubleClick={() => setReacting(reacting === item.id ? null : item.id)}
                 >
-                  <p style={{ fontSize: 14, lineHeight: 1.5, fontFamily: FONT, margin: 0, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
-                    {msg.text}
-                  </p>
+                  <p style={{ fontSize: 14, lineHeight: 1.5, fontFamily: FONT, margin: 0, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{item.text}</p>
                 </div>
               </div>
-              <p style={{ fontSize: 10, marginTop: 6, marginLeft: 32, marginRight: 32, color: C.sub }}>
-                {formatTime(msg.timestamp)}
-              </p>
+              <p style={{ fontSize: 10, marginTop: 6, marginLeft: 32, marginRight: 32, color: C.sub }}>{formatTime(item.timestamp)}</p>
 
-              {/* Reaction picker */}
-              {reacting === msg.id && (
-                <div
-                  style={{
-                    display: "flex",
-                    gap: 6,
-                    marginTop: 4,
-                    marginLeft: 32,
-                    marginRight: 32,
-                    borderRadius: 16,
-                    padding: "8px 12px",
-                    background: C.card,
-                    boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-                  }}
-                >
+              {reacting === item.id && (
+                <div style={{ display: "flex", gap: 6, marginTop: 4, marginLeft: 32, marginRight: 32, borderRadius: 16, padding: "8px 12px", background: C.card, boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
                   {REACTIONS.map((r) => (
-                    <button
-                      key={r}
-                      onClick={() => setReacting(null)}
-                      style={{ fontSize: 18, background: "none", border: "none", cursor: "pointer", transition: "all 0.2s" }}
-                    >
-                      {r}
-                    </button>
+                    <button key={r} onClick={() => setReacting(null)} style={{ fontSize: 18, background: "none", border: "none", cursor: "pointer", transition: "all 0.2s" }}>{r}</button>
                   ))}
                 </div>
               )}
@@ -246,104 +646,63 @@ function ChatThread({ match, onBack }) {
       </div>
 
       {/* Compose */}
-      <div
-        style={{
-          flexShrink: 0,
-          padding: "12px 16px",
-          background: C.card,
-          borderTop: `1px solid ${C.border}`,
-        }}
-      >
-        {/* Quick replies */}
-        <div style={{ display: "flex", gap: 8, marginBottom: 12, overflowX: "auto" }}>
-          {["Amen to that 🙏", "Tell me more!", "That's beautiful ✨", "Same here!"].map((q) => (
-            <button
-              key={q}
-              onClick={() => setText(q)}
-              style={{
-                flexShrink: 0,
-                fontSize: 12,
-                fontWeight: 600,
-                padding: "6px 12px",
-                borderRadius: 9999,
-                whiteSpace: "nowrap",
-                background: C.primarySoft,
-                color: C.primary,
-                border: "none",
-                cursor: "pointer",
-              }}
-            >
-              {q}
-            </button>
-          ))}
-        </div>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 12,
-            borderRadius: 16,
-            padding: "12px 16px",
-            background: C.surface,
-          }}
-        >
-          {/* Mic button */}
-          <button
-            style={{
-              flexShrink: 0,
-              color: C.sub,
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-            }}
-          >
-            <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
-              <path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8" />
-            </svg>
-          </button>
-          <input
-            style={{
-              flex: 1,
-              fontSize: 14,
-              background: "transparent",
-              outline: "none",
-              border: "none",
-              color: C.text,
-              fontFamily: FONT,
-            }}
-            placeholder={`Message ${profile.name}...`}
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && send()}
-          />
-          <button
-            onClick={send}
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: "50%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              background: text.trim() ? C.primary : C.border,
-              border: "none",
-              cursor: "pointer",
-            }}
-          >
-            <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2.5} strokeLinecap="round">
-              <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
-            </svg>
-          </button>
-        </div>
+      <div style={{ flexShrink: 0, padding: "12px 16px", background: C.card, borderTop: `1px solid ${C.border}` }}>
+        {chatLocked ? (
+          <div style={{ textAlign: "center", padding: "12px 0" }}>
+            <p style={{ fontSize: 13, color: C.sub, fontFamily: FONT }}>🔒 This chat has expired</p>
+          </div>
+        ) : (
+          <>
+            {/* Quick replies */}
+            <div style={{ display: "flex", gap: 8, marginBottom: 12, overflowX: "auto" }}>
+              {["Amen to that 🙏", "Tell me more!", "That's beautiful ✨", "Same here!"].map((q) => (
+                <button key={q} onClick={() => setText(q)} style={{ flexShrink: 0, fontSize: 12, fontWeight: 600, padding: "6px 12px", borderRadius: 9999, whiteSpace: "nowrap", background: C.primarySoft, color: C.primary, border: "none", cursor: "pointer" }}>{q}</button>
+              ))}
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, borderRadius: 16, padding: "12px 16px", background: C.surface }}>
+              {/* Date button — men only */}
+              {isMale && (
+                <button onClick={() => setShowDateBuilder(true)} style={{ flexShrink: 0, width: 36, height: 36, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: C.primarySoft, border: `1.5px solid ${C.primary}`, cursor: "pointer" }}>
+                  <span style={{ fontSize: 16 }}>📅</span>
+                </button>
+              )}
+              {/* Mic button */}
+              <button style={{ flexShrink: 0, color: C.sub, background: "none", border: "none", cursor: "pointer" }}>
+                <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8" />
+                </svg>
+              </button>
+              <input
+                style={{ flex: 1, fontSize: 14, background: "transparent", outline: "none", border: "none", color: C.text, fontFamily: FONT }}
+                placeholder={`Message ${profile.name}...`}
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && send()}
+              />
+              <button
+                onClick={send}
+                style={{ width: 32, height: 32, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: text.trim() ? C.primary : C.border, border: "none", cursor: "pointer" }}
+              >
+                <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2.5} strokeLinecap="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" /></svg>
+              </button>
+            </div>
+          </>
+        )}
       </div>
+
+      {/* Date Builder Sheet */}
+      {showDateBuilder && (
+        <DateBuilder
+          profileName={profile.name}
+          onSend={handleSendDate}
+          onClose={() => setShowDateBuilder(false)}
+        />
+      )}
 
       {/* Report / Block menu */}
       {showReportMenu && (
-        <div
-          onClick={() => { if (!reportDone) setShowReportMenu(false); }}
-          style={{ position: "fixed", inset: 0, maxWidth: 430, margin: "0 auto", zIndex: 400, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}
-        >
+        <div onClick={() => { if (!reportDone) setShowReportMenu(false); }} style={{ position: "fixed", inset: 0, maxWidth: 430, margin: "0 auto", zIndex: 400, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
           <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", borderRadius: "24px 24px 0 0", background: C.bg, padding: "20px 16px 32px" }}>
             {reportDone ? (
               <div style={{ textAlign: "center", padding: "20px 0" }}>
@@ -354,12 +713,7 @@ function ChatThread({ match, onBack }) {
                 <p style={{ fontSize: 13, color: C.sub, marginBottom: 20 }}>
                   {reportDone === "block" ? "They can no longer see your profile or contact you." : reportDone === "report" ? "Our team will review this. Thank you for keeping Agape safe." : `You and ${profile.name} have been unmatched.`}
                 </p>
-                <button
-                  onClick={() => { setShowReportMenu(false); setReportDone(null); if (reportDone === "block" || reportDone === "unmatch") onBack(); }}
-                  style={{ padding: "12px 32px", borderRadius: 9999, fontSize: 14, fontWeight: 700, background: C.text, color: "white", border: "none", cursor: "pointer" }}
-                >
-                  Done
-                </button>
+                <button onClick={() => { setShowReportMenu(false); setReportDone(null); if (reportDone === "block" || reportDone === "unmatch") onBack(); }} style={{ padding: "12px 32px", borderRadius: 9999, fontSize: 14, fontWeight: 700, background: C.text, color: "white", border: "none", cursor: "pointer" }}>Done</button>
               </div>
             ) : (
               <>
@@ -370,11 +724,7 @@ function ChatThread({ match, onBack }) {
                   { icon: "🚫", label: "Block", desc: "They won't be able to see you", color: "#EF4444", action: async () => { dispatch({ type: "BLOCK_PROFILE", payload: { id: profile.id, name: profile.name, photo: profile.photos?.[0] } }); setShowReportMenu(false); setBlockFlash(true); try { await actions.unmatch(match.id); } catch (_) {} setTimeout(() => { setBlockFlash(false); setShowReportMenu(true); setReportDone("block"); }, 1500); } },
                   { icon: "👋", label: "Unmatch", desc: "Remove this match", color: C.text, action: async () => { try { await actions.unmatch(match.id); } catch (_) {} setReportDone("unmatch"); } },
                 ].map((item) => (
-                  <button
-                    key={item.label}
-                    onClick={item.action}
-                    style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "14px 12px", borderRadius: 12, background: "none", border: "none", cursor: "pointer", textAlign: "left", marginBottom: 4 }}
-                  >
+                  <button key={item.label} onClick={item.action} style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "14px 12px", borderRadius: 12, background: "none", border: "none", cursor: "pointer", textAlign: "left", marginBottom: 4 }}>
                     <div style={{ width: 40, height: 40, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", background: C.surface, fontSize: 18 }}>{item.icon}</div>
                     <div style={{ flex: 1 }}>
                       <p style={{ fontSize: 14, fontWeight: 600, color: item.color, margin: 0 }}>{item.label}</p>
@@ -383,12 +733,7 @@ function ChatThread({ match, onBack }) {
                     <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={C.sub} strokeWidth={2}><polyline points="9 18 15 12 9 6" /></svg>
                   </button>
                 ))}
-                <button
-                  onClick={() => setShowReportMenu(false)}
-                  style={{ width: "100%", padding: "14px 0", borderRadius: 12, fontSize: 14, fontWeight: 600, background: C.surface, color: C.sub, border: "none", cursor: "pointer", marginTop: 8 }}
-                >
-                  Cancel
-                </button>
+                <button onClick={() => setShowReportMenu(false)} style={{ width: "100%", padding: "14px 0", borderRadius: 12, fontSize: 14, fontWeight: 600, background: C.surface, color: C.sub, border: "none", cursor: "pointer", marginTop: 8 }}>Cancel</button>
               </>
             )}
           </div>
@@ -396,28 +741,11 @@ function ChatThread({ match, onBack }) {
       )}
 
       {viewProfile && (
-        <div
-          style={{
-            position: "fixed", inset: 0, maxWidth: 430, margin: "0 auto",
-            zIndex: 300, background: C.bg, overflowY: "auto",
-          }}
-        >
+        <div style={{ position: "fixed", inset: 0, maxWidth: 430, margin: "0 auto", zIndex: 300, background: C.bg, overflowY: "auto" }}>
           <div style={{ position: "relative" }}>
-            <img
-              src={profile.photos?.[0]}
-              alt={profile.name}
-              style={{ width: "100%", maxHeight: "56vh", objectFit: "cover", display: "block" }}
-              onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${profile.name}&size=600&background=random`; }}
-            />
+            <img src={profile.photos?.[0]} alt={profile.name} style={{ width: "100%", maxHeight: "56vh", objectFit: "cover", display: "block" }} onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${profile.name}&size=600&background=random`; }} />
             <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 50%)", pointerEvents: "none" }} />
-            <button
-              onClick={() => setViewProfile(false)}
-              style={{
-                position: "absolute", top: 44, left: 16, width: 36, height: 36, borderRadius: "50%",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                background: "rgba(0,0,0,0.4)", backdropFilter: "blur(10px)", border: "none", cursor: "pointer",
-              }}
-            >
+            <button onClick={() => setViewProfile(false)} style={{ position: "absolute", top: 44, left: 16, width: 36, height: 36, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.4)", backdropFilter: "blur(10px)", border: "none", cursor: "pointer" }}>
               <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2.5}><polyline points="15 18 9 12 15 6" /></svg>
             </button>
             <div style={{ position: "absolute", bottom: 20, left: 16 }}>
@@ -425,13 +753,11 @@ function ChatThread({ match, onBack }) {
                 <span style={{ color: "white", fontSize: 28, fontWeight: 700 }}>{profile.name}</span>
                 <span style={{ color: "rgba(255,255,255,0.8)", fontSize: 22, fontWeight: 300 }}>{profile.age}</span>
               </div>
-              <p style={{ color: "rgba(255,255,255,0.7)", fontSize: 12, marginTop: 4 }}>
-                {profile.denomination}{profile.location ? ` · ${profile.location}` : ""}
-              </p>
+              <p style={{ color: "rgba(255,255,255,0.7)", fontSize: 12, marginTop: 4 }}>{profile.denomination}{profile.location ? ` · ${profile.location}` : ""}</p>
             </div>
           </div>
           <div style={{ padding: "20px 16px", display: "flex", flexDirection: "column", gap: 12 }}>
-            {(profile.prompts || []).filter(p => p.prompt && p.answer).map((p, i) => (
+            {(profile.prompts || []).filter((p) => p.prompt && p.answer).map((p, i) => (
               <div key={i} style={{ borderRadius: 16, overflow: "hidden", background: C.primarySoft }}>
                 <div style={{ display: "flex" }}>
                   <div style={{ width: 4, flexShrink: 0, background: C.primary }} />
@@ -462,9 +788,7 @@ export default function Matches() {
 
   const currentUserId = state.currentUser?._id || state.currentUser?.id;
 
-  const activeMatch = activeChat
-    ? state.matches.find((m) => m.id === activeChat)
-    : null;
+  const activeMatch = activeChat ? state.matches.find((m) => m.id === activeChat) : null;
 
   if (activeMatch?.profile) {
     return <ChatThread match={activeMatch} onBack={() => setActiveChat(null)} />;
@@ -492,18 +816,7 @@ export default function Matches() {
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: C.bg }}>
       <div style={{ padding: "40px 20px 16px" }}>
-        <h1
-          style={{
-            color: C.text,
-            fontFamily: FONT,
-            fontSize: 24,
-            fontWeight: 700,
-            letterSpacing: "-0.4px",
-            margin: 0,
-          }}
-        >
-          Messages
-        </h1>
+        <h1 style={{ color: C.text, fontFamily: FONT, fontSize: 24, fontWeight: 700, letterSpacing: "-0.4px", margin: 0 }}>Messages</h1>
       </div>
 
       <div style={{ flex: 1, overflowY: "auto", paddingBottom: 24 }}>
@@ -525,108 +838,24 @@ export default function Matches() {
               <button
                 key={m.id}
                 onClick={() => setActiveChat(m.id)}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 16,
-                  width: "100%",
-                  padding: "16px 20px",
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                  borderBottom: `1px solid ${C.border}`,
-                  textAlign: "left",
-                }}
+                style={{ display: "flex", alignItems: "center", gap: 16, width: "100%", padding: "16px 20px", background: "none", border: "none", cursor: "pointer", borderBottom: `1px solid ${C.border}`, textAlign: "left" }}
               >
-                {/* Large round photo */}
                 <div style={{ position: "relative", flexShrink: 0 }}>
-                  <img
-                    src={profile.photos[0]}
-                    alt={profile.name}
-                    style={{
-                      width: 74,
-                      height: 74,
-                      borderRadius: "50%",
-                      objectFit: "cover",
-                      display: "block",
-                    }}
-                    onError={(e) => {
-                      e.target.src = `https://ui-avatars.com/api/?name=${profile.name}&size=74&background=random`;
-                    }}
-                  />
-                  {/* Gold ring on unread */}
-                  {hasUnread && (
-                    <div
-                      style={{
-                        position: "absolute",
-                        inset: -3,
-                        borderRadius: "50%",
-                        border: `2.5px solid ${C.primary}`,
-                        pointerEvents: "none",
-                      }}
-                    />
-                  )}
-                  {/* Online indicator */}
-                  <div
-                    style={{
-                      position: "absolute",
-                      bottom: 3,
-                      right: 3,
-                      width: 11,
-                      height: 11,
-                      borderRadius: "50%",
-                      background: "#22C55E",
-                      border: `2px solid ${C.bg}`,
-                    }}
-                  />
+                  <img src={profile.photos[0]} alt={profile.name} style={{ width: 74, height: 74, borderRadius: "50%", objectFit: "cover", display: "block" }} onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${profile.name}&size=74&background=random`; }} />
+                  {hasUnread && <div style={{ position: "absolute", inset: -3, borderRadius: "50%", border: `2.5px solid ${C.primary}`, pointerEvents: "none" }} />}
+                  <div style={{ position: "absolute", bottom: 3, right: 3, width: 11, height: 11, borderRadius: "50%", background: "#22C55E", border: `2px solid ${C.bg}` }} />
                 </div>
-
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  {/* Name + timestamp */}
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 2 }}>
-                    <span style={{ fontWeight: 700, fontSize: 16, color: C.text, fontFamily: FONT }}>
-                      {profile.name}
-                    </span>
-                    <span style={{ fontSize: 10, color: C.sub, fontFamily: FONT, flexShrink: 0 }}>
-                      {lastMsg ? formatTime(lastMsg.timestamp) : ""}
-                    </span>
+                    <span style={{ fontWeight: 700, fontSize: 16, color: C.text, fontFamily: FONT }}>{profile.name}</span>
+                    <span style={{ fontSize: 10, color: C.sub, fontFamily: FONT, flexShrink: 0 }}>{lastMsg ? formatTime(lastMsg.timestamp) : ""}</span>
                   </div>
-                  {/* Denomination */}
-                  {profile.denomination && (
-                    <p style={{ fontSize: 11, color: C.primary, fontWeight: 600, fontFamily: FONT, marginBottom: 5, margin: "0 0 5px 0" }}>
-                      {profile.denomination}
-                    </p>
-                  )}
-                  {/* Message preview */}
-                  <p
-                    style={{
-                      fontSize: 12,
-                      color: C.sub,
-                      fontFamily: FONT,
-                      overflow: "hidden",
-                      whiteSpace: "nowrap",
-                      textOverflow: "ellipsis",
-                      margin: 0,
-                    }}
-                  >
-                    {lastMsg
-                      ? (lastMsg.sender === currentUserId ? "You: " : "") + lastMsg.text.slice(0, 30) + (lastMsg.text.length > 30 ? "..." : "")
-                      : "Start the conversation ✨"}
+                  {profile.denomination && <p style={{ fontSize: 11, color: C.primary, fontWeight: 600, fontFamily: FONT, marginBottom: 5, margin: "0 0 5px 0" }}>{profile.denomination}</p>}
+                  <p style={{ fontSize: 12, color: C.sub, fontFamily: FONT, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis", margin: 0 }}>
+                    {lastMsg ? (lastMsg.sender === currentUserId ? "You: " : "") + lastMsg.text.slice(0, 30) + (lastMsg.text.length > 30 ? "..." : "") : "Start the conversation ✨"}
                   </p>
                 </div>
-
-                {/* Unread dot */}
-                {hasUnread && (
-                  <div
-                    style={{
-                      width: 9,
-                      height: 9,
-                      borderRadius: "50%",
-                      background: C.primary,
-                      flexShrink: 0,
-                    }}
-                  />
-                )}
+                {hasUnread && <div style={{ width: 9, height: 9, borderRadius: "50%", background: C.primary, flexShrink: 0 }} />}
               </button>
             );
           })
