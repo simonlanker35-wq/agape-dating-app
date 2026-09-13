@@ -3,6 +3,7 @@ import { useApp } from "../context/AppContext";
 import { compressPhoto } from "../services/api";
 import { PROMPT_CATEGORIES } from "../data/profiles";
 import AgapeCross from "../components/AgapeCross";
+import LocationPicker from "../components/LocationPicker";
 
 const C = { bg: "#FFFFFF", card: "#FAFAF8", surface: "#F4F2EE", primary: "#B8912A", primarySoft: "#FBF5E6", text: "#1A1612", sub: "#8C857C", border: "#E8E4DF", sent: "#111111" };
 const FONT = "'Outfit', system-ui, sans-serif";
@@ -400,13 +401,12 @@ function SettingsScreen({ onBack, initialSection = null }) {
                 </div>
                 {editField === "location" && (
                   <div style={{ borderRadius: 16, padding: 16, background: C.card, marginTop: 8 }}>
-                    <input
-                      type="text"
+                    <LocationPicker
                       value={editValue}
-                      onChange={(e) => setEditValue(e.target.value)}
-                      placeholder="City or area"
-                      autoFocus
-                      style={{ width: "100%", padding: "12px 14px", fontSize: 16, fontWeight: 600, fontFamily: FONT, borderRadius: 12, border: `1.5px solid ${C.border}`, background: C.surface, outline: "none", color: C.text }}
+                      onChange={(text) => setEditValue(text)}
+                      onSelect={(item) => setEditValue(item.display)}
+                      placeholder="Search city..."
+                      inputStyle={{ width: "100%", padding: "12px 14px", fontSize: 16, fontWeight: 600, fontFamily: FONT, borderRadius: 12, border: `1.5px solid ${C.border}`, background: C.surface, outline: "none", color: C.text }}
                     />
                     <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
                       <button onClick={() => { setEditField(null); setEditValue(""); }} style={{ flex: 1, padding: "10px 0", borderRadius: 12, fontSize: 14, fontWeight: 600, background: C.surface, color: C.sub, border: "none", cursor: "pointer" }}>Cancel</button>

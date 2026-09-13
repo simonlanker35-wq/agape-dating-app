@@ -3,6 +3,7 @@ import { useApp } from "../context/AppContext";
 import { PROMPT_CATEGORIES, TRAITS_POOL, LOOKING_FOR_POOL, DENOMINATIONS } from "../data/profiles";
 import { ChevronRight, Sparkles, Church, X, Check } from "lucide-react";
 import AgapeCross from "../components/AgapeCross";
+import LocationPicker from "../components/LocationPicker";
 
 const STEPS = [
   "welcome",
@@ -518,13 +519,11 @@ export default function Onboarding() {
         {currentStep === "location" && (
           <div className="onboarding-step single-question" key="location">
             <h2>Where are you based?</h2>
-            <input
-              ref={inputRef}
-              type="text"
+            <LocationPicker
               value={form.location}
-              onChange={(e) => setForm({ ...form, location: e.target.value })}
-              onKeyDown={handleKeyDown}
-              placeholder="City or neighbourhood"
+              onChange={(text) => setForm({ ...form, location: text })}
+              onSelect={(item) => setForm({ ...form, location: item.display, locationLat: item.lat, locationLng: item.lng })}
+              placeholder="Search city..."
               className="onboarding-input"
             />
             <div className="skip-or-continue">
