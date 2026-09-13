@@ -234,14 +234,25 @@ export async function sendLike(to, targetType, targetIndex, comment = null, isDo
   let matchId = null;
 
   if (mutual) {
-    const { data: match, error: matchErr } = await supabase
+    const { data: existingMatch } = await supabase
       .from("matches")
-      .insert({ user1: user.id, user2: to })
-      .select()
-      .single();
-    if (!matchErr) {
+      .select("id")
+      .or(`and(user1.eq.${user.id},user2.eq.${to}),and(user1.eq.${to},user2.eq.${user.id})`)
+      .maybeSingle();
+
+    if (existingMatch) {
       matched = true;
-      matchId = match.id;
+      matchId = existingMatch.id;
+    } else {
+      const { data: match, error: matchErr } = await supabase
+        .from("matches")
+        .insert({ user1: user.id, user2: to })
+        .select()
+        .single();
+      if (!matchErr) {
+        matched = true;
+        matchId = match.id;
+      }
     }
   }
 
@@ -413,6 +424,17 @@ export async function respondToDate(invitationId, selectedTimes) {
   const { data, error } = await supabase
     .from("date_invitations")
     .update({ response_times: selectedTimes, status: "responded" })
+    .eq("id", invitationId)
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function declineDate(invitationId, reasons) {
+  const { data, error } = await supabase
+    .from("date_invitations")
+    .update({ status: "declined", decline_reasons: reasons })
     .eq("id", invitationId)
     .select()
     .single();

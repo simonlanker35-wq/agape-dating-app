@@ -278,16 +278,22 @@ export function AppProvider({ children }) {
         }
       }
       if (res.matched) {
-        const newMatch = {
-          id: res.matchId || `temp-${Date.now()}`,
-          profileId: like.fromId,
-          profile: like.profile,
-          timestamp: Date.now(),
-          lastMessage: null,
-        };
-        dispatch({ type: "SET_MATCHES", payload: [...state.matches, newMatch] });
-        dispatch({ type: "MATCH_FROM_LIKES", payload: { like, matchData: newMatch } });
+        const alreadyMatched = state.matches.some(
+          (m) => m.profileId === like.fromId
+        );
+        if (!alreadyMatched) {
+          const newMatch = {
+            id: res.matchId || `temp-${Date.now()}`,
+            profileId: like.fromId,
+            profile: like.profile,
+            timestamp: Date.now(),
+            lastMessage: null,
+          };
+          dispatch({ type: "SET_MATCHES", payload: [...state.matches, newMatch] });
+        }
+        dispatch({ type: "MATCH_FROM_LIKES", payload: { like, matchData: null } });
       }
+      try { await api.dismissLike(like.id); } catch (_) {}
       return res;
     },
 

@@ -338,9 +338,18 @@ function DateBuilder({ profileName, userLocation, onSend, onClose }) {
   );
 }
 
-function DateCard({ invitation, isMe, isMale, onRespond, onConfirm }) {
+const DECLINE_REASONS = [
+  "Times don't work for me",
+  "Not comfortable with the location",
+  "Too soon, need more time chatting",
+  "Not interested anymore",
+];
+
+function DateCard({ invitation, isMe, isMale, onRespond, onConfirm, onDecline }) {
   const [selectedTimes, setSelectedTimes] = useState([]);
   const [sending, setSending] = useState(false);
+  const [showDecline, setShowDecline] = useState(false);
+  const [declineReasons, setDeclineReasons] = useState([]);
   const dt = DATE_TYPES.find((d) => d.id === invitation.date_type);
   const wb = WARDROBE_OPTIONS.find((w) => w.id === invitation.wardrobe);
 
@@ -362,6 +371,19 @@ function DateCard({ invitation, isMe, isMale, onRespond, onConfirm }) {
   const handleConfirm = async (time) => {
     setSending(true);
     await onConfirm(invitation.id, time);
+    setSending(false);
+  };
+
+  const toggleDeclineReason = (r) => {
+    setDeclineReasons((prev) =>
+      prev.includes(r) ? prev.filter((x) => x !== r) : [...prev, r]
+    );
+  };
+
+  const handleDecline = async () => {
+    if (declineReasons.length === 0) return;
+    setSending(true);
+    await onDecline(invitation.id, declineReasons);
     setSending(false);
   };
 
@@ -447,6 +469,71 @@ function DateCard({ invitation, isMe, isMale, onRespond, onConfirm }) {
             >
               {sending ? "Sending..." : "Send availability"}
             </button>
+
+            {!showDecline ? (
+              <button
+                onClick={() => setShowDecline(true)}
+                style={{ width: "100%", marginTop: 8, padding: "10px 0", borderRadius: 14, fontSize: 13, fontWeight: 600, background: "none", color: C.sub, border: "none", cursor: "pointer" }}
+              >
+                Decline
+              </button>
+            ) : (
+              <div style={{ marginTop: 12 }}>
+                <p style={{ fontSize: 12, fontWeight: 600, color: "#EF4444", marginBottom: 8 }}>Why are you declining?</p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {DECLINE_REASONS.map((r) => {
+                    const checked = declineReasons.includes(r);
+                    return (
+                      <button
+                        key={r}
+                        onClick={() => toggleDeclineReason(r)}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 10,
+                          padding: "10px 14px",
+                          borderRadius: 12,
+                          border: checked ? "2px solid #EF4444" : `1.5px solid ${C.border}`,
+                          background: checked ? "#FEF2F2" : "white",
+                          cursor: "pointer",
+                          textAlign: "left",
+                        }}
+                      >
+                        <span style={{ width: 18, height: 18, borderRadius: 5, border: checked ? "2px solid #EF4444" : `2px solid ${C.border}`, background: checked ? "#EF4444" : "white", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                          {checked && <svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={3}><path d="M20 6L9 17l-5-5" /></svg>}
+                        </span>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: C.text, fontFamily: FONT }}>{r}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                  <button
+                    onClick={() => { setShowDecline(false); setDeclineReasons([]); }}
+                    style={{ flex: 1, padding: "10px 0", borderRadius: 14, fontSize: 13, fontWeight: 600, background: C.surface, color: C.sub, border: "none", cursor: "pointer" }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleDecline}
+                    disabled={declineReasons.length === 0 || sending}
+                    style={{
+                      flex: 1,
+                      padding: "10px 0",
+                      borderRadius: 14,
+                      fontSize: 13,
+                      fontWeight: 700,
+                      background: declineReasons.length > 0 ? "#EF4444" : C.border,
+                      color: "white",
+                      border: "none",
+                      cursor: declineReasons.length > 0 ? "pointer" : "default",
+                    }}
+                  >
+                    {sending ? "..." : "Decline date"}
+                  </button>
+                </div>
+              </div>
+            )}
           </>
         )}
 
@@ -497,6 +584,14 @@ function DateCard({ invitation, isMe, isMale, onRespond, onConfirm }) {
           <>
             <p style={{ fontSize: 12, color: C.sub, textAlign: "center" }}>You responded — waiting for him to confirm</p>
           </>
+        )}
+
+        {invitation.status === "declined" && (
+          <div style={{ padding: "10px 14px", borderRadius: 12, background: "#FEF2F2", textAlign: "center" }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: "#EF4444", fontFamily: FONT }}>
+              Date declined
+            </span>
+          </div>
         )}
       </div>
     </div>
@@ -605,6 +700,15 @@ function ChatThread({ match, onBack }) {
     }
   };
 
+  const handleDeclineDate = async (invId, reasons) => {
+    try {
+      const updated = await api.declineDate(invId, reasons);
+      setDateInvitations((prev) => prev.map((inv) => (inv.id === invId ? updated : inv)));
+    } catch (err) {
+      console.error("Decline failed:", err);
+    }
+  };
+
   const formatTime = (ts) => {
     const d = new Date(ts);
     return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -648,8 +752,8 @@ function ChatThread({ match, onBack }) {
             <span style={{ fontSize: 14 }}>⏰</span>
             <p style={{ fontSize: 12, fontWeight: 600, color: timeLeftMs < 86400000 ? "#EF4444" : C.sub, margin: 0 }}>
               {isMale
-                ? `${formatTimeLeft(timeLeftMs)} left to set a date${nudgeSent || match.nudgeAt ? " — she wants to go out!" : ""}`
-                : `${formatTimeLeft(timeLeftMs)} left — waiting for him to plan a date`
+                ? `${formatTimeLeft(timeLeftMs)} left to set a date${nudgeSent || match.nudgeAt ? " — she wants to go out! (+36h)" : ""}`
+                : `${formatTimeLeft(timeLeftMs)} left${nudgeSent ? " (+36h added)" : " — waiting for him to plan a date"}`
               }
             </p>
           </div>
@@ -686,6 +790,7 @@ function ChatThread({ match, onBack }) {
                 isMale={isMale}
                 onRespond={handleRespondDate}
                 onConfirm={handleConfirmDate}
+                onDecline={handleDeclineDate}
               />
             );
           }
@@ -977,7 +1082,7 @@ export default function Matches() {
                   </div>
                   {profile.denomination && <p style={{ fontSize: 11, color: C.primary, fontWeight: 600, fontFamily: FONT, marginBottom: 5, margin: "0 0 5px 0" }}>{profile.denomination}</p>}
                   <p style={{ fontSize: 12, color: C.sub, fontFamily: FONT, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis", margin: 0 }}>
-                    {lastMsg ? (lastMsg.sender === currentUserId ? "You: " : "") + lastMsg.text.slice(0, 30) + (lastMsg.text.length > 30 ? "..." : "") : "Start the conversation ✨"}
+                    {lastMsg ? (lastMsg.sender === currentUserId ? "You: " : "") + lastMsg.text.slice(0, 30) + (lastMsg.text.length > 30 ? "..." : "") : "New match"}
                   </p>
                 </div>
                 {hasUnread && <div style={{ width: 9, height: 9, borderRadius: "50%", background: C.primary, flexShrink: 0 }} />}
