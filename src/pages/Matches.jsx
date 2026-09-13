@@ -621,6 +621,11 @@ function ChatThread({ match, onBack }) {
   useEffect(() => {
     actions.loadMessages(match.id).catch(console.error);
     api.getDateInvitations(match.id).then(setDateInvitations).catch(console.error);
+    const poll = setInterval(() => {
+      actions.loadMessages(match.id).catch(console.error);
+      api.getDateInvitations(match.id).then(setDateInvitations).catch(console.error);
+    }, 5000);
+    return () => clearInterval(poll);
   }, [match.id]);
 
   useEffect(() => {
@@ -631,6 +636,19 @@ function ChatThread({ match, onBack }) {
 
   const [nudgeSent, setNudgeSent] = useState(!!match.nudgeAt);
   const [nudgeSending, setNudgeSending] = useState(false);
+
+  useEffect(() => {
+    if (!nudgeSent && isMale) {
+      const checkNudge = setInterval(async () => {
+        try {
+          const matches = await api.getMatches();
+          const m = matches.find((x) => x.id === match.id);
+          if (m?.nudgeAt) { setNudgeSent(true); clearInterval(checkNudge); }
+        } catch (_) {}
+      }, 10000);
+      return () => clearInterval(checkNudge);
+    }
+  }, [nudgeSent, isMale, match.id]);
 
   const firstMessageTime = messages.length > 0 ? messages[0].timestamp : null;
   const THREE_DAYS = 3 * 24 * 60 * 60 * 1000;
@@ -646,6 +664,7 @@ function ChatThread({ match, onBack }) {
     setNudgeSending(true);
     try {
       await api.sendNudge(match.id);
+      await actions.sendMessage(match.id, "I'd love to go on a date with you! 💛");
       setNudgeSent(true);
     } catch (err) {
       console.error("Nudge failed:", err);
@@ -773,7 +792,7 @@ function ChatThread({ match, onBack }) {
       </div>
 
       {/* Messages + Date Cards */}
-      <div style={{ flex: 1, overflowY: "auto", padding: "16px 16px", display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ flex: 1, overflowY: "auto", padding: "16px 16px 24px", display: "flex", flexDirection: "column", gap: 12 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <div style={{ flex: 1, height: 1, background: C.border }} />
           <span style={{ fontSize: 11, fontWeight: 600, color: C.sub }}>Today</span>
