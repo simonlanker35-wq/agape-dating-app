@@ -1,9 +1,10 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useApp } from "../context/AppContext";
 import { compressPhoto } from "../services/api";
 import { PROMPT_CATEGORIES } from "../data/profiles";
 import AgapeCross from "../components/AgapeCross";
 import LocationPicker from "../components/LocationPicker";
+import { redirectToCheckout, getSubscriptionStatus } from "../services/stripe";
 
 const C = { bg: "#FFFFFF", card: "#FAFAF8", surface: "#F4F2EE", primary: "#B8912A", primarySoft: "#FBF5E6", text: "#1A1612", sub: "#8C857C", border: "#E8E4DF", sent: "#111111" };
 const FONT = "'Outfit', system-ui, sans-serif";
@@ -97,6 +98,104 @@ function SettingsRow({ icon, label, sub, onPress, danger, toggle }) {
     >
       {inner}
     </button>
+  );
+}
+
+const PLANS = [
+  { name: "1 Month", price: "CHF 14.99", period: "/month", priceId: "price_1UF5K3CBLGZ7l0PdrdfmSFjw", popular: false, billing: "monthly" },
+  { name: "6 Months", price: "CHF 9.99", period: "/month", priceId: "price_1UF5LtCBLGZ7l0Pday9S7emI", popular: true, billing: "every 6 months" },
+  { name: "12 Months", price: "CHF 6.99", period: "/month", priceId: "price_1UF5McCBLGZ7l0PdmGpUGONs", popular: false, billing: "annually" },
+];
+
+function SubscriptionPlans() {
+  const [loading, setLoading] = useState(null);
+  const [subStatus, setSubStatus] = useState(null);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    getSubscriptionStatus().then(setSubStatus).catch(() => {});
+  }, []);
+
+  const handleSubscribe = async (plan) => {
+    setLoading(plan.name);
+    setError(null);
+    try {
+      await redirectToCheckout(plan.priceId);
+    } catch (err) {
+      setError(err.message);
+      setLoading(null);
+    }
+  };
+
+  return (
+    <>
+      <div style={{ borderRadius: 16, overflow: "hidden" }}>
+        <div style={{ padding: 20, background: C.primary }}>
+          <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(255,255,255,0.6)", marginBottom: 4 }}>Agape+</p>
+          <p style={{ color: "white", fontWeight: 700, fontSize: 20, lineHeight: 1.3, marginBottom: 4 }}>Unlimited likes, see who likes you</p>
+          <p style={{ color: "rgba(255,255,255,0.7)", fontSize: 14 }}>From CHF 6.99/month</p>
+        </div>
+      </div>
+      {subStatus?.status === "active" && (
+        <div style={{ borderRadius: 16, padding: 16, background: "#E8F5E9", marginTop: 4 }}>
+          <p style={{ fontSize: 14, fontWeight: 700, color: "#2E7D32" }}>Active subscription</p>
+          <p style={{ fontSize: 12, color: "#4CAF50", marginTop: 4 }}>Your plan renews {subStatus.cancelAtPeriodEnd ? "and will cancel" : "automatically"} on {new Date(subStatus.currentPeriodEnd * 1000).toLocaleDateString()}</p>
+        </div>
+      )}
+      {error && (
+        <div style={{ borderRadius: 12, padding: 12, background: "#FFF3F0", marginTop: 4 }}>
+          <p style={{ fontSize: 13, color: "#D32F2F" }}>{error}</p>
+        </div>
+      )}
+      <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 4 }}>
+        {PLANS.map((plan) => (
+          <button
+            key={plan.name}
+            onClick={() => handleSubscribe(plan)}
+            disabled={loading || subStatus?.status === "active"}
+            style={{
+              borderRadius: 16,
+              padding: 16,
+              background: C.card,
+              border: plan.popular ? `2px solid ${C.primary}` : `1px solid ${C.border}`,
+              position: "relative",
+              cursor: loading || subStatus?.status === "active" ? "default" : "pointer",
+              opacity: loading && loading !== plan.name ? 0.5 : 1,
+              textAlign: "left",
+            }}
+          >
+            {plan.popular && (
+              <span style={{ position: "absolute", top: -10, right: 16, fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 9999, background: C.primary, color: "white", textTransform: "uppercase", letterSpacing: "0.05em" }}>Most popular</span>
+            )}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div>
+                <p style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{plan.name}</p>
+                <p style={{ fontSize: 12, color: C.sub, marginTop: 2 }}>Billed {plan.billing}</p>
+              </div>
+              <div style={{ textAlign: "right" }}>
+                {loading === plan.name ? (
+                  <span style={{ fontSize: 13, fontWeight: 600, color: C.sub }}>Loading...</span>
+                ) : (
+                  <>
+                    <span style={{ fontSize: 20, fontWeight: 700, color: C.primary }}>{plan.price}</span>
+                    <span style={{ fontSize: 12, color: C.sub }}>{plan.period}</span>
+                  </>
+                )}
+              </div>
+            </div>
+          </button>
+        ))}
+      </div>
+      <div style={{ padding: "8px 0" }}>
+        <p style={{ fontSize: 10, fontWeight: 600, color: C.sub, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>What you get</p>
+        {["Unlimited likes", "See who likes you", "5 Doves per day", "Priority visibility", "Advanced filters"].map((feat) => (
+          <div key={feat} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0" }}>
+            <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={C.primary} strokeWidth={2.5}><path d="M20 6L9 17l-5-5" /></svg>
+            <span style={{ fontSize: 13, color: C.text }}>{feat}</span>
+          </div>
+        ))}
+      </div>
+    </>
   );
 }
 
@@ -483,56 +582,7 @@ function SettingsScreen({ onBack, initialSection = null }) {
             </>
           )}
           {section === "subscription" && (
-            <>
-              <div style={{ borderRadius: 16, overflow: "hidden" }}>
-                <div style={{ padding: 20, background: C.primary }}>
-                  <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(255,255,255,0.6)", marginBottom: 4 }}>Agape+</p>
-                  <p style={{ color: "white", fontWeight: 700, fontSize: 20, lineHeight: 1.3, marginBottom: 4 }}>Unlimited likes, see who likes you</p>
-                  <p style={{ color: "rgba(255,255,255,0.7)", fontSize: 14 }}>From $14.99/month</p>
-                </div>
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 4 }}>
-                {[
-                  { name: "Monthly", price: "$14.99", period: "/month", popular: false },
-                  { name: "6 Months", price: "$9.99", period: "/month", popular: true },
-                  { name: "12 Months", price: "$6.99", period: "/month", popular: false },
-                ].map((plan) => (
-                  <div
-                    key={plan.name}
-                    style={{
-                      borderRadius: 16,
-                      padding: 16,
-                      background: C.card,
-                      border: plan.popular ? `2px solid ${C.primary}` : `1px solid ${C.border}`,
-                      position: "relative",
-                    }}
-                  >
-                    {plan.popular && (
-                      <span style={{ position: "absolute", top: -10, right: 16, fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 9999, background: C.primary, color: "white", textTransform: "uppercase", letterSpacing: "0.05em" }}>Most popular</span>
-                    )}
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <div>
-                        <p style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{plan.name}</p>
-                        <p style={{ fontSize: 12, color: C.sub, marginTop: 2 }}>Billed {plan.name === "Monthly" ? "monthly" : plan.name === "6 Months" ? "every 6 months" : "annually"}</p>
-                      </div>
-                      <div style={{ textAlign: "right" }}>
-                        <span style={{ fontSize: 20, fontWeight: 700, color: C.primary }}>{plan.price}</span>
-                        <span style={{ fontSize: 12, color: C.sub }}>{plan.period}</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div style={{ padding: "8px 0" }}>
-                <p style={{ fontSize: 10, fontWeight: 600, color: C.sub, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>What you get</p>
-                {["Unlimited likes", "See who likes you", "5 Doves per day", "Priority visibility", "Advanced filters"].map((feat) => (
-                  <div key={feat} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0" }}>
-                    <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={C.primary} strokeWidth={2.5}><path d="M20 6L9 17l-5-5" /></svg>
-                    <span style={{ fontSize: 13, color: C.text }}>{feat}</span>
-                  </div>
-                ))}
-              </div>
-            </>
+            <SubscriptionPlans />
           )}
         </div>
       </div>
