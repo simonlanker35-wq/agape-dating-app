@@ -104,7 +104,7 @@ function SettingsScreen({ onBack, initialSection = null }) {
   const { currentUser } = state;
   const [notifs, setNotifs] = useState({ matches: true, likes: true, messages: true, doves: true, prompts: false });
   const [privacy, setPrivacy] = useState({ activeStatus: true, readReceipts: true, showDistance: true, incognito: false });
-  const [faithPref, setFaithPref] = useState({ sameOnly: false, openToAll: true });
+  const [faithPref, setFaithPref] = useState({ sameOnly: (state.filters?.denominations || []).length > 0, openToAll: (state.filters?.denominations || []).length === 0 });
   const [paused, setPaused] = useState(false);
   const [section, setSection] = useState(initialSection);
   const [editField, setEditField] = useState(null);
@@ -204,8 +204,16 @@ function SettingsScreen({ onBack, initialSection = null }) {
               <div>
                 <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: C.sub, padding: "0 4px", marginBottom: 8 }}>Who you see</p>
                 <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
-                  <SettingsRow icon="✝️" label="Show same faith only" sub="Only show Christians" toggle={{ on: faithPref.sameOnly, onToggle: () => toggle(faithPref, "sameOnly", setFaithPref) }} />
-                  <SettingsRow icon="🌍" label="Open to all Christians" sub="Any denomination welcome" toggle={{ on: faithPref.openToAll, onToggle: () => toggle(faithPref, "openToAll", setFaithPref) }} />
+                  <SettingsRow icon="✝️" label="Show same faith only" sub={`Only show ${currentUser.denomination || "your denomination"}`} toggle={{ on: faithPref.sameOnly, onToggle: () => {
+                    const newVal = !faithPref.sameOnly;
+                    setFaithPref({ sameOnly: newVal, openToAll: !newVal });
+                    dispatch({ type: "UPDATE_FILTERS", payload: { denominations: newVal ? [currentUser.denomination] : [] } });
+                  } }} />
+                  <SettingsRow icon="🌍" label="Open to all Christians" sub="Any denomination welcome" toggle={{ on: faithPref.openToAll, onToggle: () => {
+                    const newVal = !faithPref.openToAll;
+                    setFaithPref({ sameOnly: !newVal, openToAll: newVal });
+                    dispatch({ type: "UPDATE_FILTERS", payload: { denominations: newVal ? [] : [currentUser.denomination] } });
+                  } }} />
                 </div>
               </div>
             </>

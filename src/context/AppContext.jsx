@@ -176,13 +176,24 @@ export function AppProvider({ children }) {
   }, [state.onboardingComplete, state.currentUser]);
 
   useEffect(() => {
-    if (state.currentUser && !state.currentUser.location?.lat && navigator.geolocation) {
+    if (state.currentUser && navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (pos) => {
+        async (pos) => {
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
           dispatch({
             type: "SET_USER_LOCATION",
-            payload: { lat: pos.coords.latitude, lng: pos.coords.longitude },
+            payload: { lat, lng },
           });
+          try {
+            const resp = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=10`);
+            const data = await resp.json();
+            const city = data.address?.city || data.address?.town || data.address?.village || data.address?.municipality || "";
+            if (city) {
+              dispatch({ type: "SET_USER_LOCATION", payload: { lat, lng, city } });
+              api.updateProfile({ location: city }).catch(() => {});
+            }
+          } catch (_) {}
         },
         () => {}
       );
