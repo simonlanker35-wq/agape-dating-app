@@ -2,13 +2,14 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import { useApp } from "../context/AppContext";
 import * as api from "../services/api";
 import AgapeCross from "../components/AgapeCross";
+import LocationPicker from "../components/LocationPicker";
 
 const C = { bg: "#FFFFFF", card: "#FAFAF8", surface: "#F4F2EE", primary: "#B8912A", primarySoft: "#FBF5E6", text: "#1A1612", sub: "#8C857C", border: "#E8E4DF", sent: "#111111" };
 const FONT = "'Outfit', system-ui, sans-serif";
 
 const DATE_TYPES = [
   { id: "dinner", emoji: "🍽️", label: "Dinner" },
-  { id: "walk", emoji: "🚶", label: "Walk" },
+  { id: "walk", emoji: "🌿", label: "Walk" },
   { id: "coffee", emoji: "☕", label: "Coffee" },
   { id: "adventure", emoji: "🏔️", label: "Adventure" },
 ];
@@ -16,8 +17,8 @@ const DATE_TYPES = [
 const WARDROBE_OPTIONS = [
   { id: "casual", emoji: "👕", label: "Casual" },
   { id: "smart", emoji: "👔", label: "Smart Casual" },
-  { id: "formal", emoji: "🎩", label: "Formal" },
-  { id: "sporty", emoji: "🏃", label: "Sporty" },
+  { id: "formal", emoji: "✨", label: "Formal" },
+  { id: "sporty", emoji: "🏃", label: "Active" },
 ];
 
 const TIME_SLOTS = ["12:00", "14:00", "16:00", "18:00", "19:30", "21:00"];
@@ -56,10 +57,11 @@ function BackIcon() {
   );
 }
 
-function DateBuilder({ profileName, onSend, onClose }) {
+function DateBuilder({ profileName, userLocation, onSend, onClose }) {
   const [step, setStep] = useState(1);
   const [dateType, setDateType] = useState(null);
   const [location, setLocation] = useState("");
+  const [mapCenter, setMapCenter] = useState(userLocation || { lat: 50.0647, lng: 19.9450 });
   const [wardrobe, setWardrobe] = useState(null);
   const [selections, setSelections] = useState([]);
   const [pickingDay, setPickingDay] = useState(null);
@@ -98,23 +100,25 @@ function DateBuilder({ profileName, onSend, onClose }) {
 
         {step === 1 && (
           <>
-            <p style={{ fontSize: 18, fontWeight: 700, color: C.text, fontFamily: FONT, marginBottom: 4 }}>What kind of date?</p>
-            <p style={{ fontSize: 13, color: C.sub, marginBottom: 16 }}>Pick something {profileName} would enjoy</p>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <p style={{ fontSize: 18, fontWeight: 700, color: C.text, fontFamily: FONT, marginBottom: 16 }}>What kind of date?</p>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               {DATE_TYPES.map((dt) => (
                 <button
                   key={dt.id}
                   onClick={() => setDateType(dt.id)}
                   style={{
-                    padding: "20px 16px",
-                    borderRadius: 16,
+                    padding: "16px 14px",
+                    borderRadius: 14,
                     border: dateType === dt.id ? `2px solid ${C.primary}` : `1.5px solid ${C.border}`,
                     background: dateType === dt.id ? C.primarySoft : C.card,
                     cursor: "pointer",
-                    textAlign: "center",
+                    textAlign: "left",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
                   }}
                 >
-                  <span style={{ fontSize: 32, display: "block", marginBottom: 8 }}>{dt.emoji}</span>
+                  <span style={{ fontSize: 20 }}>{dt.emoji}</span>
                   <span style={{ fontSize: 14, fontWeight: 600, color: C.text, fontFamily: FONT }}>{dt.label}</span>
                 </button>
               ))}
@@ -125,14 +129,16 @@ function DateBuilder({ profileName, onSend, onClose }) {
         {step === 2 && (
           <>
             <p style={{ fontSize: 18, fontWeight: 700, color: C.text, fontFamily: FONT, marginBottom: 4 }}>Where to meet?</p>
-            <p style={{ fontSize: 13, color: C.sub, marginBottom: 16 }}>Name a place or area</p>
-            <input
-              type="text"
+            <p style={{ fontSize: 13, color: C.sub, marginBottom: 12 }}>Search for a place or type it in</p>
+            <LocationPicker
               value={location}
-              onChange={(e) => setLocation(e.target.value)}
+              onChange={setLocation}
+              onSelect={(item) => {
+                setLocation(item.display);
+                setMapCenter({ lat: item.lat, lng: item.lng });
+              }}
               placeholder="e.g. Café Central, Schwyz"
-              autoFocus
-              style={{
+              inputStyle={{
                 width: "100%",
                 padding: "14px 16px",
                 fontSize: 16,
@@ -146,28 +152,40 @@ function DateBuilder({ profileName, onSend, onClose }) {
                 boxSizing: "border-box",
               }}
             />
+            <div style={{ marginTop: 12, borderRadius: 14, overflow: "hidden", border: `1.5px solid ${C.border}`, height: 180 }}>
+              <iframe
+                title="Map"
+                width="100%"
+                height="100%"
+                frameBorder="0"
+                style={{ border: 0 }}
+                src={`https://www.openstreetmap.org/export/embed.html?bbox=${mapCenter.lng - 0.03},${mapCenter.lat - 0.02},${mapCenter.lng + 0.03},${mapCenter.lat + 0.02}&layer=mapnik&marker=${mapCenter.lat},${mapCenter.lng}`}
+              />
+            </div>
           </>
         )}
 
         {step === 3 && (
           <>
-            <p style={{ fontSize: 18, fontWeight: 700, color: C.text, fontFamily: FONT, marginBottom: 4 }}>Dress code</p>
-            <p style={{ fontSize: 13, color: C.sub, marginBottom: 16 }}>So she knows what to wear</p>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <p style={{ fontSize: 18, fontWeight: 700, color: C.text, fontFamily: FONT, marginBottom: 16 }}>Dress code</p>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               {WARDROBE_OPTIONS.map((w) => (
                 <button
                   key={w.id}
                   onClick={() => setWardrobe(w.id)}
                   style={{
-                    padding: "20px 16px",
-                    borderRadius: 16,
+                    padding: "16px 14px",
+                    borderRadius: 14,
                     border: wardrobe === w.id ? `2px solid ${C.primary}` : `1.5px solid ${C.border}`,
                     background: wardrobe === w.id ? C.primarySoft : C.card,
                     cursor: "pointer",
-                    textAlign: "center",
+                    textAlign: "left",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
                   }}
                 >
-                  <span style={{ fontSize: 32, display: "block", marginBottom: 8 }}>{w.emoji}</span>
+                  <span style={{ fontSize: 20 }}>{w.emoji}</span>
                   <span style={{ fontSize: 14, fontWeight: 600, color: C.text, fontFamily: FONT }}>{w.label}</span>
                 </button>
               ))}
@@ -178,7 +196,7 @@ function DateBuilder({ profileName, onSend, onClose }) {
         {step === 4 && (
           <>
             <p style={{ fontSize: 18, fontWeight: 700, color: C.text, fontFamily: FONT, marginBottom: 4 }}>When works for you?</p>
-            <p style={{ fontSize: 13, color: C.sub, marginBottom: 16 }}>Pick 2–3 options for her to choose from</p>
+            <p style={{ fontSize: 13, color: C.sub, marginBottom: 16 }}>Pick 2–3 times</p>
 
             {selections.length > 0 && (
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
@@ -263,7 +281,7 @@ function DateBuilder({ profileName, onSend, onClose }) {
               cursor: canProceed ? "pointer" : "default",
             }}
           >
-            {step === 4 ? "Send Invitation ✨" : "Next"}
+            {step === 4 ? "Send Invitation" : "Next"}
           </button>
         </div>
       </div>
@@ -300,26 +318,25 @@ function DateCard({ invitation, isMe, isMale, onRespond, onConfirm }) {
 
   return (
     <div style={{ margin: "8px 0", borderRadius: 20, overflow: "hidden", border: `1.5px solid ${invitation.status === "confirmed" ? "#22C55E" : C.primary}`, background: C.card }}>
-      <div style={{ padding: "14px 16px", background: invitation.status === "confirmed" ? "#F0FDF4" : C.primarySoft, display: "flex", alignItems: "center", gap: 10 }}>
-        <span style={{ fontSize: 20 }}>{invitation.status === "confirmed" ? "✅" : "📅"}</span>
-        <span style={{ fontSize: 14, fontWeight: 700, color: invitation.status === "confirmed" ? "#16A34A" : C.primary, fontFamily: FONT }}>
-          {invitation.status === "confirmed" ? "Date Confirmed!" : "Date Invitation"}
+      <div style={{ padding: "12px 16px", background: invitation.status === "confirmed" ? "#F0FDF4" : C.surface, display: "flex", alignItems: "center", gap: 10 }}>
+        <span style={{ fontSize: 14, fontWeight: 700, color: invitation.status === "confirmed" ? "#16A34A" : C.text, fontFamily: FONT, letterSpacing: "-0.2px" }}>
+          {invitation.status === "confirmed" ? "Date Confirmed" : "Date Invitation"}
         </span>
       </div>
 
-      <div style={{ padding: "14px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ fontSize: 22 }}>{dt?.emoji}</span>
-          <span style={{ fontSize: 15, fontWeight: 700, color: C.text, fontFamily: FONT }}>{dt?.label}</span>
+      <div style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontSize: 16 }}>{dt?.emoji}</span>
+          <span style={{ fontSize: 14, fontWeight: 600, color: C.text, fontFamily: FONT }}>{dt?.label}</span>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ fontSize: 16 }}>📍</span>
-          <span style={{ fontSize: 14, color: C.text, fontFamily: FONT }}>{invitation.location}</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={C.sub} strokeWidth={2}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
+          <span style={{ fontSize: 13, color: C.sub, fontFamily: FONT }}>{invitation.location}</span>
         </div>
         {wb && (
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 16 }}>{wb.emoji}</span>
-            <span style={{ fontSize: 14, color: C.text, fontFamily: FONT }}>{wb.label}</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 14 }}>{wb.emoji}</span>
+            <span style={{ fontSize: 13, color: C.sub, fontFamily: FONT }}>{wb.label}</span>
           </div>
         )}
       </div>
@@ -695,6 +712,7 @@ function ChatThread({ match, onBack }) {
       {showDateBuilder && (
         <DateBuilder
           profileName={profile.name}
+          userLocation={state.currentUser?.location ? { lat: state.currentUser.location.lat, lng: state.currentUser.location.lng } : null}
           onSend={handleSendDate}
           onClose={() => setShowDateBuilder(false)}
         />

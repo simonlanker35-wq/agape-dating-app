@@ -93,6 +93,7 @@ function pickN(arr, n) {
 
 async function seed() {
   console.log("Clearing existing data...");
+  await supabase.from("date_invitations").delete().neq("id", "00000000-0000-0000-0000-000000000000");
   await supabase.from("messages").delete().neq("id", "00000000-0000-0000-0000-000000000000");
   await supabase.from("matches").delete().neq("id", "00000000-0000-0000-0000-000000000000");
   await supabase.from("likes").delete().neq("id", "00000000-0000-0000-0000-000000000000");
