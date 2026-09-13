@@ -14,8 +14,6 @@ const STEPS = [
   "height",
   "gender",
   "denomination",
-  "job",
-  "school",
   "location",
   "prompt_faith",
   "prompt_future",
@@ -193,8 +191,6 @@ export default function Onboarding() {
       case "height": return form.height >= 100 && form.height <= 250;
       case "gender": return form.gender !== "";
       case "denomination": return form.denomination !== "";
-      case "job": return true;
-      case "school": return true;
       case "location": return true;
       case "prompt_faith":
       case "prompt_future":
@@ -285,9 +281,16 @@ export default function Onboarding() {
 
   return (
     <div className="onboarding">
-      <div className="onboarding-progress-bar">
-        <div className="progress-fill" style={{ width: `${progress}%` }} />
-      </div>
+      {currentStep !== "welcome" && (
+        <div style={{ padding: "12px 20px 0", display: "flex", alignItems: "center", gap: 12 }}>
+          <div className="onboarding-progress-bar" style={{ flex: 1 }}>
+            <div className="progress-fill" style={{ width: `${progress}%` }} />
+          </div>
+          <span style={{ fontSize: 12, fontWeight: 600, color: "#8C857C", whiteSpace: "nowrap" }}>
+            {step} of {STEPS.length - 1}
+          </span>
+        </div>
+      )}
 
       <div className="onboarding-content">
         {currentStep === "welcome" && (
@@ -509,52 +512,6 @@ export default function Onboarding() {
                 Continue <ChevronRight size={18} />
               </button>
             )}
-          </div>
-        )}
-
-        {currentStep === "job" && (
-          <div className="onboarding-step single-question" key="job">
-            <h2>What do you do?</h2>
-            <input
-              ref={inputRef}
-              type="text"
-              value={form.job}
-              onChange={(e) => setForm({ ...form, job: e.target.value })}
-              onKeyDown={handleKeyDown}
-              placeholder="Job title"
-              className="onboarding-input"
-            />
-            <div className="skip-or-continue">
-              <button className="skip-btn-text" onClick={goNext}>Skip</button>
-              {form.job.trim() && (
-                <button className="onboarding-cta small" onClick={goNext}>
-                  Continue <ChevronRight size={18} />
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-
-        {currentStep === "school" && (
-          <div className="onboarding-step single-question" key="school">
-            <h2>Where did you study?</h2>
-            <input
-              ref={inputRef}
-              type="text"
-              value={form.school}
-              onChange={(e) => setForm({ ...form, school: e.target.value })}
-              onKeyDown={handleKeyDown}
-              placeholder="School or university"
-              className="onboarding-input"
-            />
-            <div className="skip-or-continue">
-              <button className="skip-btn-text" onClick={goNext}>Skip</button>
-              {form.school.trim() && (
-                <button className="onboarding-cta small" onClick={goNext}>
-                  Continue <ChevronRight size={18} />
-                </button>
-              )}
-            </div>
           </div>
         )}
 
