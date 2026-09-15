@@ -6,6 +6,7 @@ import AgapeCross from "../components/AgapeCross";
 import WaveformBar from "../components/WaveformBar";
 import FilterSheet from "../components/FilterSheet";
 import ReportSheet from "../components/ReportSheet";
+import { getLikesRemaining, getDovesRemaining, recordLike, recordDove, LIMITS } from "../services/limits";
 
 function haversine(lat1, lon1, lat2, lon2) {
   const R = 6371;
@@ -33,7 +34,10 @@ export default function Discover() {
   const [localLikes, setLocalLikes] = useState(new Set());
   const [showFilter, setShowFilter] = useState(false);
   const [showReport, setShowReport] = useState(false);
+  const [likesLeft, setLikesLeft] = useState(getLikesRemaining());
+  const [dovesLeft, setDovesLeft] = useState(getDovesRemaining());
   const cardRef = useRef(null);
+  const isPremium = state.currentUser?.subscriptionStatus === "active";
 
   const userLat = state.currentUser?.location?.lat;
   const userLng = state.currentUser?.location?.lng;
@@ -70,6 +74,19 @@ export default function Discover() {
     return () => clearTimeout(t);
   }, [profile?.id]);
 
+  if (!isPremium && likesLeft <= 0) {
+    return (
+      <div className="discover-empty">
+        <Heart size={48} />
+        <h2>No likes left today</h2>
+        <p>You've used all {LIMITS.DAILY_LIKES} free likes. Come back tomorrow or upgrade to Agape+ for unlimited likes.</p>
+        <button className="filter-apply-btn" style={{ marginTop: 16, flex: "none", background: "#B8912A" }} onClick={() => dispatch({ type: "SET_TAB", payload: "profile" })}>
+          Get Agape+
+        </button>
+      </div>
+    );
+  }
+
   if (!profile) {
     return (
       <div className="discover-empty">
@@ -91,6 +108,10 @@ export default function Discover() {
   }
 
   const handleLike = async (targetType, targetIndex, comment = null, isDove = false) => {
+    if (!isPremium) {
+      if (isDove && dovesLeft <= 0) return;
+      if (likesLeft <= 0) return;
+    }
     const flashType = comment ? "comment" : isDove ? "dove" : "heart";
     const likedId = profile.id;
     const likedProfile = profile;
@@ -98,6 +119,11 @@ export default function Discover() {
     setCommentText("");
     setShowDove(false);
     setLikeFlash(flashType);
+    if (!isPremium) {
+      recordLike();
+      setLikesLeft(getLikesRemaining());
+      if (isDove) { recordDove(); setDovesLeft(getDovesRemaining()); }
+    }
 
     setTimeout(async () => {
       setLocalLikes((prev) => new Set(prev).add(likedId));
@@ -263,6 +289,12 @@ export default function Discover() {
                   <Heart size={17} fill="white" stroke="white" />
                 </button>
               </div>
+              {!isPremium && (
+                <div style={{ position: "absolute", top: 8, right: 8, background: "rgba(0,0,0,0.6)", borderRadius: 20, padding: "4px 10px", display: "flex", alignItems: "center", gap: 4 }}>
+                  <Heart size={10} fill="white" stroke="white" />
+                  <span style={{ color: "white", fontSize: 11, fontWeight: 700, fontFamily: "'Outfit', system-ui, sans-serif" }}>{likesLeft}</span>
+                </div>
+              )}
             </div>
           </div>
         </div>

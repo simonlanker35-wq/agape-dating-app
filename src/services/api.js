@@ -524,6 +524,7 @@ function mapProfileToUser(p) {
     filters: p.filters || { minAge: 18, maxAge: 50, maxDistance: 80, denomination: "" },
     isActive: p.is_active,
     lastActive: p.last_active,
+    subscriptionStatus: p.subscription_status || "none",
   };
 }
 

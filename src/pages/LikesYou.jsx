@@ -2,6 +2,7 @@ import { useApp } from "../context/AppContext";
 import { useState } from "react";
 import { Heart, X } from "lucide-react";
 import AgapeCross from "../components/AgapeCross";
+import { getRevealsRemaining, recordReveal, LIMITS } from "../services/limits";
 
 const C = { bg: "#FFFFFF", card: "#FAFAF8", surface: "#F4F2EE", primary: "#B8912A", primarySoft: "#FBF5E6", text: "#1A1612", sub: "#8C857C", border: "#E8E4DF" };
 const FONT = "'Outfit', system-ui, sans-serif";
@@ -11,6 +12,9 @@ export default function LikesYou() {
   const [likedBack, setLikedBack] = useState(new Set());
   const [dismissed, setDismissed] = useState(new Set());
   const [viewProfile, setViewProfile] = useState(null);
+  const [revealsLeft, setRevealsLeft] = useState(getRevealsRemaining());
+  const [revealedIds, setRevealedIds] = useState(new Set());
+  const isPremium = state.currentUser?.subscriptionStatus === "active";
 
   const likesWithProfiles = state.likesReceived.filter(
     (l) => l.profile && !dismissed.has(l.id) && !likedBack.has(l.id)
@@ -56,19 +60,28 @@ export default function LikesYou() {
 
       <div style={{ flex: 1, overflowY: "auto", padding: "0 12px 24px" }}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-          {likesWithProfiles.map((like) => {
+          {likesWithProfiles.map((like, idx) => {
             const profile = like.profile;
             const matched = likedBack.has(like.id);
+            const isLocked = !isPremium && idx > 0 && !revealedIds.has(like.id);
+
+            const handleReveal = (e) => {
+              e.stopPropagation();
+              if (revealsLeft <= 0) return;
+              recordReveal();
+              setRevealsLeft(getRevealsRemaining());
+              setRevealedIds((prev) => new Set(prev).add(like.id));
+            };
 
             return (
               <div
                 key={like.id}
-                onClick={() => setViewProfile(profile)}
+                onClick={() => !isLocked && setViewProfile(profile)}
                 style={{
                   position: "relative",
                   borderRadius: 20,
                   overflow: "hidden",
-                  cursor: "pointer",
+                  cursor: isLocked ? "default" : "pointer",
                   aspectRatio: "3/4",
                   background: C.surface,
                 }}
@@ -76,51 +89,71 @@ export default function LikesYou() {
                 <img
                   src={profile.photos?.[0]}
                   alt={profile.name}
-                  style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                  style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", filter: isLocked ? "blur(20px)" : "none" }}
                   onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${profile.name}&size=400&background=random`; }}
                 />
                 <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 50%)", pointerEvents: "none" }} />
 
-                {/* Name + denomination */}
-                <div style={{ position: "absolute", bottom: 56, left: 12, right: 12 }}>
-                  <p style={{ color: "white", fontSize: 18, fontWeight: 700, fontFamily: FONT, margin: 0, textShadow: "0 1px 4px rgba(0,0,0,0.4)" }}>
-                    {profile.name}, {profile.age}
-                  </p>
-                  <p style={{ color: "rgba(255,255,255,0.8)", fontSize: 12, fontWeight: 600, marginTop: 2 }}>
-                    {profile.denomination}
-                  </p>
-                  {like.comment && (
-                    <p style={{ color: "rgba(255,255,255,0.9)", fontSize: 11, fontStyle: "italic", marginTop: 4, lineHeight: 1.3 }}>
-                      "{like.comment}"
-                    </p>
-                  )}
-                </div>
-
-                {/* Action buttons */}
-                <div style={{ position: "absolute", bottom: 10, left: 12, right: 12, display: "flex", gap: 8 }}>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleDismiss(like); }}
-                    style={{
-                      flex: 1, height: 38, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center",
-                      background: "rgba(255,255,255,0.2)", backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.3)", cursor: "pointer",
-                    }}
-                  >
-                    <X size={18} color="white" />
-                  </button>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); if (!matched) handleLikeBack(like); }}
-                    style={{
-                      flex: 1, height: 38, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center",
-                      background: matched ? "#22C55E" : C.primary, border: "none", cursor: "pointer",
-                    }}
-                  >
-                    {matched ? (
-                      <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={3}><path d="M20 6L9 17l-5-5" /></svg>
+                {isLocked ? (
+                  <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                    <div style={{ fontSize: 28 }}>🔒</div>
+                    {revealsLeft > 0 ? (
+                      <button
+                        onClick={handleReveal}
+                        style={{
+                          padding: "8px 16px", borderRadius: 12, fontSize: 12, fontWeight: 700, fontFamily: FONT,
+                          background: C.primary, color: "white", border: "none", cursor: "pointer",
+                        }}
+                      >
+                        Reveal ({revealsLeft} left)
+                      </button>
                     ) : (
-                      <Heart size={18} fill="white" stroke="white" />
+                      <p style={{ color: "white", fontSize: 12, fontWeight: 600, fontFamily: FONT, textAlign: "center", padding: "0 12px", textShadow: "0 1px 4px rgba(0,0,0,0.5)" }}>
+                        Get Agape+ to see all
+                      </p>
                     )}
-                  </button>
-                </div>
+                  </div>
+                ) : (
+                  <>
+                    <div style={{ position: "absolute", bottom: 56, left: 12, right: 12 }}>
+                      <p style={{ color: "white", fontSize: 18, fontWeight: 700, fontFamily: FONT, margin: 0, textShadow: "0 1px 4px rgba(0,0,0,0.4)" }}>
+                        {profile.name}, {profile.age}
+                      </p>
+                      <p style={{ color: "rgba(255,255,255,0.8)", fontSize: 12, fontWeight: 600, marginTop: 2 }}>
+                        {profile.denomination}
+                      </p>
+                      {like.comment && (
+                        <p style={{ color: "rgba(255,255,255,0.9)", fontSize: 11, fontStyle: "italic", marginTop: 4, lineHeight: 1.3 }}>
+                          "{like.comment}"
+                        </p>
+                      )}
+                    </div>
+                    <div style={{ position: "absolute", bottom: 10, left: 12, right: 12, display: "flex", gap: 8 }}>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleDismiss(like); }}
+                        style={{
+                          flex: 1, height: 38, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center",
+                          background: "rgba(255,255,255,0.2)", backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.3)", cursor: "pointer",
+                        }}
+                      >
+                        <X size={18} color="white" />
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); if (!matched) handleLikeBack(like); }}
+                        style={{
+                          flex: 1, height: 38, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center",
+                          background: matched ? "#22C55E" : C.primary, border: "none", cursor: "pointer",
+                        }}
+                      >
+                        {matched ? (
+                          <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={3}><path d="M20 6L9 17l-5-5" /></svg>
+                        ) : (
+                          <Heart size={18} fill="white" stroke="white" />
+                        )}
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             );
           })}

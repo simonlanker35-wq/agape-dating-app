@@ -4,6 +4,7 @@ import { Heart, X, MessageCircle } from "lucide-react";
 import AgapeCross from "../components/AgapeCross";
 import WaveformBar from "../components/WaveformBar";
 import ReportSheet from "../components/ReportSheet";
+import { getStandoutLikesRemaining, recordStandoutLike } from "../services/limits";
 
 function haversine(lat1, lon1, lat2, lon2) {
   const R = 6371;
@@ -84,12 +85,17 @@ export default function Standouts() {
   const photos = profile.photos || [];
   const prompts = (profile.prompts || []).filter((p) => p.prompt && p.answer);
 
+  const isPremium = state.currentUser?.subscriptionStatus === "active";
+  const [standoutLikesLeft, setStandoutLikesLeft] = useState(getStandoutLikesRemaining());
+
   const handleLike = async (targetType, targetIndex, comment = null) => {
+    if (!isPremium && standoutLikesLeft <= 0) return;
     const flashType = comment ? "comment" : "dove";
     const likedId = profile.id;
     setCommentTarget(null);
     setCommentText("");
     setLikeFlash(flashType);
+    if (!isPremium) { recordStandoutLike(); setStandoutLikesLeft(getStandoutLikesRemaining()); }
 
     setTimeout(async () => {
       setLocalLikes((prev) => new Set(prev).add(likedId));
