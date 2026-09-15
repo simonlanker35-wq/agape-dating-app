@@ -693,18 +693,23 @@ function ChatThread({ match, onBack }) {
   };
 
   const [videoCallStarted, setVideoCallStarted] = useState(false);
-  const [showVideoCallConfirm, setShowVideoCallConfirm] = useState(false);
+  const [showVideoCallScheduler, setShowVideoCallScheduler] = useState(false);
+  const [vcDate, setVcDate] = useState("");
+  const [vcTime, setVcTime] = useState("");
 
   const handleVideoCall = async () => {
+    if (!vcDate || !vcTime) return;
     setVideoCallStarted(true);
+    const d = new Date(vcDate);
+    const dayLabel = d.toLocaleDateString("en", { weekday: "short", month: "short", day: "numeric" });
     try {
       await api.startVideoCall(match.id);
-      await actions.sendMessage(match.id, "I'd love to do a video call! 📹 When works for you?");
+      await actions.sendMessage(match.id, `📹 Video call scheduled: ${dayLabel} at ${vcTime}`);
     } catch (err) {
       console.error("Video call failed:", err);
       setVideoCallStarted(false);
     }
-    setShowVideoCallConfirm(false);
+    setShowVideoCallScheduler(false);
   };
 
   const [showNudgeExplainer, setShowNudgeExplainer] = useState(false);
@@ -937,8 +942,8 @@ function ChatThread({ match, onBack }) {
                 Plan a Date
               </button>
             )}
-            {/* Nudge button — women only, when no date yet and nudge not sent */}
-            {!isMale && !hasConfirmedDate && !hasPendingDate && !nudgeSent && firstMessageTime && (
+            {/* Rose button — women only, available from start */}
+            {!isMale && !hasConfirmedDate && !hasPendingDate && !nudgeSent && (
               <button
                 onClick={handleNudge}
                 disabled={nudgeSending}
@@ -999,12 +1004,12 @@ function ChatThread({ match, onBack }) {
                 <button onClick={() => setShowNudgeExplainer(false)} style={{ fontSize: 12, fontWeight: 600, color: C.primary, background: "none", border: "none", cursor: "pointer", padding: 0 }}>Got it</button>
               </div>
             )}
-            {/* Schedule Video Call button */}
-            {!videoCallStarted && !hasVideoCall && (
+            {/* Schedule Video Call button — shows after first message or rose */}
+            {!videoCallStarted && !hasVideoCall && (firstMessageTime || nudgeSent || match.nudgeAt) && (
               <>
-                {!showVideoCallConfirm ? (
+                {!showVideoCallScheduler ? (
                   <button
-                    onClick={() => setShowVideoCallConfirm(true)}
+                    onClick={() => setShowVideoCallScheduler(true)}
                     style={{
                       width: "100%",
                       padding: "12px 0",
@@ -1029,13 +1034,32 @@ function ChatThread({ match, onBack }) {
                   </button>
                 ) : (
                   <div style={{ padding: "14px 16px", marginBottom: 10, borderRadius: 14, background: "#F0FDF4", border: "1.5px solid #22C55E" }}>
-                    <p style={{ fontSize: 13, fontWeight: 700, color: "#16A34A", fontFamily: FONT, margin: "0 0 8px 0" }}>📹 Schedule a video call?</p>
-                    <p style={{ fontSize: 12, color: C.text, fontFamily: FONT, lineHeight: 1.5, margin: "0 0 12px 0" }}>
-                      This sends a message to {profile.name} asking to schedule a video call. The deadline timer stops so you can take your time.
-                    </p>
+                    <p style={{ fontSize: 13, fontWeight: 700, color: "#16A34A", fontFamily: FONT, margin: "0 0 10px 0" }}>📹 Schedule a video call</p>
+                    <p style={{ fontSize: 12, color: C.sub, fontFamily: FONT, margin: "0 0 12px 0" }}>Pick a date and time — the deadline timer stops.</p>
+                    <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+                      <input
+                        type="date"
+                        value={vcDate}
+                        onChange={(e) => setVcDate(e.target.value)}
+                        min={new Date().toISOString().split("T")[0]}
+                        style={{
+                          flex: 1, padding: "10px 12px", borderRadius: 12, border: `1.5px solid ${C.border}`,
+                          fontSize: 14, fontFamily: FONT, color: C.text, background: "white", outline: "none",
+                        }}
+                      />
+                      <input
+                        type="time"
+                        value={vcTime}
+                        onChange={(e) => setVcTime(e.target.value)}
+                        style={{
+                          flex: 1, padding: "10px 12px", borderRadius: 12, border: `1.5px solid ${C.border}`,
+                          fontSize: 14, fontFamily: FONT, color: C.text, background: "white", outline: "none",
+                        }}
+                      />
+                    </div>
                     <div style={{ display: "flex", gap: 8 }}>
-                      <button onClick={() => setShowVideoCallConfirm(false)} style={{ flex: 1, padding: "10px 0", borderRadius: 12, fontSize: 13, fontWeight: 600, background: C.surface, color: C.sub, border: "none", cursor: "pointer" }}>Cancel</button>
-                      <button onClick={handleVideoCall} style={{ flex: 1, padding: "10px 0", borderRadius: 12, fontSize: 13, fontWeight: 700, background: "#22C55E", color: "white", border: "none", cursor: "pointer" }}>Send</button>
+                      <button onClick={() => { setShowVideoCallScheduler(false); setVcDate(""); setVcTime(""); }} style={{ flex: 1, padding: "10px 0", borderRadius: 12, fontSize: 13, fontWeight: 600, background: C.surface, color: C.sub, border: "none", cursor: "pointer" }}>Cancel</button>
+                      <button onClick={handleVideoCall} disabled={!vcDate || !vcTime} style={{ flex: 1, padding: "10px 0", borderRadius: 12, fontSize: 13, fontWeight: 700, background: vcDate && vcTime ? "#22C55E" : C.border, color: "white", border: "none", cursor: vcDate && vcTime ? "pointer" : "default" }}>Schedule</button>
                     </div>
                   </div>
                 )}
