@@ -1104,7 +1104,7 @@ function ChatThread({ match, onBack }) {
                   </p>
                 </div>
                 <button
-                  onClick={() => window.open(`https://meet.calyx.net/agape-${match.id.slice(0, 8)}`, "_blank")}
+                  onClick={() => window.open(`https://meet.ffmuc.net/agape-${match.id.slice(0, 8)}`, "_blank")}
                   style={{
                     width: "100%", padding: "12px 0", borderRadius: 14, fontSize: 14, fontWeight: 700, fontFamily: FONT,
                     background: "#22C55E", color: "white", border: "none", cursor: "pointer",
