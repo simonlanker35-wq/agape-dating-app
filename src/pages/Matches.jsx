@@ -694,17 +694,16 @@ function ChatThread({ match, onBack }) {
 
   const [videoCallStarted, setVideoCallStarted] = useState(false);
   const [showVideoCallScheduler, setShowVideoCallScheduler] = useState(false);
-  const [vcDate, setVcDate] = useState("");
-  const [vcTime, setVcTime] = useState("");
+  const [vcDay, setVcDay] = useState(null);
+  const [vcTime, setVcTime] = useState(null);
+  const vcDays = useMemo(getNext7Days, []);
 
   const handleVideoCall = async () => {
-    if (!vcDate || !vcTime) return;
+    if (!vcDay || !vcTime) return;
     setVideoCallStarted(true);
-    const d = new Date(vcDate);
-    const dayLabel = d.toLocaleDateString("en", { weekday: "short", month: "short", day: "numeric" });
     try {
       await api.startVideoCall(match.id);
-      await actions.sendMessage(match.id, `📹 Video call scheduled: ${dayLabel} at ${vcTime}`);
+      await actions.sendMessage(match.id, `📹 Video call scheduled: ${vcDay.dayName} ${vcDay.dayNum} ${vcDay.month} at ${vcTime}`);
     } catch (err) {
       console.error("Video call failed:", err);
       setVideoCallStarted(false);
@@ -1035,41 +1034,75 @@ function ChatThread({ match, onBack }) {
                 ) : (
                   <div style={{ padding: "14px 16px", marginBottom: 10, borderRadius: 14, background: "#F0FDF4", border: "1.5px solid #22C55E" }}>
                     <p style={{ fontSize: 13, fontWeight: 700, color: "#16A34A", fontFamily: FONT, margin: "0 0 10px 0" }}>📹 Schedule a video call</p>
-                    <p style={{ fontSize: 12, color: C.sub, fontFamily: FONT, margin: "0 0 12px 0" }}>Pick a date and time — the deadline timer stops.</p>
-                    <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-                      <input
-                        type="date"
-                        value={vcDate}
-                        onChange={(e) => setVcDate(e.target.value)}
-                        min={new Date().toISOString().split("T")[0]}
-                        style={{
-                          flex: 1, padding: "10px 12px", borderRadius: 12, border: `1.5px solid ${C.border}`,
-                          fontSize: 14, fontFamily: FONT, color: C.text, background: "white", outline: "none",
-                        }}
-                      />
-                      <input
-                        type="time"
-                        value={vcTime}
-                        onChange={(e) => setVcTime(e.target.value)}
-                        style={{
-                          flex: 1, padding: "10px 12px", borderRadius: 12, border: `1.5px solid ${C.border}`,
-                          fontSize: 14, fontFamily: FONT, color: C.text, background: "white", outline: "none",
-                        }}
-                      />
+                    <p style={{ fontSize: 12, color: C.sub, fontFamily: FONT, margin: "0 0 12px 0" }}>Pick a day and time — the deadline timer stops.</p>
+                    <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 8, marginBottom: 8 }}>
+                      {vcDays.map((d) => (
+                        <button
+                          key={d.date}
+                          onClick={() => setVcDay(vcDay?.date === d.date ? null : d)}
+                          style={{
+                            flexShrink: 0, padding: "10px 14px", borderRadius: 14, cursor: "pointer", textAlign: "center", minWidth: 60,
+                            border: vcDay?.date === d.date ? "2px solid #22C55E" : `1.5px solid ${C.border}`,
+                            background: vcDay?.date === d.date ? "#DCFCE7" : "white",
+                          }}
+                        >
+                          <span style={{ fontSize: 11, color: C.sub, display: "block", fontWeight: 600 }}>{d.dayName}</span>
+                          <span style={{ fontSize: 18, fontWeight: 700, color: C.text, display: "block" }}>{d.dayNum}</span>
+                          <span style={{ fontSize: 10, color: C.sub }}>{d.month}</span>
+                        </button>
+                      ))}
                     </div>
+                    {vcDay && (
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+                        {TIME_SLOTS.map((t) => (
+                          <button
+                            key={t}
+                            onClick={() => setVcTime(vcTime === t ? null : t)}
+                            style={{
+                              padding: "8px 16px", borderRadius: 10, cursor: "pointer",
+                              fontSize: 14, fontWeight: 600, color: vcTime === t ? "white" : C.text, fontFamily: FONT,
+                              border: vcTime === t ? "2px solid #22C55E" : `1.5px solid ${C.border}`,
+                              background: vcTime === t ? "#22C55E" : "white",
+                            }}
+                          >
+                            {t}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {vcDay && vcTime && (
+                      <div style={{ padding: "8px 12px", borderRadius: 10, background: "#DCFCE7", marginBottom: 12, textAlign: "center" }}>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: "#16A34A", fontFamily: FONT }}>
+                          📹 {vcDay.dayName} {vcDay.dayNum} {vcDay.month} · {vcTime}
+                        </span>
+                      </div>
+                    )}
                     <div style={{ display: "flex", gap: 8 }}>
-                      <button onClick={() => { setShowVideoCallScheduler(false); setVcDate(""); setVcTime(""); }} style={{ flex: 1, padding: "10px 0", borderRadius: 12, fontSize: 13, fontWeight: 600, background: C.surface, color: C.sub, border: "none", cursor: "pointer" }}>Cancel</button>
-                      <button onClick={handleVideoCall} disabled={!vcDate || !vcTime} style={{ flex: 1, padding: "10px 0", borderRadius: 12, fontSize: 13, fontWeight: 700, background: vcDate && vcTime ? "#22C55E" : C.border, color: "white", border: "none", cursor: vcDate && vcTime ? "pointer" : "default" }}>Schedule</button>
+                      <button onClick={() => { setShowVideoCallScheduler(false); setVcDay(null); setVcTime(null); }} style={{ flex: 1, padding: "10px 0", borderRadius: 12, fontSize: 13, fontWeight: 600, background: C.surface, color: C.sub, border: "none", cursor: "pointer" }}>Cancel</button>
+                      <button onClick={handleVideoCall} disabled={!vcDay || !vcTime} style={{ flex: 1, padding: "10px 0", borderRadius: 12, fontSize: 13, fontWeight: 700, background: vcDay && vcTime ? "#22C55E" : C.border, color: "white", border: "none", cursor: vcDay && vcTime ? "pointer" : "default" }}>Schedule</button>
                     </div>
                   </div>
                 )}
               </>
             )}
             {(videoCallStarted || hasVideoCall) && (
-              <div style={{ textAlign: "center", padding: "8px 0", marginBottom: 8 }}>
-                <p style={{ fontSize: 12, color: "#16A34A", fontWeight: 600, fontFamily: FONT, margin: 0 }}>
-                  📹 Video call scheduled — no deadline, take your time
-                </p>
+              <div style={{ marginBottom: 10 }}>
+                <div style={{ textAlign: "center", padding: "8px 0", marginBottom: 6 }}>
+                  <p style={{ fontSize: 12, color: "#16A34A", fontWeight: 600, fontFamily: FONT, margin: 0 }}>
+                    📹 Video call scheduled — no deadline, take your time
+                  </p>
+                </div>
+                <button
+                  onClick={() => window.open(`https://meet.jit.si/agape-${match.id.slice(0, 8)}`, "_blank")}
+                  style={{
+                    width: "100%", padding: "12px 0", borderRadius: 14, fontSize: 14, fontWeight: 700, fontFamily: FONT,
+                    background: "#22C55E", color: "white", border: "none", cursor: "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                  }}
+                >
+                  <span style={{ fontSize: 16 }}>📹</span>
+                  Join Video Call
+                </button>
               </div>
             )}
             <div style={{ display: "flex", alignItems: "center", gap: 12, borderRadius: 16, padding: "12px 16px", background: C.surface }}>
