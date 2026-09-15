@@ -684,7 +684,7 @@ function ChatThread({ match, onBack }) {
     setNudgeSending(true);
     try {
       await api.sendNudge(match.id);
-      await actions.sendMessage(match.id, "I'd love to go on a date with you! 💛");
+      await actions.sendMessage(match.id, "🌹");
       setNudgeSent(true);
     } catch (err) {
       console.error("Nudge failed:", err);
@@ -692,21 +692,22 @@ function ChatThread({ match, onBack }) {
     setNudgeSending(false);
   };
 
-  const [videoCallStarted, setVideoCallStarted] = useState(!!match.videoCallAt);
+  const [videoCallStarted, setVideoCallStarted] = useState(false);
+  const [showVideoCallConfirm, setShowVideoCallConfirm] = useState(false);
 
   const handleVideoCall = async () => {
-    const roomName = `agape-${match.id.slice(0, 8)}`;
-    const url = `https://meet.jit.si/${roomName}`;
-    const win = window.open(url, "_blank");
+    setVideoCallStarted(true);
     try {
       await api.startVideoCall(match.id);
-      await actions.sendMessage(match.id, `Let's video chat! Join here: ${url}`);
-      setVideoCallStarted(true);
+      await actions.sendMessage(match.id, "I'd love to do a video call! 📹 When works for you?");
     } catch (err) {
       console.error("Video call failed:", err);
-      if (!win) window.location.href = url;
+      setVideoCallStarted(false);
     }
+    setShowVideoCallConfirm(false);
   };
+
+  const [showNudgeExplainer, setShowNudgeExplainer] = useState(false);
 
   const timeline = useMemo(() => {
     const items = [];
@@ -807,8 +808,8 @@ function ChatThread({ match, onBack }) {
             <span style={{ fontSize: 14 }}>⏰</span>
             <p style={{ fontSize: 12, fontWeight: 600, color: timeLeftMs < 86400000 ? "#EF4444" : C.sub, margin: 0 }}>
               {isMale
-                ? `${formatTimeLeft(timeLeftMs)} left to plan a date${nudgeSent || match.nudgeAt ? " — she wants to go out! (+36h)" : ""}`
-                : `${formatTimeLeft(timeLeftMs)} left${nudgeSent ? " (+36h added)" : " — waiting for him to plan a date"}`
+                ? `${formatTimeLeft(timeLeftMs)} left to plan a date${nudgeSent || match.nudgeAt ? " — 🌹 she sent a rose! (+36h)" : ""}`
+                : `${formatTimeLeft(timeLeftMs)} left${nudgeSent ? " 🌹 (+36h added)" : " — waiting for him to plan a date"}`
               }
             </p>
           </div>
@@ -959,42 +960,93 @@ function ChatThread({ match, onBack }) {
                   gap: 8,
                 }}
               >
-                <span style={{ fontSize: 16 }}>💛</span>
-                {nudgeSending ? "Sending..." : "I'd love to go on a date!"}
+                <span style={{ fontSize: 16 }}>🌹</span>
+                {nudgeSending ? "Sending..." : "Send him a rose"}
               </button>
             )}
             {!isMale && nudgeSent && !hasConfirmedDate && !hasPendingDate && (
               <div style={{ textAlign: "center", padding: "8px 0", marginBottom: 8 }}>
                 <p style={{ fontSize: 12, color: C.primary, fontWeight: 600, fontFamily: FONT, margin: 0 }}>
-                  💛 You let him know — he has extra time to plan a date
+                  🌹 Rose sent — he has extra time to plan a date
                 </p>
               </div>
             )}
-            {/* Video call button */}
-            {!videoCallStarted && !hasVideoCall && firstMessageTime && (
-              <button
-                onClick={handleVideoCall}
+            {/* Rose explainer — man's side, first time seeing a rose or occasionally */}
+            {isMale && (nudgeSent || match.nudgeAt) && !showNudgeExplainer && (messages.length <= 5 || messages.length % 20 === 0) && (
+              <div
+                onClick={() => setShowNudgeExplainer(true)}
                 style={{
-                  width: "100%",
-                  padding: "12px 0",
+                  padding: "10px 14px",
                   marginBottom: 10,
                   borderRadius: 14,
-                  fontSize: 14,
-                  fontWeight: 700,
-                  fontFamily: FONT,
-                  background: "#F0FDF4",
-                  color: "#16A34A",
-                  border: "1.5px solid #22C55E",
+                  background: C.primarySoft,
+                  border: `1.5px solid ${C.primary}`,
                   cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 8,
+                  textAlign: "center",
                 }}
               >
-                <span style={{ fontSize: 16 }}>📹</span>
-                Video Call — stops the timer
-              </button>
+                <p style={{ fontSize: 13, fontWeight: 700, color: C.primary, fontFamily: FONT, margin: 0 }}>
+                  🌹 She sent you a rose! Tap to learn more
+                </p>
+              </div>
+            )}
+            {showNudgeExplainer && (
+              <div style={{ padding: "14px 16px", marginBottom: 10, borderRadius: 14, background: C.primarySoft, border: `1.5px solid ${C.primary}` }}>
+                <p style={{ fontSize: 13, fontWeight: 700, color: C.primary, fontFamily: FONT, margin: "0 0 6px 0" }}>🌹 What does the rose mean?</p>
+                <p style={{ fontSize: 12, color: C.text, fontFamily: FONT, lineHeight: 1.5, margin: "0 0 8px 0" }}>
+                  She's letting you know she'd love to go on a date with you! You got an extra 36 hours to plan something special.
+                </p>
+                <button onClick={() => setShowNudgeExplainer(false)} style={{ fontSize: 12, fontWeight: 600, color: C.primary, background: "none", border: "none", cursor: "pointer", padding: 0 }}>Got it</button>
+              </div>
+            )}
+            {/* Schedule Video Call button */}
+            {!videoCallStarted && !hasVideoCall && firstMessageTime && (
+              <>
+                {!showVideoCallConfirm ? (
+                  <button
+                    onClick={() => setShowVideoCallConfirm(true)}
+                    style={{
+                      width: "100%",
+                      padding: "12px 0",
+                      marginBottom: 10,
+                      borderRadius: 14,
+                      fontSize: 14,
+                      fontWeight: 700,
+                      fontFamily: FONT,
+                      background: "#F0FDF4",
+                      color: "#16A34A",
+                      border: "1.5px solid #22C55E",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 8,
+                    }}
+                  >
+                    <span style={{ fontSize: 16 }}>📹</span>
+                    Schedule Video Call
+                    <span style={{ fontSize: 11, fontWeight: 500, opacity: 0.8 }}>(stops the timer)</span>
+                  </button>
+                ) : (
+                  <div style={{ padding: "14px 16px", marginBottom: 10, borderRadius: 14, background: "#F0FDF4", border: "1.5px solid #22C55E" }}>
+                    <p style={{ fontSize: 13, fontWeight: 700, color: "#16A34A", fontFamily: FONT, margin: "0 0 8px 0" }}>📹 Schedule a video call?</p>
+                    <p style={{ fontSize: 12, color: C.text, fontFamily: FONT, lineHeight: 1.5, margin: "0 0 12px 0" }}>
+                      This sends a message to {profile.name} asking to schedule a video call. The deadline timer stops so you can take your time.
+                    </p>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button onClick={() => setShowVideoCallConfirm(false)} style={{ flex: 1, padding: "10px 0", borderRadius: 12, fontSize: 13, fontWeight: 600, background: C.surface, color: C.sub, border: "none", cursor: "pointer" }}>Cancel</button>
+                      <button onClick={handleVideoCall} style={{ flex: 1, padding: "10px 0", borderRadius: 12, fontSize: 13, fontWeight: 700, background: "#22C55E", color: "white", border: "none", cursor: "pointer" }}>Send</button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+            {(videoCallStarted || hasVideoCall) && (
+              <div style={{ textAlign: "center", padding: "8px 0", marginBottom: 8 }}>
+                <p style={{ fontSize: 12, color: "#16A34A", fontWeight: 600, fontFamily: FONT, margin: 0 }}>
+                  📹 Video call scheduled — no deadline, take your time
+                </p>
+              </div>
             )}
             <div style={{ display: "flex", alignItems: "center", gap: 12, borderRadius: 16, padding: "12px 16px", background: C.surface }}>
               <input
