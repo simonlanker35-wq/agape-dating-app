@@ -8,9 +8,9 @@ import LocationPicker from "../components/LocationPicker";
 const STEPS = [
   "welcome",
   "consent",
+  "phone",
+  "verify",
   "name",
-  "email",
-  "password",
   "age",
   "height",
   "gender",
@@ -35,11 +35,15 @@ export default function Onboarding() {
   const { actions } = useApp();
   const [step, setStep] = useState(0);
   const [mode, setMode] = useState("signup");
+  const [phone, setPhone] = useState("+48");
+  const [otpCode, setOtpCode] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpError, setOtpError] = useState("");
+  const [signupError, setSignupError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [loginError, setLoginError] = useState("");
-  const [signupError, setSignupError] = useState("");
-  const [submitting, setSubmitting] = useState(false);
   const inputRef = useRef(null);
   const answerRef = useRef(null);
   const [faithConsent, setFaithConsent] = useState(false);
@@ -52,8 +56,6 @@ export default function Onboarding() {
   const [editingAnswer, setEditingAnswer] = useState(false);
   const [form, setForm] = useState({
     name: "",
-    email: "",
-    password: "",
     age: 25,
     height: 170,
     gender: "",
@@ -85,6 +87,32 @@ export default function Onboarding() {
     }
   };
 
+  const handleSendOtp = async () => {
+    setSubmitting(true);
+    setOtpError("");
+    try {
+      await actions.sendOtp(phone);
+      setOtpSent(true);
+      goNext();
+    } catch (err) {
+      setOtpError(err.message);
+    }
+    setSubmitting(false);
+  };
+
+  const handleVerifyOtp = async () => {
+    setSubmitting(true);
+    setOtpError("");
+    try {
+      const { isNewUser } = await actions.verifyOtp(phone, otpCode);
+      if (!isNewUser) return;
+      goNext();
+    } catch (err) {
+      setOtpError(err.message);
+    }
+    setSubmitting(false);
+  };
+
   const finishOnboarding = async () => {
     setSubmitting(true);
     setSignupError("");
@@ -99,8 +127,7 @@ export default function Onboarding() {
       const prompts = Object.values(promptSelections).filter(p => p.prompt && p.answer);
 
       await actions.register({
-        email: form.email,
-        password: form.password,
+        phone,
         name: form.name,
         age: form.age,
         gender: form.gender,
@@ -186,8 +213,8 @@ export default function Onboarding() {
       case "welcome": return true;
       case "consent": return faithConsent;
       case "name": return form.name.trim().length > 0;
-      case "email": return form.email.includes("@") && form.email.includes(".");
-      case "password": return form.password.length >= 6;
+      case "phone": return phone.length >= 10;
+      case "verify": return otpCode.length === 6;
       case "age": return form.age >= 18;
       case "height": return form.height >= 100 && form.height <= 250;
       case "gender": return form.gender !== "";
@@ -245,33 +272,56 @@ export default function Onboarding() {
               <AgapeCross size={56} strokeWidth={1.2} />
             </div>
             <h2>Welcome back</h2>
-            <input
-              type="email"
-              value={loginEmail}
-              onChange={(e) => setLoginEmail(e.target.value)}
-              onKeyDown={handleLoginKeyDown}
-              placeholder="Email"
-              className="onboarding-input"
-              autoFocus
-            />
-            <input
-              type="password"
-              value={loginPassword}
-              onChange={(e) => setLoginPassword(e.target.value)}
-              onKeyDown={handleLoginKeyDown}
-              placeholder="Password"
-              className="onboarding-input"
-              style={{ marginTop: 12 }}
-            />
-            {loginError && <p className="onboarding-error">{loginError}</p>}
-            <button
-              className="onboarding-cta"
-              onClick={handleLogin}
-              disabled={submitting || !loginEmail || !loginPassword}
-            >
-              {submitting ? "Signing in..." : "Sign In"}
-            </button>
-            <button className="skip-btn-text" onClick={() => setMode("signup")} style={{ marginTop: 16 }}>
+            {!otpSent ? (
+              <>
+                <p style={{ fontSize: 14, color: "#8C857C", textAlign: "center", marginBottom: 16 }}>Enter your phone number to sign in</p>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && phone.length >= 10 && handleSendOtp()}
+                  placeholder="+48 123 456 789"
+                  className="onboarding-input"
+                  autoFocus
+                />
+                {otpError && <p className="onboarding-error">{otpError}</p>}
+                <button
+                  className="onboarding-cta"
+                  onClick={handleSendOtp}
+                  disabled={submitting || phone.length < 10}
+                >
+                  {submitting ? "Sending code..." : "Send Code"}
+                </button>
+              </>
+            ) : (
+              <>
+                <p style={{ fontSize: 14, color: "#8C857C", textAlign: "center", marginBottom: 16 }}>Enter the 6-digit code sent to {phone}</p>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  value={otpCode}
+                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
+                  onKeyDown={(e) => e.key === "Enter" && otpCode.length === 6 && handleVerifyOtp()}
+                  placeholder="000000"
+                  className="onboarding-input"
+                  style={{ textAlign: "center", fontSize: 28, letterSpacing: 12, fontWeight: 700 }}
+                  autoFocus
+                />
+                {otpError && <p className="onboarding-error">{otpError}</p>}
+                <button
+                  className="onboarding-cta"
+                  onClick={handleVerifyOtp}
+                  disabled={submitting || otpCode.length !== 6}
+                >
+                  {submitting ? "Verifying..." : "Verify"}
+                </button>
+                <button className="skip-btn-text" onClick={() => { setOtpSent(false); setOtpCode(""); setOtpError(""); }} style={{ marginTop: 8 }}>
+                  Change number
+                </button>
+              </>
+            )}
+            <button className="skip-btn-text" onClick={() => { setMode("signup"); setOtpSent(false); setOtpCode(""); setOtpError(""); }} style={{ marginTop: 16 }}>
               Create an account instead
             </button>
           </div>
@@ -371,45 +421,55 @@ export default function Onboarding() {
           </div>
         )}
 
-        {currentStep === "email" && (
-          <div className="onboarding-step single-question" key="email">
-            <h2>What's your email?</h2>
+        {currentStep === "phone" && (
+          <div className="onboarding-step single-question" key="phone">
+            <h2>Your phone number</h2>
+            <p style={{ fontSize: 14, color: "#8C857C", marginBottom: 16 }}>We'll send you a code to verify it's really you</p>
             <input
               ref={inputRef}
-              type="email"
-              value={form.email}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
-              onKeyDown={handleKeyDown}
-              placeholder="your@email.com"
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && phone.length >= 10 && handleSendOtp()}
+              placeholder="+48 123 456 789"
               className="onboarding-input"
               autoFocus
             />
-            {canProceed() && (
-              <button className="onboarding-cta" onClick={goNext}>
-                Continue <ChevronRight size={18} />
+            {otpError && <p className="onboarding-error">{otpError}</p>}
+            {phone.length >= 10 && (
+              <button className="onboarding-cta" onClick={handleSendOtp} disabled={submitting}>
+                {submitting ? "Sending code..." : "Send Code"} {!submitting && <ChevronRight size={18} />}
               </button>
             )}
           </div>
         )}
 
-        {currentStep === "password" && (
-          <div className="onboarding-step single-question" key="password">
-            <h2>Create a password</h2>
+        {currentStep === "verify" && (
+          <div className="onboarding-step single-question" key="verify">
+            <h2>Enter your code</h2>
+            <p style={{ fontSize: 14, color: "#8C857C", marginBottom: 16 }}>Sent to {phone}</p>
             <input
               ref={inputRef}
-              type="password"
-              value={form.password}
-              onChange={(e) => setForm({ ...form, password: e.target.value })}
-              onKeyDown={handleKeyDown}
-              placeholder="At least 6 characters"
+              type="text"
+              inputMode="numeric"
+              maxLength={6}
+              value={otpCode}
+              onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
+              onKeyDown={(e) => e.key === "Enter" && otpCode.length === 6 && handleVerifyOtp()}
+              placeholder="000000"
               className="onboarding-input"
+              style={{ textAlign: "center", fontSize: 28, letterSpacing: 12, fontWeight: 700 }}
               autoFocus
             />
-            {canProceed() && (
-              <button className="onboarding-cta" onClick={goNext}>
-                Continue <ChevronRight size={18} />
+            {otpError && <p className="onboarding-error">{otpError}</p>}
+            {otpCode.length === 6 && (
+              <button className="onboarding-cta" onClick={handleVerifyOtp} disabled={submitting}>
+                {submitting ? "Verifying..." : "Verify"} {!submitting && <ChevronRight size={18} />}
               </button>
             )}
+            <button className="skip-btn-text" onClick={() => { setStep(step - 1); setOtpCode(""); setOtpError(""); setOtpSent(false); }} style={{ marginTop: 12 }}>
+              Change number
+            </button>
           </div>
         )}
 

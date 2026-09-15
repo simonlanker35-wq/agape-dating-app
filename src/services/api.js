@@ -38,16 +38,32 @@ function mapProfile(p) {
 
 // ─── AUTH ───
 
-export async function register(data) {
-  const { data: authData, error: authError } = await supabase.auth.signUp({
-    email: data.email,
-    password: data.password,
-  });
-  if (authError) throw new Error(authError.message);
+export async function sendOtp(phone) {
+  const { data, error } = await supabase.auth.signInWithOtp({ phone });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function verifyOtp(phone, token) {
+  const { data, error } = await supabase.auth.verifyOtp({ phone, token, type: "sms" });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function checkProfileExists() {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+  const { data } = await supabase.from("profiles").select("id").eq("id", user.id).maybeSingle();
+  return !!data;
+}
+
+export async function createProfile(data) {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
 
   const profile = {
-    id: authData.user.id,
-    email: data.email,
+    id: user.id,
+    email: user.phone || user.email || data.phone || "",
     name: data.name,
     age: data.age,
     height: data.height || null,
@@ -65,6 +81,10 @@ export async function register(data) {
   if (profileError) throw new Error(profileError.message);
 
   return mapProfileToUser(profile);
+}
+
+export async function register(data) {
+  return createProfile(data);
 }
 
 export async function login(email, password) {
@@ -341,6 +361,8 @@ export async function getMatches() {
       timestamp: new Date(m.last_activity || m.created_at).getTime(),
       lastMessage: lastMsg ? { text: lastMsg.text, sender: lastMsg.sender } : null,
       nudgeAt: m.nudge_at ? new Date(m.nudge_at).getTime() : null,
+      deadlinePaused: !!m.deadline_paused,
+      videoCallAt: m.video_call_at ? new Date(m.video_call_at).getTime() : null,
     });
   }
 
@@ -439,6 +461,14 @@ export async function declineDate(invitationId, reasons) {
     .select()
     .single();
   if (error) throw new Error(error.message);
+
+  if (reasons.includes("Too soon, need more time chatting")) {
+    await supabase
+      .from("matches")
+      .update({ deadline_paused: true })
+      .eq("id", data.match_id);
+  }
+
   return data;
 }
 
@@ -447,6 +477,17 @@ export async function confirmDate(invitationId, confirmedTime) {
     .from("date_invitations")
     .update({ confirmed_time: confirmedTime, status: "confirmed" })
     .eq("id", invitationId)
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function startVideoCall(matchId) {
+  const { data, error } = await supabase
+    .from("matches")
+    .update({ video_call_at: new Date().toISOString() })
+    .eq("id", matchId)
     .select()
     .single();
   if (error) throw new Error(error.message);

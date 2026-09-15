@@ -1,6 +1,10 @@
 import { useApp } from "../context/AppContext";
 import { useState } from "react";
 import { Heart, X } from "lucide-react";
+import AgapeCross from "../components/AgapeCross";
+
+const C = { bg: "#FFFFFF", card: "#FAFAF8", surface: "#F4F2EE", primary: "#B8912A", primarySoft: "#FBF5E6", text: "#1A1612", sub: "#8C857C", border: "#E8E4DF" };
+const FONT = "'Outfit', system-ui, sans-serif";
 
 export default function LikesYou() {
   const { state, actions, dispatch } = useApp();
@@ -33,148 +37,136 @@ export default function LikesYou() {
 
   if (likesWithProfiles.length === 0) {
     return (
-      <div className="discover-empty">
-        <Heart size={48} />
-        <h2>No likes yet</h2>
-        <p>Keep exploring! When someone likes you, they'll appear here.</p>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", padding: "60px 20px", textAlign: "center" }}>
+        <div style={{ fontSize: 48, marginBottom: 16 }}>💛</div>
+        <h2 style={{ color: C.text, fontFamily: FONT, fontSize: 20, fontWeight: 700 }}>No likes yet</h2>
+        <p style={{ color: C.sub, fontSize: 14, marginTop: 4 }}>Keep exploring! When someone likes you, they'll appear here.</p>
       </div>
     );
   }
 
   return (
-    <div className="likes-page">
-      <div className="likes-header">
-        <h1>Sparks</h1>
-        <p>
-          {likesWithProfiles.length} {likesWithProfiles.length === 1 ? "person" : "people"} liked your profile
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", background: C.bg }}>
+      <div style={{ padding: "40px 20px 12px" }}>
+        <h1 style={{ color: C.text, fontFamily: FONT, fontSize: 24, fontWeight: 700, letterSpacing: "-0.4px", margin: 0 }}>Sparks</h1>
+        <p style={{ color: C.sub, fontSize: 13, marginTop: 4 }}>
+          {likesWithProfiles.length} {likesWithProfiles.length === 1 ? "person" : "people"} liked you
         </p>
       </div>
-      <div className="likes-list">
-        {likesWithProfiles.map((like) => {
-          const profile = like.profile;
-          const likedPrompt = like.targetType === "prompt" && profile.prompts?.[like.targetIndex];
-          const matched = likedBack.has(like.id);
 
-          return (
-            <div key={like.id} className="like-card" onClick={() => setViewProfile(profile)}>
-              <div className="like-card-content">
-                <div className="like-card-photo-wrap">
-                  <img
-                    src={profile.photos?.[0]}
-                    alt={profile.name}
-                    className="like-card-photo"
-                    onError={(e) => {
-                      e.target.src = `https://ui-avatars.com/api/?name=${profile.name}&size=64&background=random`;
-                    }}
-                  />
-                </div>
-                <div className="like-card-info">
-                  <div className="like-card-top">
-                    <span className="like-card-name">{profile.name}, {profile.age}</span>
-                    <span className="like-card-time">{like.timeAgo || "Recently"}</span>
-                  </div>
-                  <p className="like-card-denom">{profile.denomination}</p>
-                  {likedPrompt && (
-                    <div className="like-card-prompt">
-                      <p className="like-card-prompt-label">{likedPrompt.prompt}</p>
-                      <p className="like-card-prompt-answer">{likedPrompt.answer}</p>
-                    </div>
-                  )}
+      <div style={{ flex: 1, overflowY: "auto", padding: "0 12px 24px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          {likesWithProfiles.map((like) => {
+            const profile = like.profile;
+            const matched = likedBack.has(like.id);
+
+            return (
+              <div
+                key={like.id}
+                onClick={() => setViewProfile(profile)}
+                style={{
+                  position: "relative",
+                  borderRadius: 20,
+                  overflow: "hidden",
+                  cursor: "pointer",
+                  aspectRatio: "3/4",
+                  background: C.surface,
+                }}
+              >
+                <img
+                  src={profile.photos?.[0]}
+                  alt={profile.name}
+                  style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                  onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${profile.name}&size=400&background=random`; }}
+                />
+                <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 50%)", pointerEvents: "none" }} />
+
+                {/* Name + denomination */}
+                <div style={{ position: "absolute", bottom: 56, left: 12, right: 12 }}>
+                  <p style={{ color: "white", fontSize: 18, fontWeight: 700, fontFamily: FONT, margin: 0, textShadow: "0 1px 4px rgba(0,0,0,0.4)" }}>
+                    {profile.name}, {profile.age}
+                  </p>
+                  <p style={{ color: "rgba(255,255,255,0.8)", fontSize: 12, fontWeight: 600, marginTop: 2 }}>
+                    {profile.denomination}
+                  </p>
                   {like.comment && (
-                    <div className="like-card-prompt">
-                      <p className="like-card-prompt-label">Comment</p>
-                      <p className="like-card-prompt-answer">"{like.comment}"</p>
-                    </div>
+                    <p style={{ color: "rgba(255,255,255,0.9)", fontSize: 11, fontStyle: "italic", marginTop: 4, lineHeight: 1.3 }}>
+                      "{like.comment}"
+                    </p>
                   )}
                 </div>
+
+                {/* Action buttons */}
+                <div style={{ position: "absolute", bottom: 10, left: 12, right: 12, display: "flex", gap: 8 }}>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleDismiss(like); }}
+                    style={{
+                      flex: 1, height: 38, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center",
+                      background: "rgba(255,255,255,0.2)", backdropFilter: "blur(8px)", border: "1px solid rgba(255,255,255,0.3)", cursor: "pointer",
+                    }}
+                  >
+                    <X size={18} color="white" />
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); if (!matched) handleLikeBack(like); }}
+                    style={{
+                      flex: 1, height: 38, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center",
+                      background: matched ? "#22C55E" : C.primary, border: "none", cursor: "pointer",
+                    }}
+                  >
+                    {matched ? (
+                      <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={3}><path d="M20 6L9 17l-5-5" /></svg>
+                    ) : (
+                      <Heart size={18} fill="white" stroke="white" />
+                    )}
+                  </button>
+                </div>
               </div>
-              <div className="like-card-actions">
-                <button
-                  className="id-btn id-skip"
-                  onClick={(e) => { e.stopPropagation(); handleDismiss(like); }}
-                >
-                  <X size={17} />
-                </button>
-                <button
-                  className={`id-btn ${matched ? "id-matched" : "id-heart"}`}
-                  onClick={(e) => { e.stopPropagation(); if (!matched) handleLikeBack(like); }}
-                >
-                  {matched ? (
-                    <svg width={15} height={15} viewBox="0 0 24 24">
-                      <circle cx="12" cy="12" r="10" fill="white" />
-                      <path d="M9 12l2 2 4-4" stroke="#B8912A" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" fill="none" />
-                    </svg>
-                  ) : (
-                    <Heart size={17} fill="white" stroke="white" />
-                  )}
-                </button>
-              </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
 
       {viewProfile && (
-        <div className="like-profile-overlay" onClick={() => setViewProfile(null)}>
-          <div className="like-profile-view" onClick={(e) => e.stopPropagation()}>
-            <div style={{ position: "relative" }}>
-              <img
-                src={viewProfile.photos?.[0]}
-                alt={viewProfile.name}
-                style={{ width: "100%", aspectRatio: "3/4", maxHeight: "56vh", objectFit: "cover" }}
-                onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${viewProfile.name}&size=600&background=random`; }}
-              />
-              <div className="hero-gradient" />
-              <button className="like-profile-back" onClick={() => setViewProfile(null)}>
-                <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2.5}><polyline points="15 18 9 12 15 6" /></svg>
-              </button>
-              <div className="id-block">
-                <div className="id-info">
-                  <div className="id-line1">
-                    <span className="id-name">{viewProfile.name},</span>
-                    <span className="id-age">{viewProfile.age}</span>
-                  </div>
-                  <div className="id-line2">
-                    {viewProfile.location && (
-                      <span className="id-detail">
-                        <svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
-                          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                          <circle cx="12" cy="10" r="3" />
-                        </svg>
-                        {viewProfile.location}
-                      </span>
-                    )}
-                    {viewProfile.location && viewProfile.denomination && <span className="id-dot">·</span>}
-                    {viewProfile.denomination && (
-                      <span className="id-detail">✝ {viewProfile.denomination}</span>
-                    )}
+        <div style={{ position: "fixed", inset: 0, maxWidth: 430, margin: "0 auto", zIndex: 300, background: C.bg, overflowY: "auto" }}>
+          <div style={{ position: "relative" }}>
+            <img
+              src={viewProfile.photos?.[0]}
+              alt={viewProfile.name}
+              style={{ width: "100%", aspectRatio: "3/4", maxHeight: "56vh", objectFit: "cover" }}
+              onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${viewProfile.name}&size=600&background=random`; }}
+            />
+            <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 50%)", pointerEvents: "none" }} />
+            <button onClick={() => setViewProfile(null)} style={{ position: "absolute", top: 44, left: 16, width: 36, height: 36, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.4)", backdropFilter: "blur(10px)", border: "none", cursor: "pointer" }}>
+              <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2.5}><polyline points="15 18 9 12 15 6" /></svg>
+            </button>
+            <div style={{ position: "absolute", bottom: 20, left: 16 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ color: "white", fontSize: 28, fontWeight: 700 }}>{viewProfile.name}</span>
+                <span style={{ color: "rgba(255,255,255,0.8)", fontSize: 22, fontWeight: 300 }}>{viewProfile.age}</span>
+              </div>
+              <p style={{ color: "rgba(255,255,255,0.7)", fontSize: 12, marginTop: 4 }}>{viewProfile.denomination}{viewProfile.location ? ` · ${viewProfile.location}` : ""}</p>
+            </div>
+          </div>
+          <div style={{ padding: "20px 16px", display: "flex", flexDirection: "column", gap: 12 }}>
+            {(viewProfile.prompts || []).filter(p => p.prompt && p.answer).map((p, i) => (
+              <div key={i} style={{ borderRadius: 16, overflow: "hidden", background: C.primarySoft }}>
+                <div style={{ display: "flex" }}>
+                  <div style={{ width: 4, flexShrink: 0, background: C.primary }} />
+                  <div style={{ flex: 1, padding: "14px" }}>
+                    <p style={{ fontSize: 10, fontWeight: 600, color: C.primary, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>{p.prompt}</p>
+                    <p style={{ fontSize: 16, fontWeight: 600, color: C.text }}>{p.answer}</p>
                   </div>
                 </div>
               </div>
-            </div>
-            <div className="prompts-sheet">
-              {(viewProfile.prompts || []).filter(p => p.prompt && p.answer).map((p, i) => (
-                <div key={i} className="hinge-prompt-card">
-                  <div className="hinge-prompt-inner">
-                    <div className="hinge-prompt-accent" />
-                    <div className="hinge-prompt-content">
-                      <div className="hinge-prompt-label">{p.prompt}</div>
-                      <div className="hinge-prompt-answer">{p.answer}</div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {viewProfile.interests?.length > 0 && (
-                <div className="profile-interests-section">
-                  <div className="interests-label">Interests</div>
-                  <div className="interests-wrap">
-                    {viewProfile.interests.map((v) => (
-                      <span key={v} className="interest-chip">{v}</span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
+            ))}
+            {viewProfile.interests?.length > 0 && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, padding: "8px 0" }}>
+                {viewProfile.interests.map((v) => (
+                  <span key={v} style={{ fontSize: 12, fontWeight: 600, padding: "6px 12px", borderRadius: 9999, background: C.surface, color: C.sub }}>{v}</span>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}

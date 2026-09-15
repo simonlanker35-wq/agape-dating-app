@@ -116,13 +116,21 @@ async function seed() {
   console.log(`Deleted ${deleted} auth users`);
   console.log("Cleared");
 
-  // Create test user
+  // Create test user (male)
   const { data: testAuth, error: testErr } = await supabase.auth.admin.createUser({
     email: "simon2@test.com",
     password: "password123",
     email_confirm: true,
   });
   if (testErr) { console.error("Failed to create test user:", testErr); process.exit(1); }
+
+  // Create female test user
+  const { data: sarahAuth, error: sarahErr } = await supabase.auth.admin.createUser({
+    email: "sarah@test.com",
+    password: "password123",
+    email_confirm: true,
+  });
+  if (sarahErr) { console.error("Failed to create sarah test user:", sarahErr); }
 
   const testProfile = {
     id: testAuth.user.id,
@@ -153,6 +161,38 @@ async function seed() {
 
   await supabase.from("profiles").insert(testProfile);
   console.log("Created test user: simon2@test.com / password123");
+
+  // Sarah profile
+  if (sarahAuth) {
+    const sarahProfile = {
+      id: sarahAuth.user.id,
+      email: "sarah@test.com",
+      name: "Sarah",
+      age: 24,
+      height: 168,
+      gender: "female",
+      denomination: "Catholic",
+      job: "Nurse",
+      school: "University of Zürich",
+      location_city: "Schwyz",
+      location_lat: 47.0207,
+      location_lng: 8.6545,
+      photos: [
+        "https://i.pravatar.cc/800?u=sarah_a",
+        "https://i.pravatar.cc/800?u=sarah_b",
+        "https://i.pravatar.cc/800?u=sarah_c",
+      ],
+      prompts: [
+        { prompt: "My faith means to me", answer: "Everything — it's the foundation of who I am" },
+        { prompt: "Typical Sunday", answer: "Church in the morning, brunch with friends, long walk" },
+        { prompt: "Dating me is like", answer: "A cozy Sunday with a surprise adventure thrown in" },
+      ],
+      interests: ["Hiking", "Coffee", "Worship Music", "Cooking", "Travel"],
+      is_standout: false,
+    };
+    await supabase.from("profiles").insert(sarahProfile);
+    console.log("Created test user: sarah@test.com / password123");
+  }
 
   // Create demo profiles
   const profileIds = [];
@@ -292,23 +332,40 @@ async function seed() {
   console.log(`Seeded ${bgProfileIds.length} Bulgarian demo profiles`);
 
   const females = profileIds.filter((p) => p.gender === "female");
+  const males = profileIds.filter((p) => p.gender === "male");
 
-  // Likes received (Sparks): 5 females liked Simon
-  const likers = females.slice(0, 5);
-  const likeComments = ["Love your Sunday vibes!", "That verse is my favourite too", null, "Fellow hiker here! Where's your go-to trail?", null];
-  for (let i = 0; i < likers.length; i++) {
+  // Likes received (Sparks): 6 females liked Simon
+  const simonLikers = females.slice(0, 6);
+  const simonLikeComments = ["Love your Sunday vibes!", "That verse is my favourite too", null, "Fellow hiker here! Where's your go-to trail?", null, "Your photos are beautiful!"];
+  for (let i = 0; i < simonLikers.length; i++) {
     await supabase.from("likes").insert({
-      from_user: likers[i].id,
+      from_user: simonLikers[i].id,
       to_user: testAuth.user.id,
       target_type: i < 2 ? "prompt" : "profile",
       target_index: i < 2 ? i : 0,
-      comment: likeComments[i],
+      comment: simonLikeComments[i],
     });
   }
-  console.log("Created 5 incoming likes (Sparks)");
+  console.log("Created 6 incoming likes (Sparks) for Simon");
+
+  // Likes received (Sparks) for Sarah: 6 males liked Sarah
+  if (sarahAuth) {
+    const sarahLikers = males.slice(0, 6);
+    const sarahLikeComments = ["Love your faith journey!", "That Sunday routine sounds perfect", null, "Would love to grab coffee sometime", "Your prompts are so genuine!", null];
+    for (let i = 0; i < sarahLikers.length; i++) {
+      await supabase.from("likes").insert({
+        from_user: sarahLikers[i].id,
+        to_user: sarahAuth.user.id,
+        target_type: i < 2 ? "prompt" : "profile",
+        target_index: i < 2 ? i : 0,
+        comment: sarahLikeComments[i],
+      });
+    }
+    console.log("Created 6 incoming likes (Sparks) for Sarah");
+  }
 
   // Matches: mutual likes + messages with 3 females
-  const matchers = females.slice(5, 8);
+  const matchers = females.slice(6, 9);
   const matchMessages = [
     ["Hey! I saw we both love hiking", "Yes! I go almost every weekend. Where's your favourite spot?", "Pilatus is incredible. Have you been?"],
     ["Would love to hear about your faith journey", "Amen to that! Which church do you go to?"],

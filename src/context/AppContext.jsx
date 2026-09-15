@@ -172,6 +172,11 @@ export function AppProvider({ children }) {
       loadDiscover();
       loadLikesReceived();
       loadMatches();
+      const poll = setInterval(() => {
+        loadLikesReceived();
+        loadMatches();
+      }, 10000);
+      return () => clearInterval(poll);
     }
   }, [state.onboardingComplete, state.currentUser]);
 
@@ -228,8 +233,23 @@ export function AppProvider({ children }) {
   }, []);
 
   const actions = {
+    sendOtp: async (phone) => {
+      return api.sendOtp(phone);
+    },
+
+    verifyOtp: async (phone, token) => {
+      const result = await api.verifyOtp(phone, token);
+      const hasProfile = await api.checkProfileExists();
+      if (hasProfile) {
+        const user = await api.getMe();
+        dispatch({ type: "SET_USER", payload: user });
+        return { isNewUser: false };
+      }
+      return { isNewUser: true };
+    },
+
     register: async (data) => {
-      const user = await api.register(data);
+      const user = await api.createProfile(data);
       dispatch({ type: "COMPLETE_ONBOARDING", payload: user });
       return user;
     },

@@ -342,6 +342,7 @@ const DECLINE_REASONS = [
   "Times don't work for me",
   "Not comfortable with the location",
   "Too soon, need more time chatting",
+  "I'd like a video call first",
   "Not interested anymore",
 ];
 
@@ -651,14 +652,33 @@ function ChatThread({ match, onBack }) {
   }, [nudgeSent, isMale, match.id]);
 
   const firstMessageTime = messages.length > 0 ? messages[0].timestamp : null;
-  const THREE_DAYS = 3 * 24 * 60 * 60 * 1000;
+  const FIVE_DAYS = 5 * 24 * 60 * 60 * 1000;
   const NUDGE_BONUS = 36 * 60 * 60 * 1000;
-  const baseDeadline = firstMessageTime ? firstMessageTime + THREE_DAYS : null;
-  const deadlineMs = baseDeadline ? baseDeadline + (nudgeSent || match.nudgeAt ? NUDGE_BONUS : 0) : null;
-  const timeLeftMs = deadlineMs ? deadlineMs - Date.now() : null;
+  const COOLDOWN_48H = 48 * 60 * 60 * 1000;
+  const deadlinePaused = match.deadlinePaused;
+  const hasVideoCall = !!(match.videoCallAt);
   const hasConfirmedDate = dateInvitations.some((inv) => inv.status === "confirmed");
   const hasPendingDate = dateInvitations.some((inv) => inv.status === "pending" || inv.status === "responded");
-  const chatLocked = timeLeftMs !== null && timeLeftMs <= 0 && !hasConfirmedDate;
+
+  const timerStopped = deadlinePaused || hasVideoCall || hasConfirmedDate || hasPendingDate;
+
+  const lastDeclined = dateInvitations
+    .filter((inv) => inv.status === "declined")
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+  const lastDeclinedAt = lastDeclined ? new Date(lastDeclined.created_at).getTime() : null;
+
+  let deadlineMs = null;
+  if (!timerStopped && firstMessageTime) {
+    if (lastDeclinedAt) {
+      deadlineMs = lastDeclinedAt + COOLDOWN_48H + FIVE_DAYS;
+    } else {
+      deadlineMs = firstMessageTime + FIVE_DAYS;
+    }
+    if (nudgeSent || match.nudgeAt) deadlineMs += NUDGE_BONUS;
+  }
+
+  const timeLeftMs = deadlineMs ? deadlineMs - Date.now() : null;
+  const chatLocked = !timerStopped && timeLeftMs !== null && timeLeftMs <= 0;
 
   const handleNudge = async () => {
     setNudgeSending(true);
@@ -670,6 +690,20 @@ function ChatThread({ match, onBack }) {
       console.error("Nudge failed:", err);
     }
     setNudgeSending(false);
+  };
+
+  const [videoCallStarted, setVideoCallStarted] = useState(!!match.videoCallAt);
+
+  const handleVideoCall = async () => {
+    try {
+      await api.startVideoCall(match.id);
+      const roomName = `agape-${match.id.slice(0, 8)}`;
+      await actions.sendMessage(match.id, `Let's video chat! Join here: https://meet.jit.si/${roomName}`);
+      setVideoCallStarted(true);
+      window.open(`https://meet.jit.si/${roomName}`, "_blank");
+    } catch (err) {
+      console.error("Video call failed:", err);
+    }
   };
 
   const timeline = useMemo(() => {
@@ -766,21 +800,35 @@ function ChatThread({ match, onBack }) {
         </div>
 
         {/* Deadline banner */}
-        {firstMessageTime && !hasConfirmedDate && !chatLocked && (
+        {firstMessageTime && !timerStopped && !chatLocked && timeLeftMs !== null && (
           <div style={{ marginTop: 8, borderRadius: 12, padding: "8px 16px", display: "flex", alignItems: "center", gap: 8, background: timeLeftMs < 86400000 ? "#FEF2F2" : C.surface }}>
             <span style={{ fontSize: 14 }}>⏰</span>
             <p style={{ fontSize: 12, fontWeight: 600, color: timeLeftMs < 86400000 ? "#EF4444" : C.sub, margin: 0 }}>
               {isMale
-                ? `${formatTimeLeft(timeLeftMs)} left to set a date${nudgeSent || match.nudgeAt ? " — she wants to go out! (+36h)" : ""}`
+                ? `${formatTimeLeft(timeLeftMs)} left to plan a date${nudgeSent || match.nudgeAt ? " — she wants to go out! (+36h)" : ""}`
                 : `${formatTimeLeft(timeLeftMs)} left${nudgeSent ? " (+36h added)" : " — waiting for him to plan a date"}`
               }
+            </p>
+          </div>
+        )}
+        {hasPendingDate && !hasConfirmedDate && (
+          <div style={{ marginTop: 8, borderRadius: 12, padding: "8px 16px", display: "flex", alignItems: "center", gap: 8, background: C.primarySoft }}>
+            <span style={{ fontSize: 14 }}>📅</span>
+            <p style={{ fontSize: 12, fontWeight: 600, color: C.primary, margin: 0 }}>Date invite sent — timer paused</p>
+          </div>
+        )}
+        {(deadlinePaused || hasVideoCall) && !hasConfirmedDate && !hasPendingDate && (
+          <div style={{ marginTop: 8, borderRadius: 12, padding: "8px 16px", display: "flex", alignItems: "center", gap: 8, background: "#F0FDF4" }}>
+            <span style={{ fontSize: 14 }}>{hasVideoCall ? "📹" : "💛"}</span>
+            <p style={{ fontSize: 12, fontWeight: 600, color: "#16A34A", margin: 0 }}>
+              {hasVideoCall ? "Video call done — take your time, no deadline" : "No time pressure — chat at your own pace"}
             </p>
           </div>
         )}
         {chatLocked && (
           <div style={{ marginTop: 8, borderRadius: 12, padding: "8px 16px", display: "flex", alignItems: "center", gap: 8, background: "#FEF2F2" }}>
             <span style={{ fontSize: 14 }}>🔒</span>
-            <p style={{ fontSize: 12, fontWeight: 600, color: "#EF4444", margin: 0 }}>Chat closed — no date was set within 3 days</p>
+            <p style={{ fontSize: 12, fontWeight: 600, color: "#EF4444", margin: 0 }}>Chat closed — no date was set in time</p>
           </div>
         )}
         {hasConfirmedDate && (
@@ -919,6 +967,32 @@ function ChatThread({ match, onBack }) {
                   💛 You let him know — he has extra time to plan a date
                 </p>
               </div>
+            )}
+            {/* Video call button */}
+            {!videoCallStarted && !hasVideoCall && firstMessageTime && (
+              <button
+                onClick={handleVideoCall}
+                style={{
+                  width: "100%",
+                  padding: "12px 0",
+                  marginBottom: 10,
+                  borderRadius: 14,
+                  fontSize: 14,
+                  fontWeight: 700,
+                  fontFamily: FONT,
+                  background: "#F0FDF4",
+                  color: "#16A34A",
+                  border: "1.5px solid #22C55E",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
+                }}
+              >
+                <span style={{ fontSize: 16 }}>📹</span>
+                Video Call — stops the timer
+              </button>
             )}
             <div style={{ display: "flex", alignItems: "center", gap: 12, borderRadius: 16, padding: "12px 16px", background: C.surface }}>
               <input
@@ -1080,31 +1154,31 @@ export default function Matches() {
             const profile = m.profile;
             if (!profile) return null;
             const convo = state.conversations[m.id];
-            const lastMsg = convo?.messages?.[convo.messages.length - 1];
+            const lastMsg = convo?.messages?.[convo.messages.length - 1] || m.lastMessage;
             const hasUnread = lastMsg && lastMsg.sender !== currentUserId;
 
             return (
               <button
                 key={m.id}
                 onClick={() => setActiveChat(m.id)}
-                style={{ display: "flex", alignItems: "center", gap: 16, width: "100%", padding: "16px 20px", background: "none", border: "none", cursor: "pointer", borderBottom: `1px solid ${C.border}`, textAlign: "left" }}
+                style={{ display: "flex", alignItems: "center", gap: 16, width: "100%", padding: "20px 20px", background: hasUnread ? C.primarySoft : "none", border: "none", cursor: "pointer", borderBottom: `1px solid ${C.border}`, textAlign: "left" }}
               >
                 <div style={{ position: "relative", flexShrink: 0 }}>
-                  <img src={profile.photos[0]} alt={profile.name} style={{ width: 74, height: 74, borderRadius: "50%", objectFit: "cover", display: "block" }} onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${profile.name}&size=74&background=random`; }} />
-                  {hasUnread && <div style={{ position: "absolute", inset: -3, borderRadius: "50%", border: `2.5px solid ${C.primary}`, pointerEvents: "none" }} />}
-                  <div style={{ position: "absolute", bottom: 3, right: 3, width: 11, height: 11, borderRadius: "50%", background: "#22C55E", border: `2px solid ${C.bg}` }} />
+                  <img src={profile.photos[0]} alt={profile.name} style={{ width: 88, height: 88, borderRadius: "50%", objectFit: "cover", display: "block" }} onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${profile.name}&size=88&background=random`; }} />
+                  {hasUnread && <div style={{ position: "absolute", inset: -3, borderRadius: "50%", border: `3px solid ${C.primary}`, pointerEvents: "none" }} />}
+                  <div style={{ position: "absolute", bottom: 4, right: 4, width: 14, height: 14, borderRadius: "50%", background: "#22C55E", border: `2.5px solid ${hasUnread ? C.primarySoft : C.bg}` }} />
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 2 }}>
-                    <span style={{ fontWeight: 700, fontSize: 16, color: C.text, fontFamily: FONT }}>{profile.name}</span>
-                    <span style={{ fontSize: 10, color: C.sub, fontFamily: FONT, flexShrink: 0 }}>{lastMsg ? formatTime(lastMsg.timestamp) : ""}</span>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                    <span style={{ fontWeight: hasUnread ? 800 : 700, fontSize: 18, color: C.text, fontFamily: FONT }}>{profile.name}</span>
+                    <span style={{ fontSize: 11, color: hasUnread ? C.primary : C.sub, fontWeight: hasUnread ? 700 : 400, fontFamily: FONT, flexShrink: 0 }}>{lastMsg ? formatTime(lastMsg.timestamp) : ""}</span>
                   </div>
-                  {profile.denomination && <p style={{ fontSize: 11, color: C.primary, fontWeight: 600, fontFamily: FONT, marginBottom: 5, margin: "0 0 5px 0" }}>{profile.denomination}</p>}
-                  <p style={{ fontSize: 12, color: C.sub, fontFamily: FONT, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis", margin: 0 }}>
-                    {lastMsg ? (lastMsg.sender === currentUserId ? "You: " : "") + lastMsg.text.slice(0, 30) + (lastMsg.text.length > 30 ? "..." : "") : "New match"}
+                  {profile.denomination && <p style={{ fontSize: 12, color: C.primary, fontWeight: 600, fontFamily: FONT, margin: "0 0 6px 0" }}>{profile.denomination}</p>}
+                  <p style={{ fontSize: 14, color: hasUnread ? C.text : C.sub, fontWeight: hasUnread ? 700 : 400, fontFamily: FONT, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis", margin: 0 }}>
+                    {lastMsg ? (lastMsg.sender === currentUserId ? "You: " : "") + lastMsg.text.slice(0, 35) + (lastMsg.text.length > 35 ? "..." : "") : "New match"}
                   </p>
                 </div>
-                {hasUnread && <div style={{ width: 9, height: 9, borderRadius: "50%", background: C.primary, flexShrink: 0 }} />}
+                {hasUnread && <div style={{ width: 12, height: 12, borderRadius: "50%", background: C.primary, flexShrink: 0 }} />}
               </button>
             );
           })
