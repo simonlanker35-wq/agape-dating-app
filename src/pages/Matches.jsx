@@ -1000,7 +1000,7 @@ function ChatThread({ match, onBack }) {
               </div>
             )}
             {/* Schedule Video Call button */}
-            {!videoCallStarted && !hasVideoCall && firstMessageTime && (
+            {!videoCallStarted && !hasVideoCall && (
               <>
                 {!showVideoCallConfirm ? (
                   <button

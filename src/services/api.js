@@ -484,25 +484,19 @@ export async function confirmDate(invitationId, confirmedTime) {
 }
 
 export async function startVideoCall(matchId) {
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from("matches")
     .update({ video_call_at: new Date().toISOString() })
-    .eq("id", matchId)
-    .select()
-    .single();
+    .eq("id", matchId);
   if (error) throw new Error(error.message);
-  return data;
 }
 
 export async function sendNudge(matchId) {
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from("matches")
     .update({ nudge_at: new Date().toISOString() })
-    .eq("id", matchId)
-    .select()
-    .single();
+    .eq("id", matchId);
   if (error) throw new Error(error.message);
-  return data;
 }
 
 // ─── HELPERS ───
