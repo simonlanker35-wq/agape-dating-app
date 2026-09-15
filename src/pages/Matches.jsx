@@ -695,14 +695,16 @@ function ChatThread({ match, onBack }) {
   const [videoCallStarted, setVideoCallStarted] = useState(!!match.videoCallAt);
 
   const handleVideoCall = async () => {
+    const roomName = `agape-${match.id.slice(0, 8)}`;
+    const url = `https://meet.jit.si/${roomName}`;
+    const win = window.open(url, "_blank");
     try {
       await api.startVideoCall(match.id);
-      const roomName = `agape-${match.id.slice(0, 8)}`;
-      await actions.sendMessage(match.id, `Let's video chat! Join here: https://meet.jit.si/${roomName}`);
+      await actions.sendMessage(match.id, `Let's video chat! Join here: ${url}`);
       setVideoCallStarted(true);
-      window.open(`https://meet.jit.si/${roomName}`, "_blank");
     } catch (err) {
       console.error("Video call failed:", err);
+      if (!win) window.location.href = url;
     }
   };
 
