@@ -1053,7 +1053,7 @@ function ChatThread({ match, onBack }) {
                       ))}
                     </div>
                     {vcDay && (
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12, alignItems: "center" }}>
                         {TIME_SLOTS.map((t) => (
                           <button
                             key={t}
@@ -1068,6 +1068,17 @@ function ChatThread({ match, onBack }) {
                             {t}
                           </button>
                         ))}
+                        <input
+                          type="time"
+                          onChange={(e) => { if (e.target.value) setVcTime(e.target.value); }}
+                          style={{
+                            padding: "8px 12px", borderRadius: 10, fontSize: 14, fontWeight: 600, fontFamily: FONT,
+                            color: vcTime && !TIME_SLOTS.includes(vcTime) ? "white" : C.text,
+                            border: vcTime && !TIME_SLOTS.includes(vcTime) ? "2px solid #22C55E" : `1.5px solid ${C.border}`,
+                            background: vcTime && !TIME_SLOTS.includes(vcTime) ? "#22C55E" : "white",
+                            outline: "none", width: 90,
+                          }}
+                        />
                       </div>
                     )}
                     {vcDay && vcTime && (
