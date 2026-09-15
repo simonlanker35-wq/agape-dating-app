@@ -12,9 +12,9 @@ export default function LikesYou() {
   const [likedBack, setLikedBack] = useState(new Set());
   const [dismissed, setDismissed] = useState(new Set());
   const [viewProfile, setViewProfile] = useState(null);
-  const [revealsLeft, setRevealsLeft] = useState(getRevealsRemaining());
-  const [revealedIds, setRevealedIds] = useState(new Set());
   const isPremium = state.currentUser?.subscriptionStatus === "active";
+  const [revealsLeft, setRevealsLeft] = useState(getRevealsRemaining(isPremium));
+  const [revealedIds, setRevealedIds] = useState(new Set());
 
   const likesWithProfiles = state.likesReceived.filter(
     (l) => l.profile && !dismissed.has(l.id) && !likedBack.has(l.id)
@@ -69,7 +69,7 @@ export default function LikesYou() {
               e.stopPropagation();
               if (revealsLeft <= 0) return;
               recordReveal();
-              setRevealsLeft(getRevealsRemaining());
+              setRevealsLeft(getRevealsRemaining(isPremium));
               setRevealedIds((prev) => new Set(prev).add(like.id));
             };
 

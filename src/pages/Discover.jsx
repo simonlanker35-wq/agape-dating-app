@@ -34,10 +34,10 @@ export default function Discover() {
   const [localLikes, setLocalLikes] = useState(new Set());
   const [showFilter, setShowFilter] = useState(false);
   const [showReport, setShowReport] = useState(false);
-  const [likesLeft, setLikesLeft] = useState(getLikesRemaining());
-  const [dovesLeft, setDovesLeft] = useState(getDovesRemaining());
   const cardRef = useRef(null);
   const isPremium = state.currentUser?.subscriptionStatus === "active";
+  const [likesLeft, setLikesLeft] = useState(getLikesRemaining(isPremium));
+  const [dovesLeft, setDovesLeft] = useState(getDovesRemaining(isPremium));
 
   const userLat = state.currentUser?.location?.lat;
   const userLng = state.currentUser?.location?.lng;
@@ -74,15 +74,18 @@ export default function Discover() {
     return () => clearTimeout(t);
   }, [profile?.id]);
 
-  if (!isPremium && likesLeft <= 0) {
+  if (likesLeft <= 0) {
+    const limit = isPremium ? LIMITS.PREMIUM.dailyLikes : LIMITS.FREE.dailyLikes;
     return (
       <div className="discover-empty">
         <Heart size={48} />
         <h2>No likes left today</h2>
-        <p>You've used all {LIMITS.DAILY_LIKES} free likes. Come back tomorrow or upgrade to Agape+ for unlimited likes.</p>
-        <button className="filter-apply-btn" style={{ marginTop: 16, flex: "none", background: "#B8912A" }} onClick={() => dispatch({ type: "SET_TAB", payload: "profile" })}>
-          Get Agape+
-        </button>
+        <p>You've used all {limit} {isPremium ? "" : "free "}likes for today. Come back tomorrow!</p>
+        {!isPremium && (
+          <button className="filter-apply-btn" style={{ marginTop: 16, flex: "none", background: "#B8912A" }} onClick={() => dispatch({ type: "SET_TAB", payload: "profile" })}>
+            Get Agape+ for {LIMITS.PREMIUM.dailyLikes} likes/day
+          </button>
+        )}
       </div>
     );
   }
@@ -108,10 +111,8 @@ export default function Discover() {
   }
 
   const handleLike = async (targetType, targetIndex, comment = null, isDove = false) => {
-    if (!isPremium) {
-      if (isDove && dovesLeft <= 0) return;
-      if (likesLeft <= 0) return;
-    }
+    if (isDove && dovesLeft <= 0) return;
+    if (likesLeft <= 0) return;
     const flashType = comment ? "comment" : isDove ? "dove" : "heart";
     const likedId = profile.id;
     const likedProfile = profile;
@@ -119,11 +120,9 @@ export default function Discover() {
     setCommentText("");
     setShowDove(false);
     setLikeFlash(flashType);
-    if (!isPremium) {
-      recordLike();
-      setLikesLeft(getLikesRemaining());
-      if (isDove) { recordDove(); setDovesLeft(getDovesRemaining()); }
-    }
+    recordLike();
+    setLikesLeft(getLikesRemaining(isPremium));
+    if (isDove) { recordDove(); setDovesLeft(getDovesRemaining(isPremium)); }
 
     setTimeout(async () => {
       setLocalLikes((prev) => new Set(prev).add(likedId));

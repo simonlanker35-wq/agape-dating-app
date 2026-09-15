@@ -86,16 +86,17 @@ export default function Standouts() {
   const prompts = (profile.prompts || []).filter((p) => p.prompt && p.answer);
 
   const isPremium = state.currentUser?.subscriptionStatus === "active";
-  const [standoutLikesLeft, setStandoutLikesLeft] = useState(getStandoutLikesRemaining());
+  const [standoutLikesLeft, setStandoutLikesLeft] = useState(getStandoutLikesRemaining(isPremium));
 
   const handleLike = async (targetType, targetIndex, comment = null) => {
-    if (!isPremium && standoutLikesLeft <= 0) return;
+    if (standoutLikesLeft <= 0) return;
     const flashType = comment ? "comment" : "dove";
     const likedId = profile.id;
     setCommentTarget(null);
     setCommentText("");
     setLikeFlash(flashType);
-    if (!isPremium) { recordStandoutLike(); setStandoutLikesLeft(getStandoutLikesRemaining()); }
+    recordStandoutLike();
+    setStandoutLikesLeft(getStandoutLikesRemaining(isPremium));
 
     setTimeout(async () => {
       setLocalLikes((prev) => new Set(prev).add(likedId));

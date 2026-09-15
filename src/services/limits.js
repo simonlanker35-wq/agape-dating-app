@@ -1,7 +1,5 @@
-const DAILY_LIKES = 8;
-const WEEKLY_DOVES = 1;
-const WEEKLY_STANDOUT_LIKES = 1;
-const WEEKLY_REVEALS = 1;
+const FREE = { dailyLikes: 8, weeklyDoves: 1, weeklyStandouts: 1, weeklyReveals: 1 };
+const PREMIUM = { dailyLikes: 15, weeklyDoves: 3, weeklyStandouts: 2, weeklyReveals: Infinity };
 
 function todayKey() {
   return new Date().toISOString().slice(0, 10);
@@ -33,20 +31,22 @@ function increment(key) {
   } catch {}
 }
 
+function tier(isPremium) { return isPremium ? PREMIUM : FREE; }
+
 export function getLikesUsed() { return getCount("agape_daily_likes"); }
-export function getLikesRemaining() { return Math.max(0, DAILY_LIKES - getLikesUsed()); }
+export function getLikesRemaining(isPremium) { return Math.max(0, tier(isPremium).dailyLikes - getLikesUsed()); }
 export function recordLike() { increment("agape_daily_likes"); }
 
 export function getDovesUsed() { return getCount("agape_weekly_doves"); }
-export function getDovesRemaining() { return Math.max(0, WEEKLY_DOVES - getDovesUsed()); }
+export function getDovesRemaining(isPremium) { return Math.max(0, tier(isPremium).weeklyDoves - getDovesUsed()); }
 export function recordDove() { increment("agape_weekly_doves"); }
 
 export function getStandoutLikesUsed() { return getCount("agape_weekly_standout"); }
-export function getStandoutLikesRemaining() { return Math.max(0, WEEKLY_STANDOUT_LIKES - getStandoutLikesUsed()); }
+export function getStandoutLikesRemaining(isPremium) { return Math.max(0, tier(isPremium).weeklyStandouts - getStandoutLikesUsed()); }
 export function recordStandoutLike() { increment("agape_weekly_standout"); }
 
 export function getRevealsUsed() { return getCount("agape_weekly_reveals"); }
-export function getRevealsRemaining() { return Math.max(0, WEEKLY_REVEALS - getRevealsUsed()); }
+export function getRevealsRemaining(isPremium) { return isPremium ? Infinity : Math.max(0, FREE.weeklyReveals - getRevealsUsed()); }
 export function recordReveal() { increment("agape_weekly_reveals"); }
 
-export const LIMITS = { DAILY_LIKES, WEEKLY_DOVES, WEEKLY_STANDOUT_LIKES, WEEKLY_REVEALS };
+export const LIMITS = { FREE, PREMIUM };
