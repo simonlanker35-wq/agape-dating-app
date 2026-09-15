@@ -272,56 +272,32 @@ export default function Onboarding() {
               <AgapeCross size={56} strokeWidth={1.2} />
             </div>
             <h2>Welcome back</h2>
-            {!otpSent ? (
-              <>
-                <p style={{ fontSize: 14, color: "#8C857C", textAlign: "center", marginBottom: 16 }}>Enter your phone number to sign in</p>
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && phone.length >= 10 && handleSendOtp()}
-                  placeholder="+48 123 456 789"
-                  className="onboarding-input"
-                  autoFocus
-                />
-                {otpError && <p className="onboarding-error">{otpError}</p>}
-                <button
-                  className="onboarding-cta"
-                  onClick={handleSendOtp}
-                  disabled={submitting || phone.length < 10}
-                >
-                  {submitting ? "Sending code..." : "Send Code"}
-                </button>
-              </>
-            ) : (
-              <>
-                <p style={{ fontSize: 14, color: "#8C857C", textAlign: "center", marginBottom: 16 }}>Enter the 6-digit code sent to {phone}</p>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={6}
-                  value={otpCode}
-                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
-                  onKeyDown={(e) => e.key === "Enter" && otpCode.length === 6 && handleVerifyOtp()}
-                  placeholder="000000"
-                  className="onboarding-input"
-                  style={{ textAlign: "center", fontSize: 28, letterSpacing: 12, fontWeight: 700 }}
-                  autoFocus
-                />
-                {otpError && <p className="onboarding-error">{otpError}</p>}
-                <button
-                  className="onboarding-cta"
-                  onClick={handleVerifyOtp}
-                  disabled={submitting || otpCode.length !== 6}
-                >
-                  {submitting ? "Verifying..." : "Verify"}
-                </button>
-                <button className="skip-btn-text" onClick={() => { setOtpSent(false); setOtpCode(""); setOtpError(""); }} style={{ marginTop: 8 }}>
-                  Change number
-                </button>
-              </>
-            )}
-            <button className="skip-btn-text" onClick={() => { setMode("signup"); setOtpSent(false); setOtpCode(""); setOtpError(""); }} style={{ marginTop: 16 }}>
+            <input
+              type="email"
+              value={loginEmail}
+              onChange={(e) => setLoginEmail(e.target.value)}
+              placeholder="Email"
+              className="onboarding-input"
+              autoFocus
+            />
+            <input
+              type="password"
+              value={loginPassword}
+              onChange={(e) => setLoginPassword(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && loginEmail && loginPassword && handleLogin()}
+              placeholder="Password"
+              className="onboarding-input"
+              style={{ marginTop: 8 }}
+            />
+            {loginError && <p className="onboarding-error">{loginError}</p>}
+            <button
+              className="onboarding-cta"
+              onClick={handleLogin}
+              disabled={submitting || !loginEmail || !loginPassword}
+            >
+              {submitting ? "Signing in..." : "Sign In"}
+            </button>
+            <button className="skip-btn-text" onClick={() => { setMode("signup"); setLoginError(""); }} style={{ marginTop: 16 }}>
               Create an account instead
             </button>
           </div>
