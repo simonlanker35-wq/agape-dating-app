@@ -313,7 +313,7 @@ export function AppProvider({ children }) {
             profileId: like.fromId,
             profile: like.profile,
             timestamp: Date.now(),
-            lastMessage: null,
+            lastMessage: like.comment ? { text: like.comment, sender: like.fromId, timestamp: Date.now() } : null,
           };
           dispatch({ type: "SET_MATCHES", payload: [...state.matches, newMatch] });
         }
