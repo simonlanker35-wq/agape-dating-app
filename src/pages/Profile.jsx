@@ -218,7 +218,7 @@ function BillingSection({ onViewPlans }) {
         </div>
         <div style={{ borderRadius: 16, padding: 16, background: C.card }}>
           <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: C.sub, marginBottom: 12 }}>Your plan includes</p>
-          {["15 likes per day", "3 Doves per week", "See all who like you", "2 Standout likes per week", "Priority visibility"].map((feat) => (
+          {["15 likes per day", "See all who like you", "3 Doves per week", "Advanced filters"].map((feat) => (
             <div key={feat} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 0" }}>
               <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={C.primary} strokeWidth={2.5}><path d="M20 6L9 17l-5-5" /></svg>
               <span style={{ fontSize: 13, color: C.text }}>{feat}</span>
@@ -1070,7 +1070,7 @@ export default function Profile() {
           >
             <div>
               <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(255,255,255,0.6)", marginBottom: 2 }}>Agape+</p>
-              <p style={{ color: "white", fontWeight: 700, fontSize: 14, lineHeight: 1.3 }}>Be seen 3x faster</p>
+              <p style={{ color: "white", fontWeight: 700, fontSize: 14, lineHeight: 1.3 }}>15 likes/day, 3 doves, see all who like you</p>
             </div>
             <button
               onClick={() => openSettings("subscription")}
