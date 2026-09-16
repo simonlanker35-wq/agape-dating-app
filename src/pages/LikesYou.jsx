@@ -76,7 +76,7 @@ export default function LikesYou() {
             const profile = like.profile;
             const matched = likedBack.has(like.id);
             const isDoveLike = like.isDove;
-            const isRevealed = idx === 0 || isDoveLike || revealedIds.has(like.id) || isPremium;
+            const isRevealed = isDoveLike || revealedIds.has(like.id) || isPremium;
             const isLocked = !isRevealed;
 
             const handleReveal = (e) => {
