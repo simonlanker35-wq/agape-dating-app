@@ -273,14 +273,6 @@ export async function sendLike(to, targetType, targetIndex, comment = null, isDo
       if (!matchErr) {
         matched = true;
         matchId = match.id;
-
-        // Insert like comments as first chat messages
-        const theirLike = mutual ? (await supabase.from("likes").select("comment, is_dove").eq("id", mutual.id).single()).data : null;
-        const myComment = comment;
-        const msgs = [];
-        if (theirLike?.comment) msgs.push({ match_id: match.id, sender: to, text: (theirLike.is_dove ? "🕊️ " : "") + theirLike.comment, read: false, created_at: new Date(Date.now() - 1000).toISOString() });
-        if (myComment) msgs.push({ match_id: match.id, sender: user.id, text: (isDove ? "🕊️ " : "") + myComment, read: false, created_at: new Date().toISOString() });
-        if (msgs.length > 0) await supabase.from("messages").insert(msgs);
       }
     }
   }
@@ -363,12 +355,27 @@ export async function getMatches() {
       .limit(1)
       .single();
 
+    let preview = lastMsg ? { text: lastMsg.text, sender: lastMsg.sender } : null;
+    if (!preview) {
+      const { data: likeComment } = await supabase
+        .from("likes")
+        .select("from_user, comment, is_dove")
+        .or(`and(from_user.eq.${m.user1},to_user.eq.${m.user2}),and(from_user.eq.${m.user2},to_user.eq.${m.user1})`)
+        .not("comment", "is", null)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (likeComment) {
+        preview = { text: (likeComment.is_dove ? "🕊️ " : "") + likeComment.comment, sender: likeComment.from_user };
+      }
+    }
+
     results.push({
       id: m.id,
       profileId: otherId,
       profile: otherProfile ? mapProfile(otherProfile) : null,
       timestamp: new Date(m.last_activity || m.created_at).getTime(),
-      lastMessage: lastMsg ? { text: lastMsg.text, sender: lastMsg.sender } : null,
+      lastMessage: preview,
       nudgeAt: m.nudge_at ? new Date(m.nudge_at).getTime() : null,
       deadlinePaused: !!m.deadline_paused,
       videoCallAt: m.video_call_at ? new Date(m.video_call_at).getTime() : null,
@@ -394,31 +401,28 @@ export async function getMessages(matchId) {
     read: msg.read,
   }));
 
-  // Prepend like comments as opening messages if none exist in the DB yet
-  if (mapped.length === 0) {
-    try {
-      const { data: match } = await supabase.from("matches").select("user1, user2, created_at").eq("id", matchId).single();
-      if (match) {
-        const { data: likes } = await supabase
-          .from("likes")
-          .select("from_user, comment, is_dove, created_at")
-          .or(`and(from_user.eq.${match.user1},to_user.eq.${match.user2}),and(from_user.eq.${match.user2},to_user.eq.${match.user1})`)
-          .not("comment", "is", null)
-          .order("created_at", { ascending: true });
-        if (likes?.length > 0) {
-          for (const like of likes) {
-            mapped.push({
-              id: `like-${like.from_user}`,
-              text: (like.is_dove ? "🕊️ " : "") + like.comment,
-              sender: like.from_user,
-              timestamp: new Date(like.created_at).getTime(),
-              read: true,
-            });
-          }
-        }
+  // Prepend like comments as opening messages in chat
+  try {
+    const { data: match } = await supabase.from("matches").select("user1, user2").eq("id", matchId).single();
+    if (match) {
+      const { data: likes } = await supabase
+        .from("likes")
+        .select("from_user, comment, is_dove, created_at")
+        .or(`and(from_user.eq.${match.user1},to_user.eq.${match.user2}),and(from_user.eq.${match.user2},to_user.eq.${match.user1})`)
+        .not("comment", "is", null)
+        .order("created_at", { ascending: true });
+      if (likes?.length > 0) {
+        const likeMessages = likes.map((like) => ({
+          id: `like-${like.from_user}`,
+          text: (like.is_dove ? "🕊️ " : "") + like.comment,
+          sender: like.from_user,
+          timestamp: new Date(like.created_at).getTime(),
+          read: true,
+        }));
+        return [...likeMessages, ...mapped];
       }
-    } catch (_) {}
-  }
+    }
+  } catch (_) {}
 
   return mapped;
 }

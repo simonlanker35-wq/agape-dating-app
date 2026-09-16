@@ -331,7 +331,6 @@ export function AppProvider({ children }) {
         }
         dispatch({ type: "MATCH_FROM_LIKES", payload: { like, matchData: null } });
       }
-      try { await api.dismissLike(like.id); } catch (_) {}
       return res;
     },
 
