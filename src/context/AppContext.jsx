@@ -1,6 +1,7 @@
 import { createContext, useContext, useReducer, useEffect, useCallback } from "react";
 import * as api from "../services/api";
 import { supabase } from "../services/supabase";
+import { getSubscriptionStatus } from "../services/stripe";
 
 const AppContext = createContext();
 
@@ -176,9 +177,20 @@ export function AppProvider({ children }) {
         loadLikesReceived();
         loadMatches();
       }, 10000);
-      const refreshProfile = () => {
+      const refreshProfile = async () => {
         if (document.visibilityState === "visible") {
-          api.getMe().then((user) => dispatch({ type: "SET_USER", payload: user })).catch(() => {});
+          try {
+            const user = await api.getMe();
+            // If DB doesn't show active subscription, check Stripe directly and sync
+            if (user.subscriptionStatus !== "active") {
+              const stripeStatus = await getSubscriptionStatus().catch(() => null);
+              if (stripeStatus?.status === "active") {
+                await api.updateProfile({ subscription_status: "active" }).catch(() => {});
+                user.subscriptionStatus = "active";
+              }
+            }
+            dispatch({ type: "SET_USER", payload: user });
+          } catch (_) {}
         }
       };
       document.addEventListener("visibilitychange", refreshProfile);

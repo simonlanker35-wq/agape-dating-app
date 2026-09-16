@@ -146,6 +146,7 @@ export async function updateProfile(data) {
   if (data.bio !== undefined) updates.bio = data.bio;
   if (data.filters !== undefined) updates.filters = data.filters;
   if (data.photos !== undefined) updates.photos = data.photos;
+  if (data.subscription_status !== undefined) updates.subscription_status = data.subscription_status;
 
   const { data: profile, error } = await supabase
     .from("profiles")
@@ -385,13 +386,41 @@ export async function getMessages(matchId) {
     .order("created_at", { ascending: true });
   if (error) throw new Error(error.message);
 
-  return (messages || []).map((msg) => ({
+  const mapped = (messages || []).map((msg) => ({
     id: msg.id,
     text: msg.text,
     sender: msg.sender,
     timestamp: new Date(msg.created_at).getTime(),
     read: msg.read,
   }));
+
+  // Prepend like comments as opening messages if none exist in the DB yet
+  if (mapped.length === 0) {
+    try {
+      const { data: match } = await supabase.from("matches").select("user1, user2, created_at").eq("id", matchId).single();
+      if (match) {
+        const { data: likes } = await supabase
+          .from("likes")
+          .select("from_user, comment, is_dove, created_at")
+          .or(`and(from_user.eq.${match.user1},to_user.eq.${match.user2}),and(from_user.eq.${match.user2},to_user.eq.${match.user1})`)
+          .not("comment", "is", null)
+          .order("created_at", { ascending: true });
+        if (likes?.length > 0) {
+          for (const like of likes) {
+            mapped.push({
+              id: `like-${like.from_user}`,
+              text: (like.is_dove ? "🕊️ " : "") + like.comment,
+              sender: like.from_user,
+              timestamp: new Date(like.created_at).getTime(),
+              read: true,
+            });
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
+  return mapped;
 }
 
 export async function sendMessage(matchId, text) {
