@@ -868,8 +868,16 @@ function ChatThread({ match, onBack }) {
           }
 
           const isMe = item.sender === currentUserId;
+          const isDoveMsg = item.text?.startsWith("🕊️ ");
+          const displayText = isDoveMsg ? item.text.slice(3) : item.text;
           return (
             <div key={item.id} style={{ display: "flex", flexDirection: "column", alignItems: isMe ? "flex-end" : "flex-start" }}>
+              {isDoveMsg && (
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4, marginLeft: isMe ? 0 : 32, marginRight: isMe ? 0 : 0, padding: "4px 10px", background: C.primarySoft, borderRadius: 10, alignSelf: isMe ? "flex-end" : "flex-start" }}>
+                  <span style={{ fontSize: 12 }}>🕊️</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: C.primary, fontFamily: FONT }}>Sent with a Dove</span>
+                </div>
+              )}
               <div style={{ display: "flex", alignItems: "flex-end", gap: 8, maxWidth: "80%" }}>
                 {!isMe && (
                   <img src={profile.photos[0]} alt={profile.name} style={{ width: 24, height: 24, borderRadius: "50%", objectFit: "cover", flexShrink: 0, marginBottom: 4 }} onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${profile.name}&size=24&background=random`; }} />
@@ -878,16 +886,17 @@ function ChatThread({ match, onBack }) {
                   style={{
                     padding: "12px 16px",
                     borderRadius: 16,
-                    background: isMe ? C.sent : C.card,
+                    background: isMe ? C.sent : isDoveMsg ? C.primarySoft : C.card,
                     color: isMe ? "white" : C.text,
                     borderBottomRightRadius: isMe ? 6 : 16,
                     borderBottomLeftRadius: !isMe ? 6 : 16,
                     boxShadow: !isMe ? "0 1px 4px rgba(0,0,0,0.06)" : undefined,
+                    border: isDoveMsg && !isMe ? `1.5px solid ${C.primary}` : undefined,
                     cursor: "pointer",
                   }}
                   onDoubleClick={() => setReacting(reacting === item.id ? null : item.id)}
                 >
-                  <p style={{ fontSize: 14, lineHeight: 1.5, fontFamily: FONT, margin: 0, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{item.text}</p>
+                  <p style={{ fontSize: 14, lineHeight: 1.5, fontFamily: FONT, margin: 0, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{displayText}</p>
                 </div>
               </div>
               <p style={{ fontSize: 10, marginTop: 6, marginLeft: 32, marginRight: 32, color: C.sub }}>{formatTime(item.timestamp)}</p>

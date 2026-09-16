@@ -274,11 +274,11 @@ export async function sendLike(to, targetType, targetIndex, comment = null, isDo
         matchId = match.id;
 
         // Insert like comments as first chat messages
-        const theirComment = mutual ? (await supabase.from("likes").select("comment").eq("id", mutual.id).single()).data?.comment : null;
+        const theirLike = mutual ? (await supabase.from("likes").select("comment, is_dove").eq("id", mutual.id).single()).data : null;
         const myComment = comment;
         const msgs = [];
-        if (theirComment) msgs.push({ match_id: match.id, sender: to, text: theirComment, read: false, created_at: new Date(Date.now() - 1000).toISOString() });
-        if (myComment) msgs.push({ match_id: match.id, sender: user.id, text: myComment, read: false, created_at: new Date().toISOString() });
+        if (theirLike?.comment) msgs.push({ match_id: match.id, sender: to, text: (theirLike.is_dove ? "🕊️ " : "") + theirLike.comment, read: false, created_at: new Date(Date.now() - 1000).toISOString() });
+        if (myComment) msgs.push({ match_id: match.id, sender: user.id, text: (isDove ? "🕊️ " : "") + myComment, read: false, created_at: new Date().toISOString() });
         if (msgs.length > 0) await supabase.from("messages").insert(msgs);
       }
     }

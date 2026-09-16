@@ -140,9 +140,12 @@ export default function LikesYou() {
                         Reveal ({revealsLeft} left)
                       </button>
                     ) : (
-                      <p style={{ color: "white", fontSize: 12, fontWeight: 600, fontFamily: FONT, textAlign: "center", padding: "0 12px", textShadow: "0 1px 4px rgba(0,0,0,0.5)" }}>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); dispatch({ type: "SET_TAB", payload: "profile" }); }}
+                        style={{ color: "white", fontSize: 12, fontWeight: 600, fontFamily: FONT, textAlign: "center", padding: "8px 16px", textShadow: "0 1px 4px rgba(0,0,0,0.5)", background: "rgba(184,145,42,0.6)", border: "1.5px solid rgba(255,255,255,0.4)", borderRadius: 12, cursor: "pointer", backdropFilter: "blur(4px)" }}
+                      >
                         Get Agape+ to see all
-                      </p>
+                      </button>
                     )}
                   </div>
                 ) : (
