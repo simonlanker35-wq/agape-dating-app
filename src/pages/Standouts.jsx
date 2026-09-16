@@ -91,33 +91,20 @@ export default function Standouts() {
     const daysLeft = Math.floor(diff / 86400000);
     const hoursLeft = Math.floor((diff % 86400000) / 3600000);
     return (
-      <div style={{ position: "relative", width: "100%", minHeight: "calc(100vh - 80px)", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", background: "#1A1612" }}>
-        {doveSentData.photo && (
-          <img
-            src={doveSentData.photo}
-            alt=""
-            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", filter: "blur(24px) brightness(0.4)", transform: "scale(1.1)" }}
-          />
-        )}
-        <div style={{ position: "relative", zIndex: 2, textAlign: "center", padding: 32 }}>
-          <div style={{ fontSize: 64, marginBottom: 16 }}>🕊️</div>
-          <h2 style={{ color: "white", fontFamily: FONT, fontSize: 22, fontWeight: 700, marginBottom: 8 }}>
-            Your Dove has been sent!
-          </h2>
-          <p style={{ color: "rgba(255,255,255,0.8)", fontFamily: FONT, fontSize: 14, marginBottom: 24, lineHeight: 1.5 }}>
-            {doveSentData.name} will see your Dove. Good things take time.
-          </p>
-          <div style={{ background: "rgba(255,255,255,0.15)", backdropFilter: "blur(10px)", borderRadius: 16, padding: "16px 24px", display: "inline-block", marginBottom: 16 }}>
-            <p style={{ color: "rgba(255,255,255,0.6)", fontFamily: FONT, fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 4 }}>Next Chosen pick</p>
-            <p style={{ color: "white", fontFamily: FONT, fontSize: 20, fontWeight: 700 }}>{dayName}</p>
-            <p style={{ color: C.primary, fontFamily: FONT, fontSize: 13, fontWeight: 600, marginTop: 4 }}>
-              {daysLeft > 0 ? `${daysLeft}d ${hoursLeft}h remaining` : `${hoursLeft}h remaining`}
-            </p>
-          </div>
-          <p style={{ color: "rgba(255,255,255,0.5)", fontFamily: FONT, fontSize: 12 }}>
-            Every Wednesday you receive a handpicked match
+      <div className="discover-empty" style={{ background: C.surface }}>
+        <span style={{ fontSize: 64 }}>🕊️</span>
+        <h2 style={{ fontFamily: FONT, fontSize: 22, fontWeight: 700, color: C.text }}>Your Dove has been sent!</h2>
+        <p style={{ color: C.sub, fontSize: 14, lineHeight: 1.5 }}>
+          {doveSentData.name} will see your Dove. Good things take time.
+        </p>
+        <div style={{ background: C.primarySoft, borderRadius: 16, padding: "16px 24px", marginTop: 16 }}>
+          <p style={{ color: C.sub, fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 4 }}>Next Chosen pick</p>
+          <p style={{ color: C.text, fontSize: 20, fontWeight: 700, fontFamily: FONT }}>{dayName}</p>
+          <p style={{ color: C.primary, fontSize: 13, fontWeight: 600, fontFamily: FONT, marginTop: 4 }}>
+            {daysLeft > 0 ? `${daysLeft}d ${hoursLeft}h remaining` : `${hoursLeft}h remaining`}
           </p>
         </div>
+        <p style={{ color: C.sub, fontSize: 12, marginTop: 16 }}>Every Wednesday you receive a handpicked match</p>
       </div>
     );
   }
@@ -157,9 +144,9 @@ export default function Standouts() {
 
     const doveData = { weekKey, photo: photos[0], name: profile.name, sentAt: Date.now() };
     try { localStorage.setItem("agape_dove_sent", JSON.stringify(doveData)); } catch {}
-    setDoveSentData(doveData);
 
     setTimeout(async () => {
+      setDoveSentData(doveData);
       try {
         await actions.likeProfile(likedId, targetType, targetIndex, comment, true);
         setLikeFlash(null);
