@@ -141,6 +141,10 @@ export default function Standouts() {
   const isPremium = state.currentUser?.subscriptionStatus === "active";
   const [standoutLikesLeft, setStandoutLikesLeft] = useState(getStandoutLikesRemaining(isPremium));
 
+  useEffect(() => {
+    setStandoutLikesLeft(getStandoutLikesRemaining(isPremium));
+  }, [isPremium]);
+
   const handleLike = async (targetType, targetIndex, comment = null) => {
     if (standoutLikesLeft <= 0) return;
     const flashType = comment ? "comment" : "dove";

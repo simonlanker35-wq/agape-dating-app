@@ -39,6 +39,11 @@ export default function Discover() {
   const [likesLeft, setLikesLeft] = useState(getLikesRemaining(isPremium));
   const [dovesLeft, setDovesLeft] = useState(getDovesRemaining(isPremium));
 
+  useEffect(() => {
+    setLikesLeft(getLikesRemaining(isPremium));
+    setDovesLeft(getDovesRemaining(isPremium));
+  }, [isPremium]);
+
   const userLat = state.currentUser?.location?.lat;
   const userLng = state.currentUser?.location?.lng;
   const filters = state.filters;

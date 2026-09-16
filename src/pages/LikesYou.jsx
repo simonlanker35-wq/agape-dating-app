@@ -1,5 +1,5 @@
 import { useApp } from "../context/AppContext";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Heart, X } from "lucide-react";
 import AgapeCross from "../components/AgapeCross";
 import { getRevealsRemaining, recordReveal, LIMITS } from "../services/limits";
@@ -16,6 +16,10 @@ export default function LikesYou() {
   const [revealsLeft, setRevealsLeft] = useState(getRevealsRemaining(isPremium));
   const [revealedIds, setRevealedIds] = useState(new Set());
   const [heartFlash, setHeartFlash] = useState(null);
+
+  useEffect(() => {
+    setRevealsLeft(getRevealsRemaining(isPremium));
+  }, [isPremium]);
 
   const allLikes = state.likesReceived.filter(
     (l) => l.profile && !dismissed.has(l.id) && !likedBack.has(l.id)
