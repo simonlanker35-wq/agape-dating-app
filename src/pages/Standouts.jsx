@@ -91,12 +91,12 @@ export default function Standouts() {
     const daysLeft = Math.floor(diff / 86400000);
     const hoursLeft = Math.floor((diff % 86400000) / 3600000);
     return (
-      <div style={{ position: "relative", width: "100%", height: "100%", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div style={{ position: "relative", width: "100%", minHeight: "calc(100vh - 80px)", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", background: "#1A1612" }}>
         {doveSentData.photo && (
           <img
             src={doveSentData.photo}
             alt=""
-            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", filter: "blur(24px) brightness(0.5)", transform: "scale(1.1)" }}
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", filter: "blur(24px) brightness(0.4)", transform: "scale(1.1)" }}
           />
         )}
         <div style={{ position: "relative", zIndex: 2, textAlign: "center", padding: 32 }}>
@@ -157,9 +157,9 @@ export default function Standouts() {
 
     const doveData = { weekKey, photo: photos[0], name: profile.name, sentAt: Date.now() };
     try { localStorage.setItem("agape_dove_sent", JSON.stringify(doveData)); } catch {}
+    setDoveSentData(doveData);
 
     setTimeout(async () => {
-      setDoveSentData(doveData);
       try {
         await actions.likeProfile(likedId, targetType, targetIndex, comment, true);
         setLikeFlash(null);
