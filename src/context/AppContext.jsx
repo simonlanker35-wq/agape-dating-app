@@ -176,9 +176,15 @@ export function AppProvider({ children }) {
         loadLikesReceived();
         loadMatches();
       }, 10000);
-      return () => clearInterval(poll);
+      const refreshProfile = () => {
+        if (document.visibilityState === "visible") {
+          api.getMe().then((user) => dispatch({ type: "SET_USER", payload: user })).catch(() => {});
+        }
+      };
+      document.addEventListener("visibilitychange", refreshProfile);
+      return () => { clearInterval(poll); document.removeEventListener("visibilitychange", refreshProfile); };
     }
-  }, [state.onboardingComplete, state.currentUser]);
+  }, [state.onboardingComplete, state.currentUser?.id]);
 
   useEffect(() => {
     if (state.currentUser && navigator.geolocation) {

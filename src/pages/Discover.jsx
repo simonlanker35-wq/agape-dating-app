@@ -280,7 +280,11 @@ export default function Discover() {
                   )}
                 </div>
               </div>
-              <div className="id-actions">
+              <div className="id-actions" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ background: "rgba(0,0,0,0.5)", borderRadius: 20, padding: "4px 10px", display: "flex", alignItems: "center", gap: 4 }}>
+                  <Heart size={10} fill="white" stroke="white" />
+                  <span style={{ color: "white", fontSize: 11, fontWeight: 700, fontFamily: "'Outfit', system-ui, sans-serif" }}>{likesLeft}</span>
+                </div>
                 <button className="id-btn id-skip" onClick={handleSkip}>
                   <X size={17} />
                 </button>
@@ -288,12 +292,6 @@ export default function Discover() {
                   <Heart size={17} fill="white" stroke="white" />
                 </button>
               </div>
-              {!isPremium && (
-                <div style={{ position: "absolute", top: 8, right: 8, background: "rgba(0,0,0,0.6)", borderRadius: 20, padding: "4px 10px", display: "flex", alignItems: "center", gap: 4 }}>
-                  <Heart size={10} fill="white" stroke="white" />
-                  <span style={{ color: "white", fontSize: 11, fontWeight: 700, fontFamily: "'Outfit', system-ui, sans-serif" }}>{likesLeft}</span>
-                </div>
-              )}
             </div>
           </div>
         </div>
@@ -339,20 +337,31 @@ export default function Discover() {
       </div>
 
 
-      {likeChoice && (
-        <div className="like-choice-overlay" onClick={() => setLikeChoice(null)}>
-          <div className="like-choice-sheet" onClick={(e) => e.stopPropagation()}>
-            <button className="like-choice-btn heart-choice" onClick={onSendHeart}>
-              <Heart size={20} fill="white" stroke="white" />
-              <span>Send Heart</span>
-            </button>
-            <button className="like-choice-btn comment-choice" onClick={onAddComment}>
-              <MessageCircle size={18} />
-              <span>Add a Comment</span>
-            </button>
+      {likeChoice && (() => {
+        const theyLikedYou = state.likesReceived.find((l) => l.fromId === profile.id);
+        const theyCommented = theyLikedYou?.comment;
+        return (
+          <div className="like-choice-overlay" onClick={() => setLikeChoice(null)}>
+            <div className="like-choice-sheet" onClick={(e) => e.stopPropagation()}>
+              {theyCommented && (
+                <p style={{ fontSize: 12, color: "#8C857C", textAlign: "center", margin: "0 0 8px", fontFamily: "'Outfit', system-ui, sans-serif" }}>
+                  {profile.name} already commented on your profile
+                </p>
+              )}
+              <button className="like-choice-btn heart-choice" onClick={onSendHeart}>
+                <Heart size={20} fill="white" stroke="white" />
+                <span>Send Heart</span>
+              </button>
+              {!theyCommented && (
+                <button className="like-choice-btn comment-choice" onClick={onAddComment}>
+                  <MessageCircle size={18} />
+                  <span>Add a Comment</span>
+                </button>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {commentTarget && (
         <div className="comment-modal-overlay" onClick={() => { setCommentTarget(null); setShowDove(false); }}>

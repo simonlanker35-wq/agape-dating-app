@@ -15,12 +15,19 @@ export default function LikesYou() {
   const isPremium = state.currentUser?.subscriptionStatus === "active";
   const [revealsLeft, setRevealsLeft] = useState(getRevealsRemaining(isPremium));
   const [revealedIds, setRevealedIds] = useState(new Set());
+  const [heartFlash, setHeartFlash] = useState(null);
 
-  const likesWithProfiles = state.likesReceived.filter(
+  const allLikes = state.likesReceived.filter(
     (l) => l.profile && !dismissed.has(l.id) && !likedBack.has(l.id)
   );
 
+  const doveLikes = allLikes.filter((l) => l.isDove);
+  const regularLikes = allLikes.filter((l) => !l.isDove);
+  const likesWithProfiles = [...doveLikes, ...regularLikes];
+
   const handleLikeBack = async (like) => {
+    setHeartFlash(like.id);
+    setTimeout(() => setHeartFlash(null), 800);
     setLikedBack((prev) => new Set(prev).add(like.id));
     try {
       await actions.matchFromLike(like);
@@ -51,11 +58,16 @@ export default function LikesYou() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: C.bg }}>
-      <div style={{ padding: "40px 20px 12px" }}>
+      <div style={{ padding: "40px 20px 8px" }}>
         <h1 style={{ color: C.text, fontFamily: FONT, fontSize: 24, fontWeight: 700, letterSpacing: "-0.4px", margin: 0 }}>Sparks</h1>
         <p style={{ color: C.sub, fontSize: 13, marginTop: 4 }}>
           {likesWithProfiles.length} {likesWithProfiles.length === 1 ? "person" : "people"} liked you
         </p>
+        {!isPremium && (
+          <p style={{ color: C.primary, fontSize: 12, fontWeight: 600, marginTop: 6, fontFamily: FONT, lineHeight: 1.4 }}>
+            We only reveal 1 a week so you get the chance to truly get to know your match.
+          </p>
+        )}
       </div>
 
       <div style={{ flex: 1, overflowY: "auto", padding: "0 12px 24px" }}>
@@ -63,7 +75,9 @@ export default function LikesYou() {
           {likesWithProfiles.map((like, idx) => {
             const profile = like.profile;
             const matched = likedBack.has(like.id);
-            const isLocked = !isPremium && idx > 0 && !revealedIds.has(like.id);
+            const isDoveLike = like.isDove;
+            const isRevealed = idx === 0 || isDoveLike || revealedIds.has(like.id) || isPremium;
+            const isLocked = !isRevealed;
 
             const handleReveal = (e) => {
               e.stopPropagation();
@@ -84,6 +98,7 @@ export default function LikesYou() {
                   cursor: isLocked ? "default" : "pointer",
                   aspectRatio: "3/4",
                   background: C.surface,
+                  border: isDoveLike ? `2px solid ${C.primary}` : "none",
                 }}
               >
                 <img
@@ -93,6 +108,19 @@ export default function LikesYou() {
                   onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${profile.name}&size=400&background=random`; }}
                 />
                 <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 50%)", pointerEvents: "none" }} />
+
+                {isDoveLike && !isLocked && (
+                  <div style={{ position: "absolute", top: 8, left: 8, background: C.primary, borderRadius: 20, padding: "4px 10px", display: "flex", alignItems: "center", gap: 4 }}>
+                    <span style={{ fontSize: 12 }}>🕊️</span>
+                    <span style={{ color: "white", fontSize: 10, fontWeight: 700, fontFamily: FONT }}>Dove</span>
+                  </div>
+                )}
+
+                {heartFlash === like.id && (
+                  <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10, pointerEvents: "none" }}>
+                    <span style={{ fontSize: 64, animation: "heartPop 0.8s ease-out forwards" }}>❤️</span>
+                  </div>
+                )}
 
                 {isLocked ? (
                   <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8 }}>
@@ -203,6 +231,14 @@ export default function LikesYou() {
           </div>
         </div>
       )}
+
+      <style>{`
+        @keyframes heartPop {
+          0% { transform: scale(0); opacity: 1; }
+          50% { transform: scale(1.3); opacity: 1; }
+          100% { transform: scale(1); opacity: 0; }
+        }
+      `}</style>
     </div>
   );
 }

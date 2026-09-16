@@ -5,6 +5,7 @@ import { PROMPT_CATEGORIES } from "../data/profiles";
 import AgapeCross from "../components/AgapeCross";
 import LocationPicker from "../components/LocationPicker";
 import { redirectToCheckout, getSubscriptionStatus } from "../services/stripe";
+import { getDovesRemaining } from "../services/limits";
 
 const C = { bg: "#FFFFFF", card: "#FAFAF8", surface: "#F4F2EE", primary: "#B8912A", primarySoft: "#FBF5E6", text: "#1A1612", sub: "#8C857C", border: "#E8E4DF", sent: "#111111" };
 const FONT = "'Outfit', system-ui, sans-serif";
@@ -132,7 +133,7 @@ function SubscriptionPlans() {
       <div style={{ borderRadius: 16, overflow: "hidden" }}>
         <div style={{ padding: 20, background: C.primary }}>
           <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(255,255,255,0.6)", marginBottom: 4 }}>Agape+</p>
-          <p style={{ color: "white", fontWeight: 700, fontSize: 20, lineHeight: 1.3, marginBottom: 4 }}>Unlimited likes, see who likes you</p>
+          <p style={{ color: "white", fontWeight: 700, fontSize: 20, lineHeight: 1.3, marginBottom: 4 }}>15 likes/day, 3 doves, see all who like you</p>
           <p style={{ color: "rgba(255,255,255,0.7)", fontSize: 14 }}>From CHF 6.99/month</p>
         </div>
       </div>
@@ -188,7 +189,7 @@ function SubscriptionPlans() {
       </div>
       <div style={{ padding: "8px 0" }}>
         <p style={{ fontSize: 10, fontWeight: 600, color: C.sub, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>What you get</p>
-        {["Unlimited likes", "See who likes you", "5 Doves per day", "Priority visibility", "Advanced filters"].map((feat) => (
+        {["15 likes per day", "See all who like you", "3 Doves per week", "2 Standout likes per week", "Priority visibility"].map((feat) => (
           <div key={feat} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0" }}>
             <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={C.primary} strokeWidth={2.5}><path d="M20 6L9 17l-5-5" /></svg>
             <span style={{ fontSize: 13, color: C.text }}>{feat}</span>
@@ -196,6 +197,45 @@ function SubscriptionPlans() {
         ))}
       </div>
     </>
+  );
+}
+
+function BillingSection({ onViewPlans }) {
+  const [subStatus, setSubStatus] = useState(null);
+  useEffect(() => { getSubscriptionStatus().then(setSubStatus).catch(() => {}); }, []);
+
+  if (subStatus?.status === "active") {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <div style={{ borderRadius: 16, padding: 16, background: "#E8F5E9" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+            <span style={{ fontSize: 20 }}>✨</span>
+            <p style={{ fontSize: 16, fontWeight: 700, color: "#2E7D32" }}>Agape+ Active</p>
+          </div>
+          <p style={{ fontSize: 13, color: "#4CAF50", lineHeight: 1.5 }}>
+            Your subscription renews {subStatus.cancelAtPeriodEnd ? "and will cancel" : "automatically"} on {new Date(subStatus.currentPeriodEnd * 1000).toLocaleDateString()}
+          </p>
+        </div>
+        <div style={{ borderRadius: 16, padding: 16, background: C.card }}>
+          <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: C.sub, marginBottom: 12 }}>Your plan includes</p>
+          {["15 likes per day", "3 Doves per week", "See all who like you", "2 Standout likes per week", "Priority visibility"].map((feat) => (
+            <div key={feat} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 0" }}>
+              <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={C.primary} strokeWidth={2.5}><path d="M20 6L9 17l-5-5" /></svg>
+              <span style={{ fontSize: 13, color: C.text }}>{feat}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ textAlign: "center", padding: "40px 20px" }}>
+      <span style={{ fontSize: 48 }}>💳</span>
+      <p style={{ fontSize: 16, fontWeight: 700, color: C.text, marginTop: 16 }}>No active subscription</p>
+      <p style={{ fontSize: 13, color: C.sub, marginTop: 4 }}>Upgrade to Agape+ to manage billing and payments.</p>
+      <button onClick={onViewPlans} style={{ marginTop: 16, padding: "12px 24px", borderRadius: 12, fontSize: 14, fontWeight: 700, background: C.primary, color: "white", border: "none", cursor: "pointer" }}>View plans</button>
+    </div>
   );
 }
 
@@ -287,7 +327,6 @@ function SettingsScreen({ onBack, initialSection = null }) {
               <div>
                 <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: C.sub, padding: "0 4px", marginBottom: 8 }}>Visibility</p>
                 <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
-                  <SettingsRow icon="🟢" label="Show active status" sub="Let matches see when you're online" toggle={{ on: privacy.activeStatus, onToggle: () => toggle(privacy, "activeStatus", setPrivacy) }} />
                   <SettingsRow icon="✓" label="Read receipts" sub="Let matches see when you've read messages" toggle={{ on: privacy.readReceipts, onToggle: () => toggle(privacy, "readReceipts", setPrivacy) }} />
                   <SettingsRow icon="📍" label="Show distance" toggle={{ on: privacy.showDistance, onToggle: () => toggle(privacy, "showDistance", setPrivacy) }} />
                 </div>
@@ -433,12 +472,7 @@ function SettingsScreen({ onBack, initialSection = null }) {
             </div>
           )}
           {section === "billing" && (
-            <div style={{ textAlign: "center", padding: "40px 20px" }}>
-              <span style={{ fontSize: 48 }}>💳</span>
-              <p style={{ fontSize: 16, fontWeight: 700, color: C.text, marginTop: 16 }}>No active subscription</p>
-              <p style={{ fontSize: 13, color: C.sub, marginTop: 4 }}>Upgrade to Agape+ to manage billing and payments.</p>
-              <button onClick={() => setSection("subscription")} style={{ marginTop: 16, padding: "12px 24px", borderRadius: 12, fontSize: 14, fontWeight: 700, background: C.primary, color: "white", border: "none", cursor: "pointer" }}>View plans</button>
-            </div>
+            <BillingSection onViewPlans={() => setSection("subscription")} />
           )}
           {section === "help" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -618,7 +652,7 @@ function SettingsScreen({ onBack, initialSection = null }) {
         <div>
           <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: C.sub, padding: "0 4px", marginBottom: 8 }}>Privacy</p>
           <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
-            <SettingsRow icon="🔒" label="Privacy settings" sub="Active status, read receipts" onPress={() => setSection("privacy")} />
+            <SettingsRow icon="🔒" label="Privacy settings" sub="Read receipts, visibility" onPress={() => setSection("privacy")} />
           </div>
         </div>
         <div>
@@ -631,7 +665,7 @@ function SettingsScreen({ onBack, initialSection = null }) {
         <div>
           <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: C.sub, padding: "0 4px", marginBottom: 8 }}>Subscription</p>
           <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
-            <SettingsRow icon="✨" label="Agape+" sub="Not subscribed" onPress={() => setSection("subscription")} />
+            <SettingsRow icon="✨" label="Agape+" sub={state.currentUser?.subscriptionStatus === "active" ? "Active" : "Not subscribed"} onPress={() => setSection("subscription")} />
             <SettingsRow icon="💳" label="Billing & payments" onPress={() => setSection("billing")} />
           </div>
         </div>
@@ -890,30 +924,10 @@ export default function Profile() {
         </div>
 
         {/* Top bar */}
-        <div style={{ position: "absolute", top: 0, left: 0, right: 0, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "40px 20px 0" }}>
+        <div style={{ position: "absolute", top: 0, left: 0, right: 0, display: "flex", alignItems: "center", padding: "40px 20px 0" }}>
           <span style={{ fontSize: 18, fontWeight: 800, letterSpacing: "-0.3px", color: "white", fontFamily: FONT }}>
             My Profile
           </span>
-          <button
-            onClick={(e) => { e.stopPropagation(); setShowSettings(true); }}
-            style={{
-              width: 36,
-              height: 36,
-              borderRadius: "50%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              background: "rgba(255,255,255,0.15)",
-              backdropFilter: "blur(10px)",
-              border: "none",
-              cursor: "pointer",
-            }}
-          >
-            <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2}>
-              <circle cx="12" cy="12" r="3" />
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-            </svg>
-          </button>
         </div>
 
         {/* Identity overlay at bottom */}
@@ -1087,10 +1101,10 @@ export default function Profile() {
             }}
           >
             <span style={{ color: C.primary, fontFamily: SERIF, fontSize: 24, fontWeight: 700 }}>
-              {state.doves}
+              {getDovesRemaining(state.currentUser?.subscriptionStatus === "active")}
             </span>
             <span style={{ color: C.sub, fontSize: 11, marginTop: 2 }}>
-              {state.doves === 1 ? "Dove left" : "Doves left"}
+              {getDovesRemaining(state.currentUser?.subscriptionStatus === "active") === 1 ? "Dove left this week" : "Doves left this week"}
             </span>
           </div>
 

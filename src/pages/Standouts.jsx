@@ -115,6 +115,7 @@ export default function Standouts() {
     setLikeChoice(null);
     setCommentTarget(null);
     setCommentText("");
+    setLocalLikes((prev) => new Set(prev).add(profile.id));
     actions.skipProfile(profile.id).catch(() => {});
   };
 
