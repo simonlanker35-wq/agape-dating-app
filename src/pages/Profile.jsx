@@ -189,7 +189,7 @@ function SubscriptionPlans() {
       </div>
       <div style={{ padding: "8px 0" }}>
         <p style={{ fontSize: 10, fontWeight: 600, color: C.sub, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>What you get</p>
-        {["15 likes per day", "See all who like you", "3 Doves per week", "2 Standout likes per week", "Priority visibility"].map((feat) => (
+        {["15 likes per day", "See all who like you", "3 Doves per week", "Advanced filters"].map((feat) => (
           <div key={feat} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0" }}>
             <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={C.primary} strokeWidth={2.5}><path d="M20 6L9 17l-5-5" /></svg>
             <span style={{ fontSize: 13, color: C.text }}>{feat}</span>
