@@ -146,7 +146,6 @@ export async function updateProfile(data) {
   if (data.bio !== undefined) updates.bio = data.bio;
   if (data.filters !== undefined) updates.filters = data.filters;
   if (data.photos !== undefined) updates.photos = data.photos;
-  if (data.subscription_status !== undefined) updates.subscription_status = data.subscription_status;
 
   const { data: profile, error } = await supabase
     .from("profiles")

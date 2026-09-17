@@ -186,11 +186,10 @@ export function AppProvider({ children }) {
         if (document.visibilityState === "visible") {
           try {
             const user = await api.getMe();
-            // If DB doesn't show active subscription, check Stripe directly and sync
+            // If DB doesn't show active yet (webhook may be slow), check Stripe directly
             if (user.subscriptionStatus !== "active") {
               const stripeStatus = await getSubscriptionStatus().catch(() => null);
               if (stripeStatus?.status === "active") {
-                await api.updateProfile({ subscription_status: "active" }).catch(() => {});
                 user.subscriptionStatus = "active";
                 track("subscription_activated");
               }
