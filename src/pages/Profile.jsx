@@ -109,13 +109,13 @@ const PLANS = [
   { name: "12 Months", price: "CHF 6.99", period: "/month", priceId: "price_1UF5McCBLGZ7l0PdmGpUGONs", popular: false, billing: "annually" },
 ];
 
-function SubscriptionPlans() {
+function SubscriptionPlans({ initialStatus }) {
   const [loading, setLoading] = useState(null);
-  const [subStatus, setSubStatus] = useState(null);
+  const [subStatus, setSubStatus] = useState(initialStatus === "active" ? { status: "active" } : null);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    getSubscriptionStatus().then(setSubStatus).catch(() => {});
+    getSubscriptionStatus().then((s) => { if (s) setSubStatus(s); }).catch(() => {});
   }, []);
 
   const handleSubscribe = async (plan) => {
@@ -202,9 +202,9 @@ function SubscriptionPlans() {
   );
 }
 
-function BillingSection({ onViewPlans }) {
-  const [subStatus, setSubStatus] = useState(null);
-  useEffect(() => { getSubscriptionStatus().then(setSubStatus).catch(() => {}); }, []);
+function BillingSection({ onViewPlans, initialStatus }) {
+  const [subStatus, setSubStatus] = useState(initialStatus === "active" ? { status: "active" } : null);
+  useEffect(() => { getSubscriptionStatus().then((s) => { if (s) setSubStatus(s); }).catch(() => {}); }, []);
 
   if (subStatus?.status === "active") {
     return (
@@ -477,20 +477,19 @@ function SettingsScreen({ onBack, initialSection = null }) {
             </div>
           )}
           {section === "billing" && (
-            <BillingSection onViewPlans={() => setSection("subscription")} />
+            <BillingSection onViewPlans={() => setSection("subscription")} initialStatus={currentUser?.subscriptionStatus} />
           )}
           {section === "help" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {[
-                { icon: "📧", label: "Email us", sub: "support@agape-app.com" },
-                { icon: "🐛", label: "Report a bug", sub: "Help us improve the app" },
-                { icon: "💡", label: "Suggest a feature", sub: "We'd love to hear your ideas" },
-                { icon: "⭐", label: "Rate Agape", sub: "Leave a review on the App Store" },
-              ].map((item) => (
-                <div key={item.label} style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
-                  <SettingsRow icon={item.icon} label={item.label} sub={item.sub} />
-                </div>
-              ))}
+              <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
+                <SettingsRow icon="📧" label="Email us" sub="agape_dating@outlook.com" onPress={() => { track("help_email_tapped"); window.location.href = "mailto:agape_dating@outlook.com"; }} />
+              </div>
+              <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
+                <SettingsRow icon="🐛" label="Report a bug" sub="Help us improve the app" onPress={() => { track("help_report_bug_tapped"); window.location.href = "mailto:agape_dating@outlook.com?subject=Bug%20Report"; }} />
+              </div>
+              <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
+                <SettingsRow icon="💡" label="Suggest a feature" sub="We'd love to hear your ideas" onPress={() => { track("help_suggest_feature_tapped"); window.location.href = "mailto:agape_dating@outlook.com?subject=Feature%20Suggestion"; }} />
+              </div>
             </div>
           )}
           {section === "terms" && (
@@ -622,7 +621,7 @@ function SettingsScreen({ onBack, initialSection = null }) {
             </>
           )}
           {section === "subscription" && (
-            <SubscriptionPlans />
+            <SubscriptionPlans initialStatus={currentUser?.subscriptionStatus} />
           )}
         </div>
       </div>
