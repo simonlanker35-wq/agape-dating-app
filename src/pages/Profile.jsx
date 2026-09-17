@@ -490,6 +490,9 @@ function SettingsScreen({ onBack, initialSection = null }) {
               <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
                 <SettingsRow icon="💡" label="Suggest a feature" sub="We'd love to hear your ideas" onPress={() => { track("help_suggest_feature_tapped"); window.location.href = "mailto:agape_dating@outlook.com?subject=Feature%20Suggestion"; }} />
               </div>
+              <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
+                <SettingsRow icon="⭐" label="Rate Agape" sub="Leave a review on the App Store" onPress={() => { track("help_rate_app_tapped"); }} />
+              </div>
             </div>
           )}
           {section === "terms" && (
