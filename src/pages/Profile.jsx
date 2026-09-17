@@ -6,6 +6,7 @@ import AgapeCross from "../components/AgapeCross";
 import LocationPicker from "../components/LocationPicker";
 import { redirectToCheckout, getSubscriptionStatus } from "../services/stripe";
 import { getDovesRemaining } from "../services/limits";
+import { track } from "../services/posthog";
 
 const C = { bg: "#FFFFFF", card: "#FAFAF8", surface: "#F4F2EE", primary: "#B8912A", primarySoft: "#FBF5E6", text: "#1A1612", sub: "#8C857C", border: "#E8E4DF", sent: "#111111" };
 const FONT = "'Outfit', system-ui, sans-serif";
@@ -121,6 +122,7 @@ function SubscriptionPlans() {
     setLoading(plan.name);
     setError(null);
     try {
+      track("subscription_checkout_started", { plan: plan.name, price: plan.price });
       await redirectToCheckout(plan.priceId);
     } catch (err) {
       setError(err.message);

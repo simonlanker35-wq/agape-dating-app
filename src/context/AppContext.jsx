@@ -2,6 +2,7 @@ import { createContext, useContext, useReducer, useEffect, useCallback } from "r
 import * as api from "../services/api";
 import { supabase } from "../services/supabase";
 import { getSubscriptionStatus } from "../services/stripe";
+import { identify, track, reset as resetPosthog } from "../services/posthog";
 
 const AppContext = createContext();
 
@@ -154,7 +155,10 @@ export function AppProvider({ children }) {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         api.getMe()
-          .then((user) => dispatch({ type: "SET_USER", payload: user }))
+          .then((user) => {
+            dispatch({ type: "SET_USER", payload: user });
+            identify(user.id, { name: user.name, email: user.email, gender: user.gender, denomination: user.denomination, location: user.location?.city, subscriptionStatus: user.subscriptionStatus });
+          })
           .catch(() => supabase.auth.signOut());
       }
     });
@@ -162,6 +166,7 @@ export function AppProvider({ children }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_OUT") {
         dispatch({ type: "LOGOUT" });
+        resetPosthog();
       }
     });
 
@@ -187,6 +192,7 @@ export function AppProvider({ children }) {
               if (stripeStatus?.status === "active") {
                 await api.updateProfile({ subscription_status: "active" }).catch(() => {});
                 user.subscriptionStatus = "active";
+                track("subscription_activated");
               }
             }
             dispatch({ type: "SET_USER", payload: user });
@@ -269,12 +275,16 @@ export function AppProvider({ children }) {
     register: async (data) => {
       const user = await api.createProfile(data);
       dispatch({ type: "COMPLETE_ONBOARDING", payload: user });
+      identify(user.id, { name: user.name, email: user.email, gender: user.gender, denomination: user.denomination });
+      track("signup_completed", { gender: user.gender, denomination: user.denomination });
       return user;
     },
 
     login: async (email, password) => {
       const user = await api.login(email, password);
       dispatch({ type: "SET_USER", payload: user });
+      identify(user.id, { name: user.name, email: user.email, gender: user.gender, subscriptionStatus: user.subscriptionStatus });
+      track("login", { method: "email" });
       return user;
     },
 
@@ -286,8 +296,10 @@ export function AppProvider({ children }) {
 
     likeProfile: async (profileId, targetType, targetIndex, comment, isDove) => {
       const res = await api.sendLike(profileId, targetType, targetIndex, comment, isDove);
+      track("like_sent", { targetType, isDove: !!isDove, hasComment: !!comment });
       let matchData = null;
       if (res.matched) {
+        track("match_created", { fromDiscover: true });
         const matches = await api.getMatches();
         dispatch({ type: "SET_MATCHES", payload: matches });
         matchData = matches.find((m) => m.profileId === profileId) || null;
@@ -301,6 +313,7 @@ export function AppProvider({ children }) {
 
     skipProfile: async (profileId) => {
       await api.skipProfile(profileId);
+      track("profile_skipped");
       dispatch({ type: "SKIP_PROFILE" });
     },
 
@@ -316,6 +329,7 @@ export function AppProvider({ children }) {
         }
       }
       if (res.matched) {
+        track("match_created", { fromSparks: true });
         const alreadyMatched = state.matches.some(
           (m) => m.profileId === like.fromId
         );
@@ -349,12 +363,14 @@ export function AppProvider({ children }) {
 
     sendMessage: async (matchId, text) => {
       const message = await api.sendMessage(matchId, text);
+      track("message_sent");
       dispatch({ type: "ADD_MESSAGE", payload: { matchId, message } });
       return message;
     },
 
     unmatch: async (matchId) => {
       await api.unmatch(matchId);
+      track("unmatch");
       dispatch({ type: "REMOVE_MATCH", payload: matchId });
     },
 

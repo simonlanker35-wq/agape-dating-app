@@ -334,24 +334,42 @@ async function seed() {
   const females = profileIds.filter((p) => p.gender === "female");
   const males = profileIds.filter((p) => p.gender === "male");
 
-  // Likes received (Sparks): 6 females liked Simon
-  const simonLikers = females.slice(0, 6);
-  const simonLikeComments = ["Love your Sunday vibes!", "That verse is my favourite too", null, "Fellow hiker here! Where's your go-to trail?", null, "Your photos are beautiful!"];
+  // Likes received (Sparks): 8 females liked Simon — all with comments, 1 dove
+  const simonLikers = females.slice(0, 8);
+  const simonLikeComments = [
+    "Love your Sunday vibes! Church + brunch is the dream 🙌",
+    "That verse is my favourite too — it got me through hard seasons",
+    "Fellow hiker here! Where's your go-to trail?",
+    "Your photos are beautiful! Where was the third one taken?",
+    "I love that you value community. That's so rare these days",
+    "ETH Zürich? Impressive! What did you study?",
+    "Your faith journey sounds beautiful — I'd love to hear more",
+    "We share so many interests! Coffee + hiking = perfect combo",
+  ];
+  const simonLikeDove = [false, true, false, false, false, false, false, false];
   for (let i = 0; i < simonLikers.length; i++) {
     await supabase.from("likes").insert({
       from_user: simonLikers[i].id,
       to_user: testAuth.user.id,
-      target_type: i < 2 ? "prompt" : "profile",
-      target_index: i < 2 ? i : 0,
+      target_type: i < 3 ? "prompt" : "profile",
+      target_index: i < 3 ? i % 3 : 0,
       comment: simonLikeComments[i],
+      is_dove: simonLikeDove[i],
     });
   }
-  console.log("Created 6 incoming likes (Sparks) for Simon");
+  console.log("Created 8 incoming likes (Sparks) for Simon — all with comments, 1 dove");
 
-  // Likes received (Sparks) for Sarah: 6 males liked Sarah
+  // Likes received (Sparks) for Sarah: 6 males liked Sarah — all with comments
   if (sarahAuth) {
     const sarahLikers = males.slice(0, 6);
-    const sarahLikeComments = ["Love your faith journey!", "That Sunday routine sounds perfect", null, "Would love to grab coffee sometime", "Your prompts are so genuine!", null];
+    const sarahLikeComments = [
+      "Love your faith journey! What church do you attend?",
+      "That Sunday routine sounds perfect — I do the same thing!",
+      "Would love to grab coffee sometime ☕",
+      "Your prompts are so genuine, refreshing to see",
+      "Fellow nurse? My sister is one too — so much respect 🙏",
+      "Your hiking photos are amazing! Have you done Pilatus?",
+    ];
     for (let i = 0; i < sarahLikers.length; i++) {
       await supabase.from("likes").insert({
         from_user: sarahLikers[i].id,
@@ -361,7 +379,7 @@ async function seed() {
         comment: sarahLikeComments[i],
       });
     }
-    console.log("Created 6 incoming likes (Sparks) for Sarah");
+    console.log("Created 6 incoming likes (Sparks) for Sarah — all with comments");
   }
 
   // Matches: mutual likes + messages with 3 females

@@ -2,6 +2,7 @@ import { useApp } from "../context/AppContext";
 import { Compass, Heart, MessageCircle, User, Zap } from "lucide-react";
 import DoveIcon from "./DoveIcon";
 import AgapeCross from "./AgapeCross";
+import { track } from "../services/posthog";
 
 const TABS = [
   { id: "discover", label: "Seek" },
@@ -72,7 +73,7 @@ export default function Navigation() {
               <button
                 key={id}
                 className={`nav-tab ${isActive ? "active" : ""}`}
-                onClick={() => dispatch({ type: "SET_TAB", payload: id })}
+                onClick={() => { track("tab_viewed", { tab: id }); dispatch({ type: "SET_TAB", payload: id }); }}
               >
                 <div className="nav-icon-wrapper">
                   <img
@@ -90,7 +91,7 @@ export default function Navigation() {
             <button
               key={id}
               className={`nav-tab ${isActive ? "active" : ""}`}
-              onClick={() => dispatch({ type: "SET_TAB", payload: id })}
+              onClick={() => { track("tab_viewed", { tab: id }); dispatch({ type: "SET_TAB", payload: id }); }}
             >
               <div className="nav-icon-wrapper">
                 <NavIcon id={id} active={isActive} />
