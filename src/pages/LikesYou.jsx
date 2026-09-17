@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { Heart, X } from "lucide-react";
 import AgapeCross from "../components/AgapeCross";
 import { getRevealsRemaining, recordReveal, LIMITS } from "../services/limits";
+import { track } from "../services/posthog";
 
 const C = { bg: "#FFFFFF", card: "#FAFAF8", surface: "#F4F2EE", primary: "#B8912A", primarySoft: "#FBF5E6", text: "#1A1612", sub: "#8C857C", border: "#E8E4DF" };
 const FONT = "'Outfit', system-ui, sans-serif";
@@ -30,6 +31,7 @@ export default function LikesYou() {
   const likesWithProfiles = [...doveLikes, ...regularLikes];
 
   const handleLikeBack = async (like) => {
+    track("sparks_like_back", { isDove: !!like.isDove });
     setHeartFlash(like.id);
     setTimeout(() => setHeartFlash(null), 800);
     setLikedBack((prev) => new Set(prev).add(like.id));
@@ -42,6 +44,7 @@ export default function LikesYou() {
   };
 
   const handleDismiss = async (like) => {
+    track("sparks_dismiss");
     try {
       setDismissed((prev) => new Set(prev).add(like.id));
       await actions.dismissLike(like.id);
@@ -86,6 +89,7 @@ export default function LikesYou() {
             const handleReveal = (e) => {
               e.stopPropagation();
               if (revealsLeft <= 0) return;
+              track("sparks_reveal", { revealsLeft: revealsLeft - 1 });
               recordReveal();
               setRevealsLeft(getRevealsRemaining(isPremium));
               setRevealedIds((prev) => new Set(prev).add(like.id));
@@ -94,7 +98,7 @@ export default function LikesYou() {
             return (
               <div
                 key={like.id}
-                onClick={() => !isLocked && setViewProfile(profile)}
+                onClick={() => { if (!isLocked) { track("sparks_profile_viewed"); setViewProfile(profile); } }}
                 style={{
                   position: "relative",
                   borderRadius: 20,
@@ -141,7 +145,7 @@ export default function LikesYou() {
                       </button>
                     ) : (
                       <button
-                        onClick={(e) => { e.stopPropagation(); dispatch({ type: "SET_TAB", payload: "profile" }); }}
+                        onClick={(e) => { e.stopPropagation(); track("upgrade_tapped", { source: "sparks_locked" }); dispatch({ type: "SET_TAB", payload: "profile" }); }}
                         style={{ color: "white", fontSize: 12, fontWeight: 600, fontFamily: FONT, textAlign: "center", padding: "8px 16px", textShadow: "0 1px 4px rgba(0,0,0,0.5)", background: "rgba(184,145,42,0.6)", border: "1.5px solid rgba(255,255,255,0.4)", borderRadius: 12, cursor: "pointer", backdropFilter: "blur(4px)" }}
                       >
                         Get Agape+ to see all

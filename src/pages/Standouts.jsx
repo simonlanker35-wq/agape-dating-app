@@ -5,6 +5,7 @@ import AgapeCross from "../components/AgapeCross";
 import WaveformBar from "../components/WaveformBar";
 import ReportSheet from "../components/ReportSheet";
 import { getStandoutLikesRemaining, recordStandoutLike } from "../services/limits";
+import { track } from "../services/posthog";
 
 function haversine(lat1, lon1, lat2, lon2) {
   const R = 6371;
@@ -158,6 +159,7 @@ export default function Standouts() {
   };
 
   const handleSkip = () => {
+    track("chosen_skipped");
     setPhotoIdx(0);
     setLikeChoice(null);
     setCommentTarget(null);
@@ -167,6 +169,7 @@ export default function Standouts() {
   };
 
   const handleBlock = () => {
+    track("profile_blocked", { source: "chosen" });
     setLikeFlash("block");
     setTimeout(() => {
       setLikeFlash(null);
@@ -176,6 +179,7 @@ export default function Standouts() {
   };
 
   const handleReport = (reason) => {
+    track("profile_reported", { source: "chosen", reason });
     setLikeFlash("report");
     setTimeout(() => {
       setLikeFlash(null);
@@ -186,21 +190,25 @@ export default function Standouts() {
   };
 
   const onDovePress = (type, index) => {
+    track("dove_options_opened", { targetType: type });
     setLikeChoice({ type, index });
   };
 
   const onSendDove = () => {
+    track("dove_sent");
     handleLike(likeChoice.type, likeChoice.index);
     setLikeChoice(null);
   };
 
   const onAddComment = () => {
+    track("dove_comment_modal_opened");
     setCommentTarget(likeChoice);
     setLikeChoice(null);
   };
 
   const handleComment = () => {
     if (commentText.trim()) {
+      track("dove_comment_sent");
       handleLike(commentTarget.type, commentTarget.index, commentText.trim());
     }
   };

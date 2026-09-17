@@ -7,6 +7,7 @@ import WaveformBar from "../components/WaveformBar";
 import FilterSheet from "../components/FilterSheet";
 import ReportSheet from "../components/ReportSheet";
 import { getLikesRemaining, getDovesRemaining, recordLike, recordDove, LIMITS } from "../services/limits";
+import { track } from "../services/posthog";
 
 function haversine(lat1, lon1, lat2, lon2) {
   const R = 6371;
@@ -67,6 +68,7 @@ export default function Discover() {
   const profile = filteredProfiles[0];
 
   const handleApplyFilters = async (newFilters) => {
+    track("filters_applied", { maxAge: newFilters.maxAge, maxDistance: newFilters.maxDistance, denominations: newFilters.denominations });
     dispatch({ type: "UPDATE_FILTERS", payload: newFilters });
     await actions.updateProfile({ filters: { ...state.currentUser?.filters, ...newFilters } });
     actions.refreshDiscover();
@@ -87,7 +89,7 @@ export default function Discover() {
         <h2>No likes left today</h2>
         <p>You've used all {limit} {isPremium ? "" : "free "}likes for today. Come back tomorrow!</p>
         {!isPremium && (
-          <button className="filter-apply-btn" style={{ marginTop: 16, flex: "none", background: "#B8912A" }} onClick={() => dispatch({ type: "SET_TAB", payload: "profile" })}>
+          <button className="filter-apply-btn" style={{ marginTop: 16, flex: "none", background: "#B8912A" }} onClick={() => { track("upgrade_tapped", { source: "no_likes_left" }); dispatch({ type: "SET_TAB", payload: "profile" }); }}>
             Get Agape+ for {LIMITS.PREMIUM.dailyLikes} likes/day
           </button>
         )}
@@ -157,25 +159,30 @@ export default function Discover() {
 
   const handleComment = () => {
     if (commentText.trim()) {
+      track("comment_sent", { isDove: showDove, targetType: commentTarget.type });
       handleLike(commentTarget.type, commentTarget.index, commentText.trim(), showDove);
     }
   };
 
   const onHeartPress = (type, index) => {
+    track("like_options_opened", { targetType: type });
     setLikeChoice({ type, index });
   };
 
   const onSendHeart = () => {
+    track("heart_sent", { targetType: likeChoice.type });
     handleLike(likeChoice.type, likeChoice.index);
     setLikeChoice(null);
   };
 
   const onAddComment = () => {
+    track("comment_modal_opened");
     setCommentTarget(likeChoice);
     setLikeChoice(null);
   };
 
   const handleBlock = () => {
+    track("profile_blocked", { source: "discover" });
     setLikeFlash("block");
     setTimeout(() => {
       setLikeFlash(null);
@@ -185,6 +192,7 @@ export default function Discover() {
   };
 
   const handleReport = (reason) => {
+    track("profile_reported", { source: "discover", reason });
     setLikeFlash("report");
     setTimeout(() => {
       setLikeFlash(null);
@@ -470,6 +478,7 @@ export default function Discover() {
               className="match-celebration-btn"
               onClick={(e) => {
                 e.stopPropagation();
+                track("match_send_message_tapped");
                 setMatchCelebration(null);
                 dispatch({ type: "SET_TAB", payload: "matches" });
               }}
@@ -478,7 +487,7 @@ export default function Discover() {
             </button>
             <button
               className="match-celebration-dismiss"
-              onClick={(e) => { e.stopPropagation(); setMatchCelebration(null); }}
+              onClick={(e) => { e.stopPropagation(); track("match_keep_browsing_tapped"); setMatchCelebration(null); }}
             >
               Keep browsing
             </button>

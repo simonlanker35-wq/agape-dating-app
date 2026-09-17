@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { X } from "lucide-react";
+import { track } from "../services/posthog";
 
 const REPORT_REASONS = [
   "Inappropriate photos",
@@ -13,12 +14,14 @@ export default function ReportSheet({ profileName, onReport, onBlock, onClose })
   const [submitted, setSubmitted] = useState(false);
 
   const handleReport = () => {
+    track("report_submitted", { reason });
     onReport(reason);
     setSubmitted(true);
     setTimeout(onClose, 1500);
   };
 
   const handleBlock = () => {
+    track("block_from_report_sheet");
     onBlock();
     onClose();
   };

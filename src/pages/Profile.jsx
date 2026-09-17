@@ -236,7 +236,7 @@ function BillingSection({ onViewPlans }) {
       <span style={{ fontSize: 48 }}>💳</span>
       <p style={{ fontSize: 16, fontWeight: 700, color: C.text, marginTop: 16 }}>No active subscription</p>
       <p style={{ fontSize: 13, color: C.sub, marginTop: 4 }}>Upgrade to Agape+ to manage billing and payments.</p>
-      <button onClick={onViewPlans} style={{ marginTop: 16, padding: "12px 24px", borderRadius: 12, fontSize: 14, fontWeight: 700, background: C.primary, color: "white", border: "none", cursor: "pointer" }}>View plans</button>
+      <button onClick={() => { track("upgrade_tapped", { source: "billing" }); onViewPlans(); }} style={{ marginTop: 16, padding: "12px 24px", borderRadius: 12, fontSize: 14, fontWeight: 700, background: C.primary, color: "white", border: "none", cursor: "pointer" }}>View plans</button>
     </div>
   );
 }
@@ -258,6 +258,7 @@ function SettingsScreen({ onBack, initialSection = null }) {
 
   const saveField = async () => {
     if (!editField || !editValue.trim()) return;
+    track("setting_saved", { field: editField });
     setSaving(true);
     try {
       const updates = {};
@@ -310,16 +311,16 @@ function SettingsScreen({ onBack, initialSection = null }) {
               <div>
                 <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: C.sub, padding: "0 4px", marginBottom: 8 }}>Match & Like alerts</p>
                 <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
-                  <SettingsRow icon="💛" label="New matches" toggle={{ on: notifs.matches, onToggle: () => toggle(notifs, "matches", setNotifs) }} />
-                  <SettingsRow icon="❤️" label="New likes" toggle={{ on: notifs.likes, onToggle: () => toggle(notifs, "likes", setNotifs) }} />
-                  <SettingsRow icon="🕊️" label="Doves received" toggle={{ on: notifs.doves, onToggle: () => toggle(notifs, "doves", setNotifs) }} />
+                  <SettingsRow icon="💛" label="New matches" toggle={{ on: notifs.matches, onToggle: () => { track("notification_toggled", { type: "matches", enabled: !notifs.matches }); toggle(notifs, "matches", setNotifs); } }} />
+                  <SettingsRow icon="❤️" label="New likes" toggle={{ on: notifs.likes, onToggle: () => { track("notification_toggled", { type: "likes", enabled: !notifs.likes }); toggle(notifs, "likes", setNotifs); } }} />
+                  <SettingsRow icon="🕊️" label="Doves received" toggle={{ on: notifs.doves, onToggle: () => { track("notification_toggled", { type: "doves", enabled: !notifs.doves }); toggle(notifs, "doves", setNotifs); } }} />
                 </div>
               </div>
               <div>
                 <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: C.sub, padding: "0 4px", marginBottom: 8 }}>Message alerts</p>
                 <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
-                  <SettingsRow icon="💬" label="New messages" toggle={{ on: notifs.messages, onToggle: () => toggle(notifs, "messages", setNotifs) }} />
-                  <SettingsRow icon="🙏" label="Prompt comments" toggle={{ on: notifs.prompts, onToggle: () => toggle(notifs, "prompts", setNotifs) }} />
+                  <SettingsRow icon="💬" label="New messages" toggle={{ on: notifs.messages, onToggle: () => { track("notification_toggled", { type: "messages", enabled: !notifs.messages }); toggle(notifs, "messages", setNotifs); } }} />
+                  <SettingsRow icon="🙏" label="Prompt comments" toggle={{ on: notifs.prompts, onToggle: () => { track("notification_toggled", { type: "prompts", enabled: !notifs.prompts }); toggle(notifs, "prompts", setNotifs); } }} />
                 </div>
               </div>
             </>
@@ -329,14 +330,14 @@ function SettingsScreen({ onBack, initialSection = null }) {
               <div>
                 <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: C.sub, padding: "0 4px", marginBottom: 8 }}>Visibility</p>
                 <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
-                  <SettingsRow icon="✓" label="Read receipts" sub="Let matches see when you've read messages" toggle={{ on: privacy.readReceipts, onToggle: () => toggle(privacy, "readReceipts", setPrivacy) }} />
-                  <SettingsRow icon="📍" label="Show distance" toggle={{ on: privacy.showDistance, onToggle: () => toggle(privacy, "showDistance", setPrivacy) }} />
+                  <SettingsRow icon="✓" label="Read receipts" sub="Let matches see when you've read messages" toggle={{ on: privacy.readReceipts, onToggle: () => { track("privacy_toggled", { type: "read_receipts", enabled: !privacy.readReceipts }); toggle(privacy, "readReceipts", setPrivacy); } }} />
+                  <SettingsRow icon="📍" label="Show distance" toggle={{ on: privacy.showDistance, onToggle: () => { track("privacy_toggled", { type: "show_distance", enabled: !privacy.showDistance }); toggle(privacy, "showDistance", setPrivacy); } }} />
                 </div>
               </div>
               <div>
                 <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: C.sub, padding: "0 4px", marginBottom: 8 }}>Browse mode</p>
                 <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
-                  <SettingsRow icon="🕵️" label="Incognito mode" sub="Only people you like can see you" toggle={{ on: privacy.incognito, onToggle: () => toggle(privacy, "incognito", setPrivacy) }} />
+                  <SettingsRow icon="🕵️" label="Incognito mode" sub="Only people you like can see you" toggle={{ on: privacy.incognito, onToggle: () => { track("privacy_toggled", { type: "incognito", enabled: !privacy.incognito }); toggle(privacy, "incognito", setPrivacy); } }} />
                 </div>
               </div>
             </>
@@ -348,11 +349,13 @@ function SettingsScreen({ onBack, initialSection = null }) {
                 <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
                   <SettingsRow icon="✝️" label="Show same faith only" sub={`Only show ${currentUser.denomination || "your denomination"}`} toggle={{ on: faithPref.sameOnly, onToggle: () => {
                     const newVal = !faithPref.sameOnly;
+                    track("faith_pref_toggled", { type: "same_only", enabled: newVal });
                     setFaithPref({ sameOnly: newVal, openToAll: !newVal });
                     dispatch({ type: "UPDATE_FILTERS", payload: { denominations: newVal ? [currentUser.denomination] : [] } });
                   } }} />
                   <SettingsRow icon="🌍" label="Open to all Christians" sub="Any denomination welcome" toggle={{ on: faithPref.openToAll, onToggle: () => {
                     const newVal = !faithPref.openToAll;
+                    track("faith_pref_toggled", { type: "open_to_all", enabled: newVal });
                     setFaithPref({ sameOnly: !newVal, openToAll: newVal });
                     dispatch({ type: "UPDATE_FILTERS", payload: { denominations: newVal ? [] : [currentUser.denomination] } });
                   } }} />
@@ -374,7 +377,7 @@ function SettingsScreen({ onBack, initialSection = null }) {
                 <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
                   <SettingsRow icon="🚫" label="Blocked users" sub="Manage blocked profiles" onPress={() => setSection("blocked")} />
                   <SettingsRow icon="🚩" label="Reports submitted" sub="View your reports" onPress={() => setSection("reports")} />
-                  <SettingsRow icon="📵" label="Pause my profile" sub={paused ? "Your profile is hidden" : "Temporarily hide your profile"} toggle={{ on: paused, onToggle: () => setPaused((p) => !p) }} />
+                  <SettingsRow icon="📵" label="Pause my profile" sub={paused ? "Your profile is hidden" : "Temporarily hide your profile"} toggle={{ on: paused, onToggle: () => { track("profile_paused_toggled", { paused: !paused }); setPaused((p) => !p); } }} />
                 </div>
               </div>
             </>
@@ -411,7 +414,7 @@ function SettingsScreen({ onBack, initialSection = null }) {
                         <p style={{ fontSize: 14, fontWeight: 600, color: C.text }}>{item.name || "Blocked user"}</p>
                         <p style={{ fontSize: 12, color: C.sub }}>Can no longer see you</p>
                       </div>
-                      <button onClick={() => dispatch({ type: "UNBLOCK_PROFILE", payload: item.id })} style={{ padding: "6px 12px", borderRadius: 9999, fontSize: 12, fontWeight: 600, background: C.surface, color: C.sub, border: "none", cursor: "pointer" }}>Unblock</button>
+                      <button onClick={() => { track("user_unblocked"); dispatch({ type: "UNBLOCK_PROFILE", payload: item.id }); }} style={{ padding: "6px 12px", borderRadius: 9999, fontSize: 12, fontWeight: 600, background: C.surface, color: C.sub, border: "none", cursor: "pointer" }}>Unblock</button>
                     </div>
                   );
                 })}
@@ -545,8 +548,9 @@ function SettingsScreen({ onBack, initialSection = null }) {
                       inputStyle={{ width: "100%", padding: "12px 14px", fontSize: 16, fontWeight: 600, fontFamily: FONT, borderRadius: 12, border: `1.5px solid ${C.border}`, background: C.surface, outline: "none", color: C.text }}
                     />
                     <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-                      <button onClick={() => { setEditField(null); setEditValue(""); setEditLocationData(null); }} style={{ flex: 1, padding: "10px 0", borderRadius: 12, fontSize: 14, fontWeight: 600, background: C.surface, color: C.sub, border: "none", cursor: "pointer" }}>Cancel</button>
+                      <button onClick={() => { track("location_edit_cancelled"); setEditField(null); setEditValue(""); setEditLocationData(null); }} style={{ flex: 1, padding: "10px 0", borderRadius: 12, fontSize: 14, fontWeight: 600, background: C.surface, color: C.sub, border: "none", cursor: "pointer" }}>Cancel</button>
                       <button onClick={async () => {
+                        track("location_saved", { location: editValue });
                         setSaving(true);
                         const locUpdate = { location: editValue };
                         if (editLocationData) {
@@ -600,7 +604,7 @@ function SettingsScreen({ onBack, initialSection = null }) {
                   />
                   <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
                     <button
-                      onClick={() => { setEditField(null); setEditValue(""); }}
+                      onClick={() => { track("account_edit_cancelled", { field: editField }); setEditField(null); setEditValue(""); }}
                       style={{ flex: 1, padding: "10px 0", borderRadius: 12, fontSize: 14, fontWeight: 600, background: C.surface, color: C.sub, border: "none", cursor: "pointer" }}
                     >
                       Cancel
@@ -680,8 +684,8 @@ function SettingsScreen({ onBack, initialSection = null }) {
           </div>
         </div>
         <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
-          <SettingsRow icon="🚪" label="Log out" danger onPress={() => actions.logout()} />
-          <SettingsRow icon="🗑️" label="Delete account" danger onPress={() => setShowDeleteConfirm(true)} />
+          <SettingsRow icon="🚪" label="Log out" danger onPress={() => { track("logout"); actions.logout(); }} />
+          <SettingsRow icon="🗑️" label="Delete account" danger onPress={() => { track("delete_account_tapped"); setShowDeleteConfirm(true); }} />
         </div>
         {showDeleteConfirm && (
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
@@ -691,6 +695,7 @@ function SettingsScreen({ onBack, initialSection = null }) {
               <p style={{ fontSize: 13, color: C.sub, marginTop: 8, lineHeight: 1.5 }}>This will permanently delete your profile, matches, and messages. This action cannot be undone.</p>
               <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 20 }}>
                 <button onClick={async () => {
+                  track("delete_account_confirmed");
                   try {
                     const { supabase } = await import("../services/supabase");
                     const { data: { user: u } } = await supabase.auth.getUser();
@@ -706,7 +711,7 @@ function SettingsScreen({ onBack, initialSection = null }) {
                     alert("Failed to delete account: " + err.message);
                   }
                 }} style={{ padding: "14px 20px", borderRadius: 12, fontSize: 15, fontWeight: 700, background: "#e53e3e", color: "white", border: "none", cursor: "pointer" }}>Delete my account</button>
-                <button onClick={() => setShowDeleteConfirm(false)} style={{ padding: "14px 20px", borderRadius: 12, fontSize: 15, fontWeight: 600, background: C.card, color: C.text, border: "none", cursor: "pointer" }}>Cancel</button>
+                <button onClick={() => { track("delete_account_cancelled"); setShowDeleteConfirm(false); }} style={{ padding: "14px 20px", borderRadius: 12, fontSize: 15, fontWeight: 600, background: C.card, color: C.text, border: "none", cursor: "pointer" }}>Cancel</button>
               </div>
             </div>
           </div>
@@ -751,16 +756,19 @@ export default function Profile() {
   const interests = currentUser.interests || [];
 
   const startEdit = () => {
+    track("profile_edit_started");
     setEditPrompts(prompts.map(p => ({ ...p })));
     setEditMode(true);
   };
 
   const cancelEdit = () => {
+    track("profile_edit_cancelled");
     setEditMode(false);
     setEditPrompts([]);
   };
 
   const saveEdit = async () => {
+    track("profile_edit_saved");
     setSaving(true);
     try {
       const allPrompts = (currentUser.prompts || []).map(p => {
@@ -784,6 +792,7 @@ export default function Profile() {
   };
 
   const openPromptEditor = (idx) => {
+    track("prompt_editor_opened", { promptIndex: idx });
     const p = prompts[idx];
     const cat = findCategory(p.prompt);
     setEditingPromptIdx(idx);
@@ -791,12 +800,14 @@ export default function Profile() {
   };
 
   const selectPromptQuestion = (promptText) => {
+    track("prompt_question_selected", { prompt: promptText });
     setEditingPromptData((d) => ({ ...d, prompt: promptText, answer: d.prompt === promptText ? d.answer : "" }));
     setTimeout(() => answerRef.current?.focus(), 100);
   };
 
   const savePromptEdit = async () => {
     if (!editingPromptData?.prompt || !editingPromptData.answer.trim()) return;
+    track("prompt_edit_saved", { prompt: editingPromptData.prompt });
     setSaving(true);
     try {
       const allPrompts = (currentUser.prompts || []).map((p, i) => {
@@ -813,6 +824,7 @@ export default function Profile() {
   };
 
   const openSettings = (sec) => {
+    track("settings_section_opened", { section: sec });
     setSettingsSection(sec);
     setShowSettings(true);
   };
@@ -829,6 +841,7 @@ export default function Profile() {
   const handleAddPhoto = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    track("photo_add_started");
     const reader = new FileReader();
     reader.onload = () => openCropper(reader.result, null);
     reader.readAsDataURL(file);
@@ -836,6 +849,7 @@ export default function Profile() {
   };
 
   const saveCrop = async () => {
+    track("photo_crop_saved", { isNew: cropIdx === null });
     const canvas = document.createElement("canvas");
     const size = 800;
     canvas.width = size;
@@ -879,6 +893,7 @@ export default function Profile() {
   const handleCropPointerUp = () => setCropDragging(false);
 
   const handleRemovePhoto = async (idx) => {
+    track("photo_removed", { photoIndex: idx });
     const updated = photos.filter((_, i) => i !== idx);
     await actions.updateProfile({ photos: updated });
   };
@@ -886,6 +901,7 @@ export default function Profile() {
   const handleMovePhoto = async (idx, dir) => {
     const newIdx = idx + dir;
     if (newIdx < 0 || newIdx >= photos.length) return;
+    track("photo_moved", { from: idx, to: newIdx });
     const updated = [...photos];
     [updated[idx], updated[newIdx]] = [updated[newIdx], updated[idx]];
     await actions.updateProfile({ photos: updated });
@@ -1075,7 +1091,7 @@ export default function Profile() {
               <p style={{ color: "white", fontWeight: 700, fontSize: 14, lineHeight: 1.3 }}>15 likes/day, 3 doves, see all who like you</p>
             </div>
             <button
-              onClick={() => openSettings("subscription")}
+              onClick={() => { track("upgrade_tapped", { source: "profile_banner" }); openSettings("subscription"); }}
               style={{
                 padding: "8px 16px",
                 borderRadius: 9999,
@@ -1425,7 +1441,7 @@ export default function Profile() {
           </div>
 
           <button
-            onClick={() => actions.logout()}
+            onClick={() => { track("sign_out_tapped", { source: "profile" }); actions.logout(); }}
             style={{
               width: "100%",
               padding: "16px 0",
@@ -1448,7 +1464,7 @@ export default function Profile() {
       {cropSrc && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.9)", zIndex: 9999, display: "flex", flexDirection: "column" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px" }}>
-            <button onClick={() => { setCropSrc(null); setCropIdx(null); }} style={{ fontSize: 14, fontWeight: 600, color: "white", background: "none", border: "none", cursor: "pointer" }}>Cancel</button>
+            <button onClick={() => { track("photo_crop_cancelled"); setCropSrc(null); setCropIdx(null); }} style={{ fontSize: 14, fontWeight: 600, color: "white", background: "none", border: "none", cursor: "pointer" }}>Cancel</button>
             <p style={{ fontSize: 14, fontWeight: 700, color: "white" }}>Crop Photo</p>
             <button onClick={saveCrop} disabled={uploading} style={{ fontSize: 14, fontWeight: 700, color: uploading ? "#666" : "#4ADE80", background: "none", border: "none", cursor: "pointer" }}>{uploading ? "Saving..." : "Save"}</button>
           </div>
@@ -1553,7 +1569,7 @@ export default function Profile() {
                       {editingPromptData.prompt}
                     </p>
                     <button
-                      onClick={() => setEditingPromptData((d) => ({ ...d, prompt: "", answer: "" }))}
+                      onClick={() => { track("prompt_question_cleared"); setEditingPromptData((d) => ({ ...d, prompt: "", answer: "" })); }}
                       style={{ background: "none", border: "none", cursor: "pointer", color: C.sub, fontSize: 18, lineHeight: 1 }}
                     >
                       ×

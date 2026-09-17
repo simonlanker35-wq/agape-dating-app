@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { X } from "lucide-react";
+import { track } from "../services/posthog";
 
 const ALL_DENOMINATIONS = [
   "Protestant", "Catholic", "Baptist", "Methodist", "Lutheran",
@@ -12,17 +13,20 @@ export default function FilterSheet({ filters, onApply, onClose }) {
   const [denominations, setDenominations] = useState(filters.denominations || []);
 
   const toggleDenom = (d) => {
+    track("filter_denomination_toggled", { denomination: d });
     setDenominations((prev) =>
       prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d]
     );
   };
 
   const handleApply = () => {
+    track("filter_applied", { maxAge, maxDistance, denominations });
     onApply({ minAge: 18, maxAge, maxDistance, denominations });
     onClose();
   };
 
   const handleReset = () => {
+    track("filter_reset");
     setMaxAge(35);
     setMaxDistance(80);
     setDenominations([]);

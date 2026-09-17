@@ -4,6 +4,7 @@ import { PROMPT_CATEGORIES, TRAITS_POOL, LOOKING_FOR_POOL, DENOMINATIONS } from 
 import { ChevronRight, Sparkles, Church, X, Check } from "lucide-react";
 import AgapeCross from "../components/AgapeCross";
 import LocationPicker from "../components/LocationPicker";
+import { track } from "../services/posthog";
 
 const STEPS = [
   "welcome",
@@ -80,6 +81,7 @@ export default function Onboarding() {
 
   const goNext = () => {
     if (step < STEPS.length - 1) {
+      track("onboarding_step_completed", { step: STEPS[step], stepNumber: step });
       setStep(step + 1);
       setEditingAnswer(false);
     } else {
@@ -160,11 +162,13 @@ export default function Onboarding() {
   };
 
   const handleLogin = async () => {
+    track("login_attempted");
     setSubmitting(true);
     setLoginError("");
     try {
       await actions.login(loginEmail, loginPassword);
     } catch (err) {
+      track("login_failed", { error: err.message });
       setLoginError(err.message);
       setSubmitting(false);
     }
@@ -183,17 +187,21 @@ export default function Onboarding() {
   };
 
   const selectGender = (g) => {
+    track("onboarding_gender_selected", { gender: g });
     setForm({ ...form, gender: g });
     setTimeout(goNext, 300);
   };
 
   const selectDenomination = (d) => {
     if (d === "Different") return;
+    track("onboarding_denomination_selected", { denomination: d });
     setForm({ ...form, denomination: d });
     setTimeout(goNext, 300);
   };
 
   const toggleTrait = (trait, field) => {
+    const adding = !form[field].includes(trait);
+    if (adding) track("onboarding_trait_selected", { trait, field });
     setForm((prev) => ({
       ...prev,
       [field]: prev[field].includes(trait)
@@ -235,6 +243,7 @@ export default function Onboarding() {
   };
 
   const selectPromptForStep = (promptText) => {
+    track("onboarding_prompt_selected", { category: promptStepInfo.category, prompt: promptText });
     const cat = promptStepInfo.category;
     setPromptSelections((prev) => ({
       ...prev,
@@ -297,7 +306,7 @@ export default function Onboarding() {
             >
               {submitting ? "Signing in..." : "Sign In"}
             </button>
-            <button className="skip-btn-text" onClick={() => { setMode("signup"); setLoginError(""); }} style={{ marginTop: 16 }}>
+            <button className="skip-btn-text" onClick={() => { track("login_switch_to_signup"); setMode("signup"); setLoginError(""); }} style={{ marginTop: 16 }}>
               Create an account instead
             </button>
           </div>
@@ -342,7 +351,7 @@ export default function Onboarding() {
               <button className="onboarding-cta" onClick={goNext}>
                 Create account
               </button>
-              <button className="welcome-signin-btn" onClick={() => setMode("login")}>
+              <button className="welcome-signin-btn" onClick={() => { track("welcome_sign_in_tapped"); setMode("login"); }}>
                 Sign in
               </button>
               <p className="welcome-terms">By continuing you agree to our Terms & Privacy Policy</p>

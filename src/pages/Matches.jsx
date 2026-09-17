@@ -3,6 +3,7 @@ import { useApp } from "../context/AppContext";
 import * as api from "../services/api";
 import AgapeCross from "../components/AgapeCross";
 import LocationPicker from "../components/LocationPicker";
+import { track } from "../services/posthog";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
@@ -132,8 +133,13 @@ function DateBuilder({ profileName, userLocation, onSend, onClose }) {
     (step === 4 && selections.length >= 2);
 
   const handleNext = () => {
-    if (step < 4) setStep(step + 1);
-    else onSend({ dateType, location: location.trim(), wardrobe, proposedTimes: selections });
+    if (step < 4) {
+      track("date_builder_step", { step, dateType, location, wardrobe });
+      setStep(step + 1);
+    } else {
+      track("date_invitation_sent", { dateType, wardrobe, timesCount: selections.length });
+      onSend({ dateType, location: location.trim(), wardrobe, proposedTimes: selections });
+    }
   };
 
   return (
@@ -154,7 +160,7 @@ function DateBuilder({ profileName, userLocation, onSend, onClose }) {
               {DATE_TYPES.map((dt) => (
                 <button
                   key={dt.id}
-                  onClick={() => setDateType(dt.id)}
+                  onClick={() => { track("date_type_selected", { type: dt.id }); setDateType(dt.id); }}
                   style={{
                     padding: "16px 14px",
                     borderRadius: 14,
@@ -221,7 +227,7 @@ function DateBuilder({ profileName, userLocation, onSend, onClose }) {
               {WARDROBE_OPTIONS.map((w) => (
                 <button
                   key={w.id}
-                  onClick={() => setWardrobe(w.id)}
+                  onClick={() => { track("date_wardrobe_selected", { wardrobe: w.id }); setWardrobe(w.id); }}
                   style={{
                     padding: "16px 14px",
                     borderRadius: 14,
@@ -364,12 +370,14 @@ function DateCard({ invitation, isMe, isMale, onRespond, onConfirm, onDecline })
 
   const handleRespond = async () => {
     if (selectedTimes.length === 0) return;
+    track("date_responded", { timesSelected: selectedTimes.length });
     setSending(true);
     await onRespond(invitation.id, selectedTimes);
     setSending(false);
   };
 
   const handleConfirm = async (time) => {
+    track("date_confirmed");
     setSending(true);
     await onConfirm(invitation.id, time);
     setSending(false);
@@ -383,6 +391,7 @@ function DateCard({ invitation, isMe, isMale, onRespond, onConfirm, onDecline })
 
   const handleDecline = async () => {
     if (declineReasons.length === 0) return;
+    track("date_declined", { reasons: declineReasons });
     setSending(true);
     await onDecline(invitation.id, declineReasons);
     setSending(false);
@@ -681,6 +690,7 @@ function ChatThread({ match, onBack }) {
   const chatLocked = !timerStopped && timeLeftMs !== null && timeLeftMs <= 0;
 
   const handleNudge = async () => {
+    track("rose_sent");
     setNudgeSending(true);
     try {
       await api.sendNudge(match.id);
@@ -700,6 +710,7 @@ function ChatThread({ match, onBack }) {
 
   const handleVideoCall = async () => {
     if (!vcDay || !vcTime) return;
+    track("video_call_scheduled");
     setVideoCallStarted(true);
     try {
       await api.startVideoCall(match.id);
@@ -925,7 +936,7 @@ function ChatThread({ match, onBack }) {
             {/* Date invite button — men only, above input */}
             {isMale && !hasConfirmedDate && (
               <button
-                onClick={() => setShowDateBuilder(true)}
+                onClick={() => { track("plan_date_tapped"); setShowDateBuilder(true); }}
                 style={{
                   width: "100%",
                   padding: "14px 0",
@@ -1015,7 +1026,7 @@ function ChatThread({ match, onBack }) {
               <>
                 {!showVideoCallScheduler ? (
                   <button
-                    onClick={() => setShowVideoCallScheduler(true)}
+                    onClick={() => { track("video_call_scheduler_opened"); setShowVideoCallScheduler(true); }}
                     style={{
                       width: "100%",
                       padding: "12px 0",
@@ -1111,7 +1122,7 @@ function ChatThread({ match, onBack }) {
                   </p>
                 </div>
                 <button
-                  onClick={() => window.open(`https://meet.ffmuc.net/agape-${match.id.slice(0, 8)}`, "_blank")}
+                  onClick={() => { track("video_call_joined"); window.open(`https://meet.ffmuc.net/agape-${match.id.slice(0, 8)}`, "_blank"); }}
                   style={{
                     width: "100%", padding: "12px 0", borderRadius: 14, fontSize: 14, fontWeight: 700, fontFamily: FONT,
                     background: "#22C55E", color: "white", border: "none", cursor: "pointer",
@@ -1172,9 +1183,9 @@ function ChatThread({ match, onBack }) {
                 <div style={{ width: 36, height: 4, borderRadius: 2, background: C.border, margin: "0 auto 16px" }} />
                 <p style={{ fontSize: 16, fontWeight: 700, color: C.text, fontFamily: FONT, textAlign: "center", marginBottom: 16 }}>{profile.name}</p>
                 {[
-                  { icon: "🚩", label: "Report", desc: "Flag inappropriate behaviour", color: "#EF4444", action: async () => { dispatch({ type: "ADD_REPORT", payload: { profileId: profile.id, name: profile.name, photo: profile.photos?.[0], reason: "Inappropriate behaviour", timestamp: Date.now() } }); setReportDone("report"); } },
-                  { icon: "🚫", label: "Block", desc: "They won't be able to see you", color: "#EF4444", action: async () => { dispatch({ type: "BLOCK_PROFILE", payload: { id: profile.id, name: profile.name, photo: profile.photos?.[0] } }); setShowReportMenu(false); setBlockFlash(true); try { await actions.unmatch(match.id); } catch (_) {} setTimeout(() => { setBlockFlash(false); setShowReportMenu(true); setReportDone("block"); }, 1500); } },
-                  { icon: "👋", label: "Unmatch", desc: "Remove this match", color: C.text, action: async () => { try { await actions.unmatch(match.id); } catch (_) {} setReportDone("unmatch"); } },
+                  { icon: "🚩", label: "Report", desc: "Flag inappropriate behaviour", color: "#EF4444", action: async () => { track("profile_reported", { source: "chat" }); dispatch({ type: "ADD_REPORT", payload: { profileId: profile.id, name: profile.name, photo: profile.photos?.[0], reason: "Inappropriate behaviour", timestamp: Date.now() } }); setReportDone("report"); } },
+                  { icon: "🚫", label: "Block", desc: "They won't be able to see you", color: "#EF4444", action: async () => { track("profile_blocked", { source: "chat" }); dispatch({ type: "BLOCK_PROFILE", payload: { id: profile.id, name: profile.name, photo: profile.photos?.[0] } }); setShowReportMenu(false); setBlockFlash(true); try { await actions.unmatch(match.id); } catch (_) {} setTimeout(() => { setBlockFlash(false); setShowReportMenu(true); setReportDone("block"); }, 1500); } },
+                  { icon: "👋", label: "Unmatch", desc: "Remove this match", color: C.text, action: async () => { track("unmatch_from_chat"); try { await actions.unmatch(match.id); } catch (_) {} setReportDone("unmatch"); } },
                 ].map((item) => (
                   <button key={item.label} onClick={item.action} style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "14px 12px", borderRadius: 12, background: "none", border: "none", cursor: "pointer", textAlign: "left", marginBottom: 4 }}>
                     <div style={{ width: 40, height: 40, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", background: C.surface, fontSize: 18 }}>{item.icon}</div>
@@ -1289,7 +1300,7 @@ export default function Matches() {
             return (
               <button
                 key={m.id}
-                onClick={() => setActiveChat(m.id)}
+                onClick={() => { track("chat_opened"); setActiveChat(m.id); }}
                 style={{ display: "flex", alignItems: "center", gap: 16, width: "100%", padding: "20px 20px", background: hasUnread ? C.primarySoft : "none", border: "none", cursor: "pointer", borderBottom: `1px solid ${C.border}`, textAlign: "left" }}
               >
                 <div style={{ position: "relative", flexShrink: 0 }}>
