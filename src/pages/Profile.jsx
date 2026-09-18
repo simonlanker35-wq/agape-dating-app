@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useApp } from "../context/AppContext";
 import { compressPhoto } from "../services/api";
-import { PROMPT_CATEGORIES } from "../data/profiles";
+import { PROMPT_CATEGORIES, TRAITS_POOL, LOOKING_FOR_POOL } from "../data/profiles";
 import AgapeCross from "../components/AgapeCross";
 import LocationPicker from "../components/LocationPicker";
 import { redirectToCheckout, getSubscriptionStatus } from "../services/stripe";
@@ -736,6 +736,8 @@ export default function Profile() {
   const [editPhotos, setEditPhotos] = useState(false);
   const [editingPromptIdx, setEditingPromptIdx] = useState(null);
   const [editingPromptData, setEditingPromptData] = useState(null);
+  const [editingChips, setEditingChips] = useState(null);
+  const [editingChipsData, setEditingChipsData] = useState([]);
   const [cropSrc, setCropSrc] = useState(null);
   const [cropOffset, setCropOffset] = useState({ x: 0, y: 0 });
   const [cropScale, setCropScale] = useState(1);
@@ -874,7 +876,10 @@ export default function Profile() {
         updated[cropIdx] = dataUrl;
         await actions.updateProfile({ photos: updated });
       } else {
-        await actions.updateProfile({ photos: [...photos, dataUrl] });
+        const regularPhotos = photos.slice(0, 4);
+        if (regularPhotos.length >= 4) return;
+        const verifiedPhotos = photos.slice(4);
+        await actions.updateProfile({ photos: [...regularPhotos, dataUrl, ...verifiedPhotos] });
       }
     } catch (err) {
       console.error("Save failed:", err);
@@ -895,6 +900,7 @@ export default function Profile() {
   const handleCropPointerUp = () => setCropDragging(false);
 
   const handleRemovePhoto = async (idx) => {
+    if (idx >= 4) return;
     track("photo_removed", { photoIndex: idx });
     const updated = photos.filter((_, i) => i !== idx);
     await actions.updateProfile({ photos: updated });
@@ -902,7 +908,7 @@ export default function Profile() {
 
   const handleMovePhoto = async (idx, dir) => {
     const newIdx = idx + dir;
-    if (newIdx < 0 || newIdx >= photos.length) return;
+    if (newIdx < 0 || newIdx >= Math.min(photos.length, 4)) return;
     track("photo_moved", { from: idx, to: newIdx });
     const updated = [...photos];
     [updated[idx], updated[newIdx]] = [updated[newIdx], updated[idx]];
@@ -1141,7 +1147,7 @@ export default function Profile() {
               </button>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
-              {photos.map((url, i) => (
+              {photos.slice(0, 4).map((url, i) => (
                 <div key={i} style={{ position: "relative", aspectRatio: "3/4", borderRadius: 12, overflow: "hidden", border: i === 0 ? `2px solid ${C.primary}` : `1px solid ${C.border}` }}>
                   <img src={url} alt={`Photo ${i + 1}`} style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${currentUser.name}&size=200&background=random`; }} />
                   {i === 0 && (
@@ -1161,7 +1167,7 @@ export default function Profile() {
                             <svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={3}><path d="M15 18l-6-6 6-6" /></svg>
                           </button>
                         )}
-                        {i < photos.length - 1 && (
+                        {i < Math.min(photos.length, 4) - 1 && (
                           <button onClick={() => handleMovePhoto(i, 1)} style={{ width: 22, height: 22, borderRadius: "50%", background: "rgba(0,0,0,0.6)", color: "white", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
                             <svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={3}><path d="M9 18l6-6-6-6" /></svg>
                           </button>
@@ -1179,7 +1185,7 @@ export default function Profile() {
                   )}
                 </div>
               ))}
-              {photos.length < 6 && (
+              {photos.slice(0, 4).length < 4 && (
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   disabled={uploading}
@@ -1207,6 +1213,44 @@ export default function Profile() {
                   )}
                 </button>
               )}
+
+              {/* Verified photo slot 5 — Selfie with Church */}
+              <div style={{ position: "relative", aspectRatio: "3/4", borderRadius: 12, overflow: "hidden", border: `2px dashed ${C.primary}40`, background: `linear-gradient(145deg, ${C.primarySoft}, ${C.surface})` }}>
+                {photos[4] ? (
+                  <>
+                    <img src={photos[4]} alt="Church selfie" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    <div style={{ position: "absolute", top: 4, left: 4, display: "flex", alignItems: "center", gap: 3, padding: "2px 6px", borderRadius: 6, background: "#22C55E", color: "white" }}>
+                      <svg width={8} height={8} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={3}><path d="M20 6L9 17l-5-5" /></svg>
+                      <span style={{ fontSize: 8, fontWeight: 700, textTransform: "uppercase" }}>Verified</span>
+                    </div>
+                  </>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 4, padding: 8 }}>
+                    <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={C.primary} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><path d="M18 2H6a2 2 0 0 0-2 2v16l8-4 8 4V4a2 2 0 0 0-2-2z"/><path d="M12 6v4M10 8h4"/></svg>
+                    <span style={{ fontSize: 8, fontWeight: 700, color: C.primary, textTransform: "uppercase", letterSpacing: "0.05em", textAlign: "center", lineHeight: 1.2 }}>Selfie with Church</span>
+                    <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke={C.sub} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  </div>
+                )}
+              </div>
+
+              {/* Verified photo slot 6 — Selfie with Bible */}
+              <div style={{ position: "relative", aspectRatio: "3/4", borderRadius: 12, overflow: "hidden", border: `2px dashed ${C.primary}40`, background: `linear-gradient(145deg, ${C.primarySoft}, ${C.surface})` }}>
+                {photos[5] ? (
+                  <>
+                    <img src={photos[5]} alt="Bible selfie" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    <div style={{ position: "absolute", top: 4, left: 4, display: "flex", alignItems: "center", gap: 3, padding: "2px 6px", borderRadius: 6, background: "#22C55E", color: "white" }}>
+                      <svg width={8} height={8} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={3}><path d="M20 6L9 17l-5-5" /></svg>
+                      <span style={{ fontSize: 8, fontWeight: 700, textTransform: "uppercase" }}>Verified</span>
+                    </div>
+                  </>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 4, padding: 8 }}>
+                    <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={C.primary} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M12 6v4M10 8h4"/></svg>
+                    <span style={{ fontSize: 8, fontWeight: 700, color: C.primary, textTransform: "uppercase", letterSpacing: "0.05em", textAlign: "center", lineHeight: 1.2 }}>Selfie with Bible</span>
+                    <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke={C.sub} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  </div>
+                )}
+              </div>
             </div>
             <input ref={fileInputRef} type="file" accept="image/*" onChange={handleAddPhoto} style={{ display: "none" }} />
           </div>
@@ -1292,61 +1336,74 @@ export default function Profile() {
             </div>
           ))}
 
-          {/* Values */}
-          {interests.length > 0 && (
-            <div
-              style={{
-                borderRadius: 16,
-                padding: 16,
-                background: C.card,
-                border: `1px solid ${C.border}`,
-              }}
-            >
-              <p
+          {/* Interests */}
+          {(() => {
+            const chipSection = (label, items, type, pool, fieldKey) => (
+              <div
                 style={{
-                  fontSize: 10,
-                  fontWeight: 600,
-                  color: C.primary,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.1em",
-                  marginBottom: 12,
+                  borderRadius: 16,
+                  padding: 16,
+                  background: C.card,
+                  border: `1px solid ${C.border}`,
                 }}
               >
-                Values
-              </p>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                {interests.map((v) => (
-                  <span
-                    key={v}
+                <p
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 600,
+                    color: C.primary,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.1em",
+                    marginBottom: 12,
+                  }}
+                >
+                  {label}
+                </p>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  {items.map((v) => (
+                    <span
+                      key={v}
+                      style={{
+                        padding: "6px 12px",
+                        borderRadius: 9999,
+                        fontSize: 12,
+                        fontWeight: 600,
+                        background: C.primarySoft,
+                        color: C.primary,
+                      }}
+                    >
+                      {v}
+                    </span>
+                  ))}
+                  <button
+                    onClick={() => {
+                      track(`${type}_edit_opened`);
+                      setEditingChips({ label, type, pool, fieldKey });
+                      setEditingChipsData([...items]);
+                    }}
                     style={{
                       padding: "6px 12px",
                       borderRadius: 9999,
                       fontSize: 12,
                       fontWeight: 600,
-                      background: C.primarySoft,
-                      color: C.primary,
+                      background: C.surface,
+                      color: C.sub,
+                      border: `1.5px dashed ${C.border}`,
+                      cursor: "pointer",
                     }}
                   >
-                    {v}
-                  </span>
-                ))}
-                <button
-                  style={{
-                    padding: "6px 12px",
-                    borderRadius: 9999,
-                    fontSize: 12,
-                    fontWeight: 600,
-                    background: C.surface,
-                    color: C.sub,
-                    border: `1.5px dashed ${C.border}`,
-                    cursor: "pointer",
-                  }}
-                >
-                  + Add
-                </button>
+                    + Edit
+                  </button>
+                </div>
               </div>
-            </div>
-          )}
+            );
+            return (
+              <>
+                {chipSection("Interests", interests, "interests", TRAITS_POOL, "interests")}
+                {chipSection("Values", currentUser.lookingFor || [], "values", LOOKING_FOR_POOL, "lookingFor")}
+              </>
+            );
+          })()}
 
           {/* Account settings rows */}
           <div style={{ marginTop: 4 }}>
@@ -1632,6 +1689,87 @@ export default function Profile() {
                 ))}
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Chip editor overlay */}
+      {editingChips && (
+        <div
+          style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", flexDirection: "column", justifyContent: "flex-end" }}
+          onClick={() => setEditingChips(null)}
+        >
+          <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.4)" }} />
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: "relative",
+              background: C.bg,
+              borderRadius: "20px 20px 0 0",
+              padding: "20px 16px 32px",
+              maxHeight: "70vh",
+              overflowY: "auto",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+              <button
+                onClick={() => setEditingChips(null)}
+                style={{ fontSize: 14, fontWeight: 600, color: C.sub, background: "none", border: "none", cursor: "pointer" }}
+              >
+                Cancel
+              </button>
+              <p style={{ fontSize: 16, fontWeight: 700, color: C.text }}>{editingChips.label}</p>
+              <button
+                onClick={async () => {
+                  track(`${editingChips.type}_edit_saved`, { count: editingChipsData.length });
+                  setSaving(true);
+                  try {
+                    await actions.updateProfile({ [editingChips.fieldKey]: editingChipsData });
+                  } catch (err) {
+                    console.error("Save failed:", err);
+                  }
+                  setSaving(false);
+                  setEditingChips(null);
+                }}
+                disabled={saving || editingChipsData.length < 3}
+                style={{ fontSize: 14, fontWeight: 700, color: saving || editingChipsData.length < 3 ? C.sub : C.primary, background: "none", border: "none", cursor: "pointer" }}
+              >
+                {saving ? "Saving..." : "Save"}
+              </button>
+            </div>
+            <p style={{ fontSize: 12, color: C.sub, marginBottom: 12 }}>Pick 3-8</p>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              {editingChips.pool.map((item) => {
+                const selected = editingChipsData.includes(item);
+                return (
+                  <button
+                    key={item}
+                    onClick={() => {
+                      if (selected) {
+                        setEditingChipsData(editingChipsData.filter((v) => v !== item));
+                      } else if (editingChipsData.length < 8) {
+                        setEditingChipsData([...editingChipsData, item]);
+                      }
+                    }}
+                    style={{
+                      padding: "8px 14px",
+                      borderRadius: 9999,
+                      fontSize: 13,
+                      fontWeight: 600,
+                      fontFamily: FONT,
+                      background: selected ? C.primarySoft : C.surface,
+                      color: selected ? C.primary : C.sub,
+                      border: selected ? `2px solid ${C.primary}` : `1.5px solid ${C.border}`,
+                      cursor: "pointer",
+                      transition: "all 0.15s",
+                    }}
+                  >
+                    {item}
+                  </button>
+                );
+              })}
+            </div>
+            <p style={{ fontSize: 12, color: C.sub, textAlign: "center", marginTop: 12 }}>{editingChipsData.length}/8 selected</p>
           </div>
         </div>
       )}

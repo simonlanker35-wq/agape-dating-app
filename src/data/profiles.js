@@ -336,11 +336,6 @@ function randomHeight() {
   return `${cm} cm`;
 }
 
-function generatePhotoUrl(seed, gender) {
-  const g = gender === "female" ? "women" : "men";
-  const id = (seed % 90) + 1;
-  return `https://randomuser.me/api/portraits/${g}/${id}.jpg`;
-}
 
 function generatePromptAnswers() {
   const selectedPrompts = pickN(PROMPTS, 3);
@@ -360,10 +355,7 @@ export function generateProfiles(count = 40) {
     const names = gender === "female" ? FIRST_NAMES_F : FIRST_NAMES_M;
     const name = pick(names);
     const age = randomAge();
-    const photoCount = 3 + Math.floor(Math.random() * 4);
-    const photos = Array.from({ length: photoCount }, (_, j) =>
-      generatePhotoUrl(i * 7 + j * 13 + j, gender)
-    );
+    const photos = [];
 
     profiles.push({
       id: `profile_${i}`,

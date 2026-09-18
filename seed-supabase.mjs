@@ -145,11 +145,7 @@ async function seed() {
     location_city: "Schwyz",
     location_lat: 47.0207,
     location_lng: 8.6545,
-    photos: [
-      "https://i.pravatar.cc/800?u=simon_a",
-      "https://i.pravatar.cc/800?u=simon_b",
-      "https://i.pravatar.cc/800?u=simon_c",
-    ],
+    photos: [],
     prompts: [
       { prompt: "A Bible verse I live by", answer: "Love is patient, love is kind - 1 Cor 13:4" },
       { prompt: "In 5 years I see myself", answer: "Married, travelling, and deeply rooted in community" },
@@ -177,11 +173,7 @@ async function seed() {
       location_city: "Schwyz",
       location_lat: 47.0207,
       location_lng: 8.6545,
-      photos: [
-        "https://i.pravatar.cc/800?u=sarah_a",
-        "https://i.pravatar.cc/800?u=sarah_b",
-        "https://i.pravatar.cc/800?u=sarah_c",
-      ],
+      photos: [],
       prompts: [
         { prompt: "My faith means to me", answer: "Everything — it's the foundation of who I am" },
         { prompt: "Typical Sunday", answer: "Church in the morning, brunch with friends, long walk" },
@@ -226,11 +218,7 @@ async function seed() {
       location_city: city.city,
       location_lat: city.lat + (Math.random() - 0.5) * 0.15,
       location_lng: city.lng + (Math.random() - 0.5) * 0.15,
-      photos: [
-        `https://i.pravatar.cc/800?u=demo${i}_a`,
-        `https://i.pravatar.cc/800?u=demo${i}_b`,
-        `https://i.pravatar.cc/800?u=demo${i}_c`,
-      ],
+      photos: [],
       prompts: userPrompts,
       interests: pickN(interests, 4 + Math.floor(Math.random() * 4)),
       is_standout: i < 20 && i % 4 === 0,
@@ -265,10 +253,7 @@ async function seed() {
       location_city: "Sofia",
       location_lat: 42.6977,
       location_lng: 23.3219,
-      photos: [
-        "https://i.pravatar.cc/800?u=bg_test_a",
-        "https://i.pravatar.cc/800?u=bg_test_b",
-      ],
+      photos: [],
       prompts: [
         { prompt: "I feel closest to God when", answer: "I'm at liturgy in Alexander Nevsky, surrounded by icons and incense" },
         { prompt: "Together, we could", answer: "Explore the mountains, share banitsa, and grow in faith together" },
@@ -313,11 +298,7 @@ async function seed() {
       location_city: city.city,
       location_lat: city.lat + (Math.random() - 0.5) * 0.15,
       location_lng: city.lng + (Math.random() - 0.5) * 0.15,
-      photos: [
-        `https://i.pravatar.cc/800?u=bg${i}_a`,
-        `https://i.pravatar.cc/800?u=bg${i}_b`,
-        `https://i.pravatar.cc/800?u=bg${i}_c`,
-      ],
+      photos: [],
       prompts: userPrompts,
       interests: pickN(interests, 4 + Math.floor(Math.random() * 4)),
       is_standout: i < 13 && i % 4 === 0,

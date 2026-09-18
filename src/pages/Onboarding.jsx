@@ -42,8 +42,9 @@ export default function Onboarding() {
   const [otpError, setOtpError] = useState("");
   const [signupError, setSignupError] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [loginEmail, setLoginEmail] = useState("");
-  const [loginPassword, setLoginPassword] = useState("");
+  const [loginPhone, setLoginPhone] = useState("+48");
+  const [loginOtp, setLoginOtp] = useState("");
+  const [loginOtpSent, setLoginOtpSent] = useState(false);
   const [loginError, setLoginError] = useState("");
   const inputRef = useRef(null);
   const answerRef = useRef(null);
@@ -102,11 +103,13 @@ export default function Onboarding() {
     setSubmitting(false);
   };
 
-  const handleVerifyOtp = async () => {
+  const handleVerifyOtp = async (code) => {
+    const codeToVerify = code || otpCode;
+    if (codeToVerify.length !== 6) return;
     setSubmitting(true);
     setOtpError("");
     try {
-      const { isNewUser } = await actions.verifyOtp(phone, otpCode);
+      const { isNewUser } = await actions.verifyOtp(phone, codeToVerify);
       if (!isNewUser) return;
       goNext();
     } catch (err) {
@@ -115,17 +118,19 @@ export default function Onboarding() {
     setSubmitting(false);
   };
 
+  useEffect(() => {
+    if (currentStep !== "verify" || !("OTPCredential" in window)) return;
+    const ac = new AbortController();
+    navigator.credentials.get({ otp: { transport: ["sms"] }, signal: ac.signal })
+      .then((otp) => { if (otp?.code) { setOtpCode(otp.code); handleVerifyOtp(otp.code); } })
+      .catch(() => {});
+    return () => ac.abort();
+  }, [currentStep]);
+
   const finishOnboarding = async () => {
     setSubmitting(true);
     setSignupError("");
     try {
-      const g = form.gender === "female" ? "women" : "men";
-      const demoPhotos = [
-        `https://randomuser.me/api/portraits/${g}/75.jpg`,
-        `https://randomuser.me/api/portraits/${g}/76.jpg`,
-        `https://randomuser.me/api/portraits/${g}/77.jpg`,
-      ];
-
       const prompts = Object.values(promptSelections).filter(p => p.prompt && p.answer);
 
       await actions.register({
@@ -143,7 +148,7 @@ export default function Onboarding() {
         location: form.location
           ? { type: "Point", coordinates: [8.65, 47.02], city: form.location }
           : undefined,
-        photos: demoPhotos,
+        photos: [],
         prompts,
         interests: form.traits,
         traits: form.traits,
@@ -161,12 +166,32 @@ export default function Onboarding() {
     }
   };
 
-  const handleLogin = async () => {
+  const handleLoginSendOtp = async () => {
     track("login_attempted");
     setSubmitting(true);
     setLoginError("");
     try {
-      await actions.login(loginEmail, loginPassword);
+      await actions.sendOtp(loginPhone);
+      setLoginOtpSent(true);
+    } catch (err) {
+      track("login_failed", { error: err.message });
+      setLoginError(err.message);
+    }
+    setSubmitting(false);
+  };
+
+  const handleLoginVerifyOtp = async (code) => {
+    const codeToVerify = code || loginOtp;
+    if (codeToVerify.length !== 6) return;
+    setSubmitting(true);
+    setLoginError("");
+    try {
+      const { isNewUser } = await actions.verifyOtp(loginPhone, codeToVerify);
+      if (isNewUser) {
+        setLoginError("No account found with this number. Please sign up first.");
+        setSubmitting(false);
+        return;
+      }
     } catch (err) {
       track("login_failed", { error: err.message });
       setLoginError(err.message);
@@ -174,15 +199,18 @@ export default function Onboarding() {
     }
   };
 
+  useEffect(() => {
+    if (!loginOtpSent || mode !== "login" || !("OTPCredential" in window)) return;
+    const ac = new AbortController();
+    navigator.credentials.get({ otp: { transport: ["sms"] }, signal: ac.signal })
+      .then((otp) => { if (otp?.code) { setLoginOtp(otp.code); handleLoginVerifyOtp(otp.code); } })
+      .catch(() => {});
+    return () => ac.abort();
+  }, [loginOtpSent, mode]);
+
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && canProceed()) {
       goNext();
-    }
-  };
-
-  const handleLoginKeyDown = (e) => {
-    if (e.key === "Enter" && loginEmail && loginPassword) {
-      handleLogin();
     }
   };
 
@@ -276,40 +304,72 @@ export default function Onboarding() {
     return (
       <div className="onboarding">
         <div className="onboarding-content">
-          <div className="onboarding-step single-question" key="login">
-            <div className="welcome-icon">
-              <AgapeCross size={56} strokeWidth={1.2} />
+          {!loginOtpSent ? (
+            <div className="onboarding-step single-question" key="login-phone">
+              <div className="welcome-icon">
+                <AgapeCross size={56} strokeWidth={1.2} />
+              </div>
+              <h2>Welcome back</h2>
+              <p style={{ fontSize: 14, color: "#8C857C", marginBottom: 16 }}>Enter your phone number to sign in</p>
+              <input
+                type="tel"
+                value={loginPhone}
+                onChange={(e) => setLoginPhone(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && loginPhone.length >= 10 && handleLoginSendOtp()}
+                placeholder="+48 123 456 789"
+                className="onboarding-input"
+                autoComplete="tel"
+                autoFocus
+              />
+              {loginError && <p className="onboarding-error">{loginError}</p>}
+              {loginPhone.length >= 10 && (
+                <button
+                  className="onboarding-cta"
+                  onClick={handleLoginSendOtp}
+                  disabled={submitting}
+                >
+                  {submitting ? "Sending code..." : "Send Code"}
+                </button>
+              )}
+              <button className="skip-btn-text" onClick={() => { track("login_switch_to_signup"); setMode("signup"); setLoginError(""); }} style={{ marginTop: 16 }}>
+                Create an account instead
+              </button>
             </div>
-            <h2>Welcome back</h2>
-            <input
-              type="email"
-              value={loginEmail}
-              onChange={(e) => setLoginEmail(e.target.value)}
-              placeholder="Email"
-              className="onboarding-input"
-              autoFocus
-            />
-            <input
-              type="password"
-              value={loginPassword}
-              onChange={(e) => setLoginPassword(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && loginEmail && loginPassword && handleLogin()}
-              placeholder="Password"
-              className="onboarding-input"
-              style={{ marginTop: 8 }}
-            />
-            {loginError && <p className="onboarding-error">{loginError}</p>}
-            <button
-              className="onboarding-cta"
-              onClick={handleLogin}
-              disabled={submitting || !loginEmail || !loginPassword}
-            >
-              {submitting ? "Signing in..." : "Sign In"}
-            </button>
-            <button className="skip-btn-text" onClick={() => { track("login_switch_to_signup"); setMode("signup"); setLoginError(""); }} style={{ marginTop: 16 }}>
-              Create an account instead
-            </button>
-          </div>
+          ) : (
+            <div className="onboarding-step single-question" key="login-verify">
+              <div className="welcome-icon">
+                <AgapeCross size={56} strokeWidth={1.2} />
+              </div>
+              <h2>Enter your code</h2>
+              <p style={{ fontSize: 14, color: "#8C857C", marginBottom: 16 }}>Sent to {loginPhone}</p>
+              <input
+                type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                maxLength={6}
+                value={loginOtp}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, "");
+                  setLoginOtp(val);
+                  if (val.length === 6) handleLoginVerifyOtp(val);
+                }}
+                onKeyDown={(e) => e.key === "Enter" && loginOtp.length === 6 && handleLoginVerifyOtp()}
+                placeholder="000000"
+                className="onboarding-input"
+                style={{ textAlign: "center", fontSize: 28, letterSpacing: 12, fontWeight: 700 }}
+                autoFocus
+              />
+              {loginError && <p className="onboarding-error">{loginError}</p>}
+              {loginOtp.length === 6 && (
+                <button className="onboarding-cta" onClick={() => handleLoginVerifyOtp()} disabled={submitting}>
+                  {submitting ? "Verifying..." : "Verify"}
+                </button>
+              )}
+              <button className="skip-btn-text" onClick={() => { setLoginOtpSent(false); setLoginOtp(""); setLoginError(""); }} style={{ marginTop: 12 }}>
+                Change number
+              </button>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -331,11 +391,7 @@ export default function Onboarding() {
       <div className="onboarding-content">
         {currentStep === "welcome" && (
           <div className="onboarding-step welcome-step" key="welcome">
-            <img
-              src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=600&h=900&fit=crop&auto=format"
-              alt="Welcome"
-              className="welcome-bg-photo"
-            />
+            <div className="welcome-bg-photo" style={{ background: "linear-gradient(160deg, #1A1612 0%, #2C2418 40%, #3D2E1A 70%, #B8912A 100%)" }} />
             <div className="welcome-bg-gradient" />
             <div className="welcome-gold-bar" />
             <div className="welcome-icon">
@@ -418,6 +474,7 @@ export default function Onboarding() {
               onKeyDown={(e) => e.key === "Enter" && phone.length >= 10 && handleSendOtp()}
               placeholder="+48 123 456 789"
               className="onboarding-input"
+              autoComplete="tel"
               autoFocus
             />
             {otpError && <p className="onboarding-error">{otpError}</p>}
@@ -437,9 +494,14 @@ export default function Onboarding() {
               ref={inputRef}
               type="text"
               inputMode="numeric"
+              autoComplete="one-time-code"
               maxLength={6}
               value={otpCode}
-              onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
+              onChange={(e) => {
+                const val = e.target.value.replace(/\D/g, "");
+                setOtpCode(val);
+                if (val.length === 6) handleVerifyOtp(val);
+              }}
               onKeyDown={(e) => e.key === "Enter" && otpCode.length === 6 && handleVerifyOtp()}
               placeholder="000000"
               className="onboarding-input"
