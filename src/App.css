@@ -286,17 +286,17 @@ a {
   color: white !important;
 }
 
-/* Welcome — dark photo background (Figma exact) */
+/* Welcome — cream/gold branding */
 .welcome-step {
-  text-align: left;
+  text-align: center;
   position: relative;
-  background: #111;
+  background: #F5F0E8;
   margin: -24px -32px;
   padding: 0;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  color: white;
+  color: #1A1612;
   overflow: hidden;
 }
 
@@ -305,39 +305,43 @@ a {
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  opacity: 0.55;
+}
+
+.welcome-step::after {
+  content: "";
+  position: absolute;
+  inset: 16px;
+  border: 1px solid #B8912A40;
+  border-radius: 4px;
+  pointer-events: none;
+  z-index: 5;
 }
 
 .welcome-bg-gradient {
   position: absolute;
   inset: 0;
-  background: linear-gradient(to bottom, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.0) 35%, rgba(0,0,0,0.85) 75%, rgba(0,0,0,0.97) 100%);
 }
 
 .welcome-gold-bar {
-  position: relative;
-  z-index: 10;
-  height: 4px;
-  width: 100%;
-  background: var(--gold);
+  display: none;
 }
 
 .welcome-icon {
   position: relative;
   z-index: 10;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 8px;
-  padding: 40px 28px 0;
+  gap: 12px;
+  padding: 80px 28px 0;
   color: var(--gold);
 }
 
 .welcome-logo-text {
-  font-size: 20px;
+  font-size: 48px;
   font-weight: 800;
-  letter-spacing: -0.5px;
-  color: white;
+  letter-spacing: -1px;
+  color: #1A1612;
   font-family: var(--font);
 }
 
@@ -350,26 +354,26 @@ a {
 
 .welcome-step h1 {
   font-family: var(--font);
-  font-size: 36px;
+  font-size: 28px;
   font-weight: 800;
-  letter-spacing: -0.8px;
+  letter-spacing: -0.5px;
   margin-bottom: 8px;
-  line-height: 1.1;
-  color: white;
+  line-height: 1.15;
+  color: #1A1612;
 }
 
 .welcome-desc {
-  font-size: 16px;
-  color: rgba(255,255,255,0.6);
+  font-size: 15px;
+  color: #8C857C;
   max-width: 300px;
-  margin: 0 0 32px;
+  margin: 0 auto 32px;
   line-height: 1.5;
 }
 
 .welcome-divider {
   height: 1px;
   margin-bottom: 32px;
-  background: linear-gradient(to right, var(--gold), transparent);
+  background: linear-gradient(to right, transparent, var(--gold), transparent);
 }
 
 .welcome-step .onboarding-cta {
@@ -380,7 +384,7 @@ a {
   font-size: 16px;
   font-weight: 700;
   background: var(--gold);
-  color: #000;
+  color: #fff;
 }
 
 .welcome-signin-btn {
@@ -389,9 +393,9 @@ a {
   font-size: 16px;
   font-weight: 700;
   padding: 16px;
-  background: rgba(255,255,255,0.12);
-  color: white;
-  border: 1.5px solid rgba(255,255,255,0.2);
+  background: transparent;
+  color: #1A1612;
+  border: 1.5px solid #D4C9B8;
   border-radius: 999px;
   display: flex;
   align-items: center;
@@ -401,13 +405,13 @@ a {
 }
 
 .welcome-signin-btn:hover {
-  background: rgba(255,255,255,0.18);
-  border-color: rgba(255,255,255,0.35);
+  background: rgba(184,145,42,0.08);
+  border-color: var(--gold);
 }
 
 .welcome-terms {
   font-size: 11px;
-  color: rgba(255,255,255,0.35);
+  color: #8C857C;
   margin-top: 24px;
   text-align: center;
   width: 100%;

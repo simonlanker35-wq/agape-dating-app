@@ -391,18 +391,19 @@ export default function Onboarding() {
       <div className="onboarding-content">
         {currentStep === "welcome" && (
           <div className="onboarding-step welcome-step" key="welcome">
-            <div className="welcome-bg-photo" style={{ background: "linear-gradient(160deg, #1A1612 0%, #2C2418 40%, #3D2E1A 70%, #B8912A 100%)" }} />
+            <div className="welcome-bg-photo" />
             <div className="welcome-bg-gradient" />
-            <div className="welcome-gold-bar" />
             <div className="welcome-icon">
-              <AgapeCross size={13} strokeWidth={1.5} />
+              <div style={{ width: 80, height: 80, borderRadius: 20, background: "white", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 16px rgba(0,0,0,0.06)" }}>
+                <AgapeCross size={36} strokeWidth={1.5} />
+              </div>
+              <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: "#B8912A", marginTop: 8 }}>Faith + Love</p>
               <span className="welcome-logo-text">agape</span>
             </div>
+            <div style={{ position: "relative", zIndex: 10, textAlign: "center", padding: "32px 28px 0" }}>
+              <p style={{ fontSize: 16, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "#B8912A", lineHeight: 1.4 }}>Created by Christians<br />for Christians</p>
+            </div>
             <div className="welcome-bottom">
-              <h1>Find love<br />rooted in faith.</h1>
-              <p className="welcome-desc">
-                Meet Christians who share your values, your church life, and your heart.
-              </p>
               <div className="welcome-divider" />
               <button className="onboarding-cta" onClick={goNext}>
                 Create account
