@@ -375,46 +375,45 @@ export default function Onboarding() {
     );
   }
 
+  if (currentStep === "welcome") {
+    return (
+      <div className="welcome-step">
+        <div className="welcome-icon">
+          <div style={{ width: 80, height: 80, borderRadius: 20, background: "white", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 16px rgba(0,0,0,0.06)" }}>
+            <AgapeCross size={36} strokeWidth={1.5} />
+          </div>
+          <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: "#B8912A", marginTop: 8 }}>Faith + Love</p>
+          <span className="welcome-logo-text">agape</span>
+        </div>
+        <div style={{ textAlign: "center", padding: "32px 28px 0" }}>
+          <p style={{ fontSize: 16, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "#B8912A", lineHeight: 1.4 }}>Created by Christians<br />for Christians</p>
+        </div>
+        <div className="welcome-bottom">
+          <div className="welcome-divider" />
+          <button className="onboarding-cta" onClick={goNext}>
+            Create account
+          </button>
+          <button className="welcome-signin-btn" onClick={() => { track("welcome_sign_in_tapped"); setMode("login"); }}>
+            Sign in
+          </button>
+          <p className="welcome-terms">By continuing you agree to our Terms & Privacy Policy</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="onboarding">
-      {currentStep !== "welcome" && (
-        <div style={{ padding: "12px 20px 0", display: "flex", alignItems: "center", gap: 12 }}>
-          <div className="onboarding-progress-bar" style={{ flex: 1 }}>
-            <div className="progress-fill" style={{ width: `${progress}%` }} />
-          </div>
-          <span style={{ fontSize: 12, fontWeight: 600, color: "#8C857C", whiteSpace: "nowrap" }}>
-            {step} of {STEPS.length - 1}
-          </span>
+      <div style={{ padding: "12px 20px 0", display: "flex", alignItems: "center", gap: 12 }}>
+        <div className="onboarding-progress-bar" style={{ flex: 1 }}>
+          <div className="progress-fill" style={{ width: `${progress}%` }} />
         </div>
-      )}
+        <span style={{ fontSize: 12, fontWeight: 600, color: "#8C857C", whiteSpace: "nowrap" }}>
+          {step} of {STEPS.length - 1}
+        </span>
+      </div>
 
       <div className="onboarding-content">
-        {currentStep === "welcome" && (
-          <div className="onboarding-step welcome-step" key="welcome">
-            <div className="welcome-bg-photo" />
-            <div className="welcome-bg-gradient" />
-            <div className="welcome-icon">
-              <div style={{ width: 80, height: 80, borderRadius: 20, background: "white", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 16px rgba(0,0,0,0.06)" }}>
-                <AgapeCross size={36} strokeWidth={1.5} />
-              </div>
-              <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: "#B8912A", marginTop: 8 }}>Faith + Love</p>
-              <span className="welcome-logo-text">agape</span>
-            </div>
-            <div style={{ position: "relative", zIndex: 10, textAlign: "center", padding: "32px 28px 0" }}>
-              <p style={{ fontSize: 16, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "#B8912A", lineHeight: 1.4 }}>Created by Christians<br />for Christians</p>
-            </div>
-            <div className="welcome-bottom">
-              <div className="welcome-divider" />
-              <button className="onboarding-cta" onClick={goNext}>
-                Create account
-              </button>
-              <button className="welcome-signin-btn" onClick={() => { track("welcome_sign_in_tapped"); setMode("login"); }}>
-                Sign in
-              </button>
-              <p className="welcome-terms">By continuing you agree to our Terms & Privacy Policy</p>
-            </div>
-          </div>
-        )}
 
         {currentStep === "consent" && (
           <div className="onboarding-step single-question consent-step" key="consent">

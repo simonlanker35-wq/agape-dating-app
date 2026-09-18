@@ -287,25 +287,6 @@ a {
 }
 
 /* Welcome — cream/gold branding */
-body:has(.welcome-step) {
-  background: #F5F0E8 !important;
-}
-
-body:has(.welcome-step) .app-container {
-  border: none !important;
-  box-shadow: none !important;
-  background: #F5F0E8 !important;
-}
-
-.onboarding:has(.welcome-step) {
-  background: #F5F0E8;
-  max-width: none;
-}
-
-.onboarding:has(.welcome-step) .onboarding-content {
-  padding: 0;
-}
-
 .welcome-step {
   text-align: center;
   position: fixed;
@@ -317,25 +298,6 @@ body:has(.welcome-step) .app-container {
   color: #1A1612;
   overflow: hidden;
   z-index: 9999;
-  margin: 0;
-  border: none;
-}
-
-.welcome-bg-photo {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-}
-
-
-.welcome-bg-gradient {
-  position: absolute;
-  inset: 0;
-}
-
-.welcome-gold-bar {
-  display: none;
 }
 
 .welcome-icon {
