@@ -309,6 +309,9 @@ a {
   gap: 12px;
   padding: 80px 28px 0;
   color: var(--gold);
+  max-width: 430px;
+  margin: 0 auto;
+  width: 100%;
 }
 
 .welcome-logo-text {
@@ -324,6 +327,10 @@ a {
   z-index: 10;
   margin-top: auto;
   padding: 0 28px 56px;
+  width: 100%;
+  max-width: 430px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .welcome-step h1 {
