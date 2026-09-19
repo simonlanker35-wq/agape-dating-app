@@ -576,7 +576,7 @@ function SettingsScreen({ onBack, initialSection = null }) {
                 <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: C.sub, padding: "0 4px", marginBottom: 8 }}>Personal details</p>
                 <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
                   <SettingsRow icon="👤" label="Name" sub={currentUser?.name || "Not set"} onPress={() => { setEditField("name"); setEditValue(currentUser?.name || ""); }} />
-                  <SettingsRow icon="📧" label="Email" sub={currentUser?.email || "Not set"} />
+                  <SettingsRow icon="📱" label="Phone" sub={state.currentUser?.phone || "Not set"} />
                   <SettingsRow icon="🎂" label="Age" sub={currentUser?.age ? `${currentUser.age} years old` : "Not set"} onPress={() => { setEditField("age"); setEditValue(String(currentUser?.age || "")); }} />
                   <SettingsRow icon="✝️" label="Denomination" sub={currentUser?.denomination || "Not set"} onPress={() => { setEditField("denomination"); setEditValue(currentUser?.denomination || ""); }} />
                 </div>
@@ -646,7 +646,7 @@ function SettingsScreen({ onBack, initialSection = null }) {
         <div>
           <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: C.sub, padding: "0 4px", marginBottom: 8 }}>Account</p>
           <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
-            <SettingsRow icon="👤" label="Personal info" sub="Name, email, phone" onPress={() => setSection("account")} />
+            <SettingsRow icon="👤" label="Personal info" sub="Name, phone, denomination" onPress={() => setSection("account")} />
             <SettingsRow icon="🙏" label="Faith preferences" sub="Denomination, values" onPress={() => setSection("faith")} />
             <SettingsRow icon="📍" label="Location" sub="Distance, visibility" onPress={() => setSection("location")} />
           </div>

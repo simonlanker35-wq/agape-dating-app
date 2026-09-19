@@ -83,7 +83,7 @@ export async function createProfile(data) {
 
   const profile = {
     id: user.id,
-    email: user.email || user.phone || "",
+    email: user.email || "",
     name: data.name,
     age: data.age,
     height: data.height || null,
@@ -132,7 +132,7 @@ export async function getMe() {
     .single();
   if (profileError) throw new Error(profileError.message);
 
-  return mapProfileToUser(profile);
+  return mapProfileToUser(profile, user.phone);
 }
 
 export async function getProfile() {
@@ -561,11 +561,12 @@ export async function sendNudge(matchId) {
 
 // ─── HELPERS ───
 
-function mapProfileToUser(p) {
+function mapProfileToUser(p, authPhone) {
   return {
     _id: p.id,
     id: p.id,
     email: p.email,
+    phone: authPhone || "",
     name: p.name,
     age: p.age,
     height: p.height,
