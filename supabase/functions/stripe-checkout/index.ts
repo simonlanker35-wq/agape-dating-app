@@ -63,11 +63,14 @@ Deno.serve(async (req) => {
 
     let customerId = profile?.stripe_customer_id;
     if (!customerId) {
-      const customer = await stripe.customers.create({
-        email: profile?.email || user.email,
-        name: profile?.name || undefined,
+      const customerData: Record<string, unknown> = {
         metadata: { supabase_user_id: user.id },
-      });
+      };
+      const email = user.email || (profile?.email?.includes("@") ? profile.email : null);
+      if (email) customerData.email = email;
+      if (profile?.name) customerData.name = profile.name;
+      if (user.phone) customerData.phone = user.phone;
+      const customer = await stripe.customers.create(customerData);
       customerId = customer.id;
       await supabase
         .from("profiles")
