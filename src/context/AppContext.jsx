@@ -271,11 +271,23 @@ export function AppProvider({ children }) {
       return { isNewUser: true };
     },
 
+    setPassword: async (password) => {
+      return api.setPassword(password);
+    },
+
     register: async (data) => {
       const user = await api.createProfile(data);
       dispatch({ type: "COMPLETE_ONBOARDING", payload: user });
       identify(user.id, { name: user.name, email: user.email, gender: user.gender, denomination: user.denomination });
       track("signup_completed", { gender: user.gender, denomination: user.denomination });
+      return user;
+    },
+
+    loginWithPhone: async (phone, password) => {
+      const user = await api.loginWithPhone(phone, password);
+      dispatch({ type: "SET_USER", payload: user });
+      identify(user.id, { name: user.name, email: user.email, gender: user.gender, subscriptionStatus: user.subscriptionStatus });
+      track("login", { method: "phone" });
       return user;
     },
 

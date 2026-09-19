@@ -11,6 +11,7 @@ const STEPS = [
   "consent",
   "phone",
   "verify",
+  "password",
   "name",
   "age",
   "height",
@@ -42,9 +43,11 @@ export default function Onboarding() {
   const [otpError, setOtpError] = useState("");
   const [signupError, setSignupError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [password, setPassword] = useState("");
+  const [passwordConfirm, setPasswordConfirm] = useState("");
+  const [passwordError, setPasswordError] = useState("");
   const [loginPhone, setLoginPhone] = useState("+48");
-  const [loginOtp, setLoginOtp] = useState("");
-  const [loginOtpSent, setLoginOtpSent] = useState(false);
+  const [loginPassword, setLoginPassword] = useState("");
   const [loginError, setLoginError] = useState("");
   const inputRef = useRef(null);
   const answerRef = useRef(null);
@@ -118,6 +121,26 @@ export default function Onboarding() {
     setSubmitting(false);
   };
 
+  const handleSetPassword = async () => {
+    if (password.length < 6) {
+      setPasswordError("Password must be at least 6 characters");
+      return;
+    }
+    if (password !== passwordConfirm) {
+      setPasswordError("Passwords don't match");
+      return;
+    }
+    setSubmitting(true);
+    setPasswordError("");
+    try {
+      await actions.setPassword(password);
+      goNext();
+    } catch (err) {
+      setPasswordError(err.message);
+    }
+    setSubmitting(false);
+  };
+
   useEffect(() => {
     if (currentStep !== "verify" || !("OTPCredential" in window)) return;
     const ac = new AbortController();
@@ -166,13 +189,13 @@ export default function Onboarding() {
     }
   };
 
-  const handleLoginSendOtp = async () => {
+  const handleLoginSubmit = async () => {
+    if (loginPhone.length < 10 || loginPassword.length < 6) return;
     track("login_attempted");
     setSubmitting(true);
     setLoginError("");
     try {
-      await actions.sendOtp(loginPhone);
-      setLoginOtpSent(true);
+      await actions.loginWithPhone(loginPhone, loginPassword);
     } catch (err) {
       track("login_failed", { error: err.message });
       setLoginError(err.message);
@@ -180,33 +203,6 @@ export default function Onboarding() {
     setSubmitting(false);
   };
 
-  const handleLoginVerifyOtp = async (code) => {
-    const codeToVerify = code || loginOtp;
-    if (codeToVerify.length !== 6) return;
-    setSubmitting(true);
-    setLoginError("");
-    try {
-      const { isNewUser } = await actions.verifyOtp(loginPhone, codeToVerify);
-      if (isNewUser) {
-        setLoginError("No account found with this number. Please sign up first.");
-        setSubmitting(false);
-        return;
-      }
-    } catch (err) {
-      track("login_failed", { error: err.message });
-      setLoginError(err.message);
-      setSubmitting(false);
-    }
-  };
-
-  useEffect(() => {
-    if (!loginOtpSent || mode !== "login" || !("OTPCredential" in window)) return;
-    const ac = new AbortController();
-    navigator.credentials.get({ otp: { transport: ["sms"] }, signal: ac.signal })
-      .then((otp) => { if (otp?.code) { setLoginOtp(otp.code); handleLoginVerifyOtp(otp.code); } })
-      .catch(() => {});
-    return () => ac.abort();
-  }, [loginOtpSent, mode]);
 
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && canProceed()) {
@@ -251,6 +247,7 @@ export default function Onboarding() {
       case "name": return form.name.trim().length > 0;
       case "phone": return phone.length >= 10;
       case "verify": return otpCode.length === 6;
+      case "password": return password.length >= 6 && password === passwordConfirm;
       case "age": return form.age >= 18;
       case "height": return form.height >= 100 && form.height <= 250;
       case "gender": return form.gender !== "";
@@ -304,72 +301,45 @@ export default function Onboarding() {
     return (
       <div className="onboarding">
         <div className="onboarding-content">
-          {!loginOtpSent ? (
-            <div className="onboarding-step single-question" key="login-phone">
-              <div className="welcome-icon">
-                <AgapeCross size={56} strokeWidth={1.2} />
-              </div>
-              <h2>Welcome back</h2>
-              <p style={{ fontSize: 14, color: "#8C857C", marginBottom: 16 }}>Enter your phone number to sign in</p>
-              <input
-                type="tel"
-                value={loginPhone}
-                onChange={(e) => setLoginPhone(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && loginPhone.length >= 10 && handleLoginSendOtp()}
-                placeholder="+48 123 456 789"
-                className="onboarding-input"
-                autoComplete="tel"
-                autoFocus
-              />
-              {loginError && <p className="onboarding-error">{loginError}</p>}
-              {loginPhone.length >= 10 && (
-                <button
-                  className="onboarding-cta"
-                  onClick={handleLoginSendOtp}
-                  disabled={submitting}
-                >
-                  {submitting ? "Sending code..." : "Send Code"}
-                </button>
-              )}
-              <button className="skip-btn-text" onClick={() => { track("login_switch_to_signup"); setMode("signup"); setLoginError(""); }} style={{ marginTop: 16 }}>
-                Create an account instead
-              </button>
+          <div className="onboarding-step single-question" key="login">
+            <div className="welcome-icon">
+              <AgapeCross size={56} strokeWidth={1.2} />
             </div>
-          ) : (
-            <div className="onboarding-step single-question" key="login-verify">
-              <div className="welcome-icon">
-                <AgapeCross size={56} strokeWidth={1.2} />
-              </div>
-              <h2>Enter your code</h2>
-              <p style={{ fontSize: 14, color: "#8C857C", marginBottom: 16 }}>Sent to {loginPhone}</p>
-              <input
-                type="text"
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                maxLength={6}
-                value={loginOtp}
-                onChange={(e) => {
-                  const val = e.target.value.replace(/\D/g, "");
-                  setLoginOtp(val);
-                  if (val.length === 6) handleLoginVerifyOtp(val);
-                }}
-                onKeyDown={(e) => e.key === "Enter" && loginOtp.length === 6 && handleLoginVerifyOtp()}
-                placeholder="000000"
-                className="onboarding-input"
-                style={{ textAlign: "center", fontSize: 28, letterSpacing: 12, fontWeight: 700 }}
-                autoFocus
-              />
-              {loginError && <p className="onboarding-error">{loginError}</p>}
-              {loginOtp.length === 6 && (
-                <button className="onboarding-cta" onClick={() => handleLoginVerifyOtp()} disabled={submitting}>
-                  {submitting ? "Verifying..." : "Verify"}
-                </button>
-              )}
-              <button className="skip-btn-text" onClick={() => { setLoginOtpSent(false); setLoginOtp(""); setLoginError(""); }} style={{ marginTop: 12 }}>
-                Change number
+            <h2>Welcome back</h2>
+            <p style={{ fontSize: 14, color: "#8C857C", marginBottom: 16 }}>Sign in with your phone number and password</p>
+            <input
+              type="tel"
+              value={loginPhone}
+              onChange={(e) => setLoginPhone(e.target.value)}
+              placeholder="+48 123 456 789"
+              className="onboarding-input"
+              autoComplete="tel"
+              autoFocus
+            />
+            <input
+              type="password"
+              value={loginPassword}
+              onChange={(e) => setLoginPassword(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleLoginSubmit()}
+              placeholder="Password"
+              className="onboarding-input"
+              autoComplete="current-password"
+              style={{ marginTop: 8 }}
+            />
+            {loginError && <p className="onboarding-error">{loginError}</p>}
+            {loginPhone.length >= 10 && loginPassword.length >= 6 && (
+              <button
+                className="onboarding-cta"
+                onClick={handleLoginSubmit}
+                disabled={submitting}
+              >
+                {submitting ? "Signing in..." : "Sign in"}
               </button>
-            </div>
-          )}
+            )}
+            <button className="skip-btn-text" onClick={() => { track("login_switch_to_signup"); setMode("signup"); setLoginError(""); }} style={{ marginTop: 16 }}>
+              Create an account instead
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -517,6 +487,39 @@ export default function Onboarding() {
             <button className="skip-btn-text" onClick={() => { setStep(step - 1); setOtpCode(""); setOtpError(""); setOtpSent(false); }} style={{ marginTop: 12 }}>
               Change number
             </button>
+          </div>
+        )}
+
+        {currentStep === "password" && (
+          <div className="onboarding-step single-question" key="password">
+            <h2>Create a password</h2>
+            <p style={{ fontSize: 14, color: "#8C857C", marginBottom: 16 }}>You'll use this to sign in next time</p>
+            <input
+              ref={inputRef}
+              type="password"
+              value={password}
+              onChange={(e) => { setPassword(e.target.value); setPasswordError(""); }}
+              placeholder="Password (min. 6 characters)"
+              className="onboarding-input"
+              autoComplete="new-password"
+              autoFocus
+            />
+            <input
+              type="password"
+              value={passwordConfirm}
+              onChange={(e) => { setPasswordConfirm(e.target.value); setPasswordError(""); }}
+              onKeyDown={(e) => e.key === "Enter" && canProceed() && handleSetPassword()}
+              placeholder="Confirm password"
+              className="onboarding-input"
+              autoComplete="new-password"
+              style={{ marginTop: 8 }}
+            />
+            {passwordError && <p className="onboarding-error">{passwordError}</p>}
+            {canProceed() && (
+              <button className="onboarding-cta" onClick={handleSetPassword} disabled={submitting}>
+                {submitting ? "Setting password..." : "Continue"} {!submitting && <ChevronRight size={18} />}
+              </button>
+            )}
           </div>
         )}
 

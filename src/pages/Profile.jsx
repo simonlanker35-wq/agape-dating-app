@@ -1137,15 +1137,7 @@ export default function Profile() {
           {/* Photos — only visible after clicking hero photo */}
           {editPhotos && (
           <div ref={photosRef} style={{ borderRadius: 16, padding: 16, background: C.card, border: `1px solid ${C.border}` }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-              <p style={{ fontSize: 10, fontWeight: 600, color: C.primary, textTransform: "uppercase", letterSpacing: "0.1em" }}>My Photos</p>
-              <button
-                onClick={() => setEditPhotos(false)}
-                style={{ fontSize: 12, fontWeight: 600, color: "#EF4444", background: "none", border: "none", cursor: "pointer" }}
-              >
-                Done
-              </button>
-            </div>
+            <p style={{ fontSize: 10, fontWeight: 600, color: C.primary, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 12 }}>My Photos</p>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
               {photos.slice(0, 4).map((url, i) => (
                 <div key={i} style={{ position: "relative", aspectRatio: "3/4", borderRadius: 12, overflow: "hidden", border: i === 0 ? `2px solid ${C.primary}` : `1px solid ${C.border}` }}>
@@ -1253,6 +1245,12 @@ export default function Profile() {
               </div>
             </div>
             <input ref={fileInputRef} type="file" accept="image/*" onChange={handleAddPhoto} style={{ display: "none" }} />
+            <button
+              onClick={() => setEditPhotos(false)}
+              style={{ width: "100%", marginTop: 12, padding: "14px 0", borderRadius: 12, background: C.primary, color: "white", border: "none", cursor: "pointer", fontSize: 15, fontWeight: 700, letterSpacing: "0.02em" }}
+            >
+              Done
+            </button>
           </div>
           )}
 
@@ -1522,10 +1520,10 @@ export default function Profile() {
       {/* Photo crop modal */}
       {cropSrc && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.9)", zIndex: 9999, display: "flex", flexDirection: "column" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 16px" }}>
-            <button onClick={() => { track("photo_crop_cancelled"); setCropSrc(null); setCropIdx(null); }} style={{ fontSize: 14, fontWeight: 600, color: "white", background: "none", border: "none", cursor: "pointer" }}>Cancel</button>
-            <p style={{ fontSize: 14, fontWeight: 700, color: "white" }}>Crop Photo</p>
-            <button onClick={saveCrop} disabled={uploading} style={{ fontSize: 14, fontWeight: 700, color: uploading ? "#666" : "#4ADE80", background: "none", border: "none", cursor: "pointer" }}>{uploading ? "Saving..." : "Save"}</button>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 16px", paddingTop: "max(16px, env(safe-area-inset-top, 48px))" }}>
+            <button onClick={() => { track("photo_crop_cancelled"); setCropSrc(null); setCropIdx(null); }} style={{ fontSize: 16, fontWeight: 600, color: "white", background: "none", border: "none", cursor: "pointer", padding: "8px 4px" }}>Cancel</button>
+            <p style={{ fontSize: 16, fontWeight: 700, color: "white" }}>Crop Photo</p>
+            <button onClick={saveCrop} disabled={uploading} style={{ fontSize: 16, fontWeight: 700, color: uploading ? "#666" : "#4ADE80", background: "none", border: "none", cursor: "pointer", padding: "8px 4px" }}>{uploading ? "Saving..." : "Save"}</button>
           </div>
           <div
             style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", touchAction: "none" }}

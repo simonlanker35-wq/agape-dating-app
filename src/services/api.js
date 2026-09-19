@@ -50,6 +50,26 @@ export async function verifyOtp(phone, token) {
   return data;
 }
 
+export async function setPassword(password) {
+  const { data, error } = await supabase.auth.updateUser({ password });
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export async function loginWithPhone(phone, password) {
+  const { data, error } = await supabase.auth.signInWithPassword({ phone, password });
+  if (error) throw new Error(error.message);
+
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("*")
+    .eq("id", data.user.id)
+    .single();
+  if (profileError) throw new Error(profileError.message);
+
+  return mapProfileToUser(profile);
+}
+
 export async function checkProfileExists() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return false;
