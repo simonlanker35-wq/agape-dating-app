@@ -321,9 +321,6 @@ export default function Discover() {
                   )}
                 </div>
                 <div className="prompt-side-actions">
-                  <button className="mini-btn prompt-skip" onClick={handleSkip}>
-                    <X size={13} />
-                  </button>
                   <button className="mini-btn prompt-heart" onClick={() => onHeartPress("prompt", i)}>
                     <Heart size={13} fill="white" stroke="white" />
                   </button>
