@@ -243,18 +243,23 @@ export default function Discover() {
               </div>
             )}
 
-            {/* Shield + filter icons */}
+            {/* Top overlay: skip left, shield + filter right */}
             <div className="photo-overlay-icons">
-              <button className="photo-overlay-btn" onClick={() => setShowReport(true)}>
-                <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2.5}>
-                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                </svg>
+              <button className="photo-overlay-btn discover-skip-btn" onClick={handleSkip}>
+                <X size={18} strokeWidth={2.5} />
               </button>
-              <button className="photo-overlay-btn" onClick={() => setShowFilter(true)}>
-                <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2}>
-                  <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
-                </svg>
-              </button>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button className="photo-overlay-btn" onClick={() => setShowReport(true)}>
+                  <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2.5}>
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                  </svg>
+                </button>
+                <button className="photo-overlay-btn" onClick={() => setShowFilter(true)}>
+                  <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2}>
+                    <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+                  </svg>
+                </button>
+              </div>
             </div>
 
             {/* Tap zones for photo navigation */}
@@ -299,16 +304,6 @@ export default function Discover() {
               </div>
             </div>
           </div>
-        </div>
-
-        {/* Action buttons — X left, Heart right */}
-        <div className="discover-actions">
-          <button className="discover-action-btn discover-skip" onClick={handleSkip}>
-            <X size={26} strokeWidth={2.5} />
-          </button>
-          <button className="discover-action-btn discover-heart" onClick={() => onHeartPress("profile", 0)}>
-            <Heart size={26} fill="white" stroke="white" />
-          </button>
         </div>
 
         {/* Prompts — white sheet with rounded top overlapping photo */}
