@@ -12,6 +12,40 @@ const C = { bg: "#FFFFFF", card: "#FAFAF8", surface: "#F4F2EE", primary: "#B8912
 const FONT = "'Outfit', system-ui, sans-serif";
 const SERIF = "'Lora', Georgia, serif";
 
+const si = (d, size = 18) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={C.sub} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">{d}</svg>;
+const I = {
+  heart:     si(<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>),
+  heartFill: si(<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" fill={C.sub}/>),
+  dove:      si(<><path d="M18 2c-2 0-3.5 1-4 2.5L12 10l-4-4-4 2 6 6-2 4 4-2 4.5-4.5C18 10 20 8 20 5c0-1.5-.5-3-2-3z"/><path d="M2 22l4-4"/></>),
+  msg:       si(<><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></>),
+  pray:      si(<><path d="M12 2v4M8 6l1.5 3M16 6l-1.5 3M9.5 9h5l1 6h-7l1-6zM10 15v5M14 15v5"/></>),
+  check:     si(<><polyline points="20 6 9 17 4 12"/></>),
+  mapPin:    si(<><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></>),
+  eye:       si(<><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></>),
+  cross:     si(<><path d="M12 2v20M7 7h10"/></>),
+  globe:     si(<><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></>),
+  ban:       si(<><circle cx="12" cy="12" r="10"/><path d="M4.93 4.93l14.14 14.14"/></>),
+  flag:      si(<><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></>),
+  pause:     si(<><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></>),
+  mail:      si(<><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22 6 12 13 2 6"/></>),
+  bug:       si(<><path d="M8 2l1.88 1.88M16 2l-1.88 1.88M9 7.13v-1a3 3 0 0 1 6 0v1"/><path d="M5 10H3M21 10h-2M5 14H3M21 14h-2"/><rect x="7" y="7" width="10" height="13" rx="2"/></>),
+  bulb:      si(<><path d="M9 18h6M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/></>),
+  star:      si(<><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></>),
+  user:      si(<><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></>),
+  phone:     si(<><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></>),
+  cake:      si(<><path d="M20 21v-8a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8"/><path d="M4 16s.5-1 2-1 2.5 2 4 2 2.5-2 4-2 2.5 2 4 2 2-1 2-1"/><path d="M2 21h20"/><path d="M7 8v3M12 8v3M17 8v3"/><path d="M7 4h.01M12 4h.01M17 4h.01"/></>),
+  bell:      si(<><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></>),
+  lock:      si(<><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></>),
+  shield:    si(<><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></>),
+  list:      si(<><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></>),
+  sparkle:   si(<><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" fill={C.primary} stroke={C.primary}/></>),
+  card:      si(<><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></>),
+  file:      si(<><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></>),
+  keyhole:   si(<><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/><circle cx="12" cy="16" r="1"/></>),
+  logout:    si(<><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></>),
+  trash:     si(<><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></>),
+};
+
 function BackIcon() {
   return (
     <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
@@ -56,7 +90,7 @@ function Toggle({ on, onToggle }) {
 function SettingsRow({ icon, label, sub, onPress, danger, toggle }) {
   const inner = (
     <>
-      <span style={{ fontSize: 18, width: 28, textAlign: "center", flexShrink: 0 }}>{icon}</span>
+      <span style={{ fontSize: 18, width: 28, textAlign: "center", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>{icon}</span>
       <div style={{ flex: 1, minWidth: 0 }}>
         <p style={{ fontSize: 14, fontWeight: 500, color: danger ? "#EF4444" : C.text, margin: 0 }}>{label}</p>
         {sub && <p style={{ fontSize: 12, color: C.sub, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sub}</p>}
@@ -311,16 +345,16 @@ function SettingsScreen({ onBack, initialSection = null }) {
               <div>
                 <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: C.sub, padding: "0 4px", marginBottom: 8 }}>Match & Like alerts</p>
                 <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
-                  <SettingsRow icon="💛" label="New matches" toggle={{ on: notifs.matches, onToggle: () => { track("notification_toggled", { type: "matches", enabled: !notifs.matches }); toggle(notifs, "matches", setNotifs); } }} />
-                  <SettingsRow icon="❤️" label="New likes" toggle={{ on: notifs.likes, onToggle: () => { track("notification_toggled", { type: "likes", enabled: !notifs.likes }); toggle(notifs, "likes", setNotifs); } }} />
-                  <SettingsRow icon="🕊️" label="Doves received" toggle={{ on: notifs.doves, onToggle: () => { track("notification_toggled", { type: "doves", enabled: !notifs.doves }); toggle(notifs, "doves", setNotifs); } }} />
+                  <SettingsRow icon={I.heart} label="New matches" toggle={{ on: notifs.matches, onToggle: () => { track("notification_toggled", { type: "matches", enabled: !notifs.matches }); toggle(notifs, "matches", setNotifs); } }} />
+                  <SettingsRow icon={I.heartFill} label="New likes" toggle={{ on: notifs.likes, onToggle: () => { track("notification_toggled", { type: "likes", enabled: !notifs.likes }); toggle(notifs, "likes", setNotifs); } }} />
+                  <SettingsRow icon={I.dove} label="Doves received" toggle={{ on: notifs.doves, onToggle: () => { track("notification_toggled", { type: "doves", enabled: !notifs.doves }); toggle(notifs, "doves", setNotifs); } }} />
                 </div>
               </div>
               <div>
                 <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: C.sub, padding: "0 4px", marginBottom: 8 }}>Message alerts</p>
                 <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
-                  <SettingsRow icon="💬" label="New messages" toggle={{ on: notifs.messages, onToggle: () => { track("notification_toggled", { type: "messages", enabled: !notifs.messages }); toggle(notifs, "messages", setNotifs); } }} />
-                  <SettingsRow icon="🙏" label="Prompt comments" toggle={{ on: notifs.prompts, onToggle: () => { track("notification_toggled", { type: "prompts", enabled: !notifs.prompts }); toggle(notifs, "prompts", setNotifs); } }} />
+                  <SettingsRow icon={I.msg} label="New messages" toggle={{ on: notifs.messages, onToggle: () => { track("notification_toggled", { type: "messages", enabled: !notifs.messages }); toggle(notifs, "messages", setNotifs); } }} />
+                  <SettingsRow icon={I.pray} label="Prompt comments" toggle={{ on: notifs.prompts, onToggle: () => { track("notification_toggled", { type: "prompts", enabled: !notifs.prompts }); toggle(notifs, "prompts", setNotifs); } }} />
                 </div>
               </div>
             </>
@@ -330,14 +364,14 @@ function SettingsScreen({ onBack, initialSection = null }) {
               <div>
                 <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: C.sub, padding: "0 4px", marginBottom: 8 }}>Visibility</p>
                 <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
-                  <SettingsRow icon="✓" label="Read receipts" sub="Let matches see when you've read messages" toggle={{ on: privacy.readReceipts, onToggle: () => { track("privacy_toggled", { type: "read_receipts", enabled: !privacy.readReceipts }); toggle(privacy, "readReceipts", setPrivacy); } }} />
-                  <SettingsRow icon="📍" label="Show distance" toggle={{ on: privacy.showDistance, onToggle: () => { track("privacy_toggled", { type: "show_distance", enabled: !privacy.showDistance }); toggle(privacy, "showDistance", setPrivacy); } }} />
+                  <SettingsRow icon={I.check} label="Read receipts" sub="Let matches see when you've read messages" toggle={{ on: privacy.readReceipts, onToggle: () => { track("privacy_toggled", { type: "read_receipts", enabled: !privacy.readReceipts }); toggle(privacy, "readReceipts", setPrivacy); } }} />
+                  <SettingsRow icon={I.mapPin} label="Show distance" toggle={{ on: privacy.showDistance, onToggle: () => { track("privacy_toggled", { type: "show_distance", enabled: !privacy.showDistance }); toggle(privacy, "showDistance", setPrivacy); } }} />
                 </div>
               </div>
               <div>
                 <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: C.sub, padding: "0 4px", marginBottom: 8 }}>Browse mode</p>
                 <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
-                  <SettingsRow icon="🕵️" label="Incognito mode" sub="Only people you like can see you" toggle={{ on: privacy.incognito, onToggle: () => { track("privacy_toggled", { type: "incognito", enabled: !privacy.incognito }); toggle(privacy, "incognito", setPrivacy); } }} />
+                  <SettingsRow icon={I.eye} label="Incognito mode" sub="Only people you like can see you" toggle={{ on: privacy.incognito, onToggle: () => { track("privacy_toggled", { type: "incognito", enabled: !privacy.incognito }); toggle(privacy, "incognito", setPrivacy); } }} />
                 </div>
               </div>
             </>
@@ -347,13 +381,13 @@ function SettingsScreen({ onBack, initialSection = null }) {
               <div>
                 <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: C.sub, padding: "0 4px", marginBottom: 8 }}>Who you see</p>
                 <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
-                  <SettingsRow icon="✝️" label="Show same faith only" sub={`Only show ${currentUser.denomination || "your denomination"}`} toggle={{ on: faithPref.sameOnly, onToggle: () => {
+                  <SettingsRow icon={I.cross} label="Show same faith only" sub={`Only show ${currentUser.denomination || "your denomination"}`} toggle={{ on: faithPref.sameOnly, onToggle: () => {
                     const newVal = !faithPref.sameOnly;
                     track("faith_pref_toggled", { type: "same_only", enabled: newVal });
                     setFaithPref({ sameOnly: newVal, openToAll: !newVal });
                     dispatch({ type: "UPDATE_FILTERS", payload: { denominations: newVal ? [currentUser.denomination] : [] } });
                   } }} />
-                  <SettingsRow icon="🌍" label="Open to all Christians" sub="Any denomination welcome" toggle={{ on: faithPref.openToAll, onToggle: () => {
+                  <SettingsRow icon={I.globe} label="Open to all Christians" sub="Any denomination welcome" toggle={{ on: faithPref.openToAll, onToggle: () => {
                     const newVal = !faithPref.openToAll;
                     track("faith_pref_toggled", { type: "open_to_all", enabled: newVal });
                     setFaithPref({ sameOnly: !newVal, openToAll: newVal });
@@ -375,9 +409,9 @@ function SettingsScreen({ onBack, initialSection = null }) {
               <div>
                 <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: C.sub, padding: "0 4px", marginBottom: 8 }}>Tools</p>
                 <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
-                  <SettingsRow icon="🚫" label="Blocked users" sub="Manage blocked profiles" onPress={() => setSection("blocked")} />
-                  <SettingsRow icon="🚩" label="Reports submitted" sub="View your reports" onPress={() => setSection("reports")} />
-                  <SettingsRow icon="📵" label="Pause my profile" sub={paused ? "Your profile is hidden" : "Temporarily hide your profile"} toggle={{ on: paused, onToggle: () => { track("profile_paused_toggled", { paused: !paused }); setPaused((p) => !p); } }} />
+                  <SettingsRow icon={I.ban} label="Blocked users" sub="Manage blocked profiles" onPress={() => setSection("blocked")} />
+                  <SettingsRow icon={I.flag} label="Reports submitted" sub="View your reports" onPress={() => setSection("reports")} />
+                  <SettingsRow icon={I.pause} label="Pause my profile" sub={paused ? "Your profile is hidden" : "Temporarily hide your profile"} toggle={{ on: paused, onToggle: () => { track("profile_paused_toggled", { paused: !paused }); setPaused((p) => !p); } }} />
                 </div>
               </div>
             </>
@@ -459,12 +493,12 @@ function SettingsScreen({ onBack, initialSection = null }) {
           {section === "guidelines" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               {[
-                { icon: "🤝", title: "Be respectful", text: "Treat everyone with kindness and dignity. Harassment, hate speech, and discrimination are never tolerated." },
-                { icon: "✝️", title: "Honour your faith", text: "This is a faith-based community. Be authentic about who you are and what you believe." },
-                { icon: "📸", title: "Be genuine", text: "Use recent photos of yourself. No fake profiles, catfishing, or misleading information." },
-                { icon: "🔒", title: "Protect your privacy", text: "Don't share personal information like your address, financial details, or passwords with anyone." },
-                { icon: "🚫", title: "No inappropriate content", text: "Keep conversations respectful. Explicit, vulgar, or offensive content will result in a ban." },
-                { icon: "🛡️", title: "Report concerns", text: "If someone makes you feel uncomfortable or unsafe, use the report feature. We review every report." },
+                { icon: I.heart, title: "Be respectful", text: "Treat everyone with kindness and dignity. Harassment, hate speech, and discrimination are never tolerated." },
+                { icon: I.cross, title: "Honour your faith", text: "This is a faith-based community. Be authentic about who you are and what you believe." },
+                { icon: I.user, title: "Be genuine", text: "Use recent photos of yourself. No fake profiles, catfishing, or misleading information." },
+                { icon: I.lock, title: "Protect your privacy", text: "Don't share personal information like your address, financial details, or passwords with anyone." },
+                { icon: I.ban, title: "No inappropriate content", text: "Keep conversations respectful. Explicit, vulgar, or offensive content will result in a ban." },
+                { icon: I.shield, title: "Report concerns", text: "If someone makes you feel uncomfortable or unsafe, use the report feature. We review every report." },
               ].map((item) => (
                 <div key={item.title} style={{ borderRadius: 16, padding: 16, background: C.card, display: "flex", gap: 12 }}>
                   <span style={{ fontSize: 24, flexShrink: 0 }}>{item.icon}</span>
@@ -482,16 +516,16 @@ function SettingsScreen({ onBack, initialSection = null }) {
           {section === "help" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
-                <SettingsRow icon="📧" label="Email us" sub="agape_dating@outlook.com" onPress={() => { track("help_email_tapped"); window.location.href = "mailto:agape_dating@outlook.com"; }} />
+                <SettingsRow icon={I.mail} label="Email us" sub="agape_dating@outlook.com" onPress={() => { track("help_email_tapped"); window.location.href = "mailto:agape_dating@outlook.com"; }} />
               </div>
               <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
-                <SettingsRow icon="🐛" label="Report a bug" sub="Help us improve the app" onPress={() => { track("help_report_bug_tapped"); window.location.href = "mailto:agape_dating@outlook.com?subject=Bug%20Report"; }} />
+                <SettingsRow icon={I.bug} label="Report a bug" sub="Help us improve the app" onPress={() => { track("help_report_bug_tapped"); window.location.href = "mailto:agape_dating@outlook.com?subject=Bug%20Report"; }} />
               </div>
               <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
-                <SettingsRow icon="💡" label="Suggest a feature" sub="We'd love to hear your ideas" onPress={() => { track("help_suggest_feature_tapped"); window.location.href = "mailto:agape_dating@outlook.com?subject=Feature%20Suggestion"; }} />
+                <SettingsRow icon={I.bulb} label="Suggest a feature" sub="We'd love to hear your ideas" onPress={() => { track("help_suggest_feature_tapped"); window.location.href = "mailto:agape_dating@outlook.com?subject=Feature%20Suggestion"; }} />
               </div>
               <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
-                <SettingsRow icon="⭐" label="Rate Agape" sub="Leave a review on the App Store" onPress={() => { track("help_rate_app_tapped"); }} />
+                <SettingsRow icon={I.star} label="Rate Agape" sub="Leave a review on the App Store" onPress={() => { track("help_rate_app_tapped"); }} />
               </div>
             </div>
           )}
@@ -538,7 +572,7 @@ function SettingsScreen({ onBack, initialSection = null }) {
               <div>
                 <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: C.sub, padding: "0 4px", marginBottom: 8 }}>My location</p>
                 <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
-                  <SettingsRow icon="📍" label="Current location" sub={currentUser?.location?.city || "Not set"} onPress={() => { setEditField("location"); setEditValue(currentUser?.location?.city || ""); }} />
+                  <SettingsRow icon={I.mapPin} label="Current location" sub={currentUser?.location?.city || "Not set"} onPress={() => { setEditField("location"); setEditValue(currentUser?.location?.city || ""); }} />
                 </div>
                 {editField === "location" && (
                   <div style={{ borderRadius: 16, padding: 16, background: C.card, marginTop: 8 }}>
@@ -575,10 +609,10 @@ function SettingsScreen({ onBack, initialSection = null }) {
               <div>
                 <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: C.sub, padding: "0 4px", marginBottom: 8 }}>Personal details</p>
                 <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
-                  <SettingsRow icon="👤" label="Name" sub={currentUser?.name || "Not set"} onPress={() => { setEditField("name"); setEditValue(currentUser?.name || ""); }} />
-                  <SettingsRow icon="📱" label="Phone" sub={state.currentUser?.phone || "Not set"} />
-                  <SettingsRow icon="🎂" label="Age" sub={currentUser?.age ? `${currentUser.age} years old` : "Not set"} onPress={() => { setEditField("age"); setEditValue(String(currentUser?.age || "")); }} />
-                  <SettingsRow icon="✝️" label="Denomination" sub={currentUser?.denomination || "Not set"} onPress={() => { setEditField("denomination"); setEditValue(currentUser?.denomination || ""); }} />
+                  <SettingsRow icon={I.user} label="Name" sub={currentUser?.name || "Not set"} onPress={() => { setEditField("name"); setEditValue(currentUser?.name || ""); }} />
+                  <SettingsRow icon={I.phone} label="Phone" sub={state.currentUser?.phone || "Not set"} />
+                  <SettingsRow icon={I.cake} label="Age" sub={currentUser?.age ? `${currentUser.age} years old` : "Not set"} onPress={() => { setEditField("age"); setEditValue(String(currentUser?.age || "")); }} />
+                  <SettingsRow icon={I.cross} label="Denomination" sub={currentUser?.denomination || "Not set"} onPress={() => { setEditField("denomination"); setEditValue(currentUser?.denomination || ""); }} />
                 </div>
               </div>
               {editField && (
@@ -646,48 +680,48 @@ function SettingsScreen({ onBack, initialSection = null }) {
         <div>
           <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: C.sub, padding: "0 4px", marginBottom: 8 }}>Account</p>
           <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
-            <SettingsRow icon="👤" label="Personal info" sub="Name, phone, denomination" onPress={() => setSection("account")} />
-            <SettingsRow icon="🙏" label="Faith preferences" sub="Denomination, values" onPress={() => setSection("faith")} />
-            <SettingsRow icon="📍" label="Location" sub="Distance, visibility" onPress={() => setSection("location")} />
+            <SettingsRow icon={I.user} label="Personal info" sub="Name, phone, denomination" onPress={() => setSection("account")} />
+            <SettingsRow icon={I.cross} label="Faith preferences" sub="Denomination, values" onPress={() => setSection("faith")} />
+            <SettingsRow icon={I.mapPin} label="Location" sub="Distance, visibility" onPress={() => setSection("location")} />
           </div>
         </div>
         <div>
           <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: C.sub, padding: "0 4px", marginBottom: 8 }}>Notifications</p>
           <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
-            <SettingsRow icon="🔔" label="Push notifications" onPress={() => setSection("notifications")} />
+            <SettingsRow icon={I.bell} label="Push notifications" onPress={() => setSection("notifications")} />
           </div>
         </div>
         <div>
           <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: C.sub, padding: "0 4px", marginBottom: 8 }}>Privacy</p>
           <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
-            <SettingsRow icon="🔒" label="Privacy settings" sub="Read receipts, visibility" onPress={() => setSection("privacy")} />
+            <SettingsRow icon={I.lock} label="Privacy settings" sub="Read receipts, visibility" onPress={() => setSection("privacy")} />
           </div>
         </div>
         <div>
           <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: C.sub, padding: "0 4px", marginBottom: 8 }}>Safety</p>
           <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
-            <SettingsRow icon="🛡️" label="Safety centre" sub="Block list, reports, tips" onPress={() => setSection("safety")} />
-            <SettingsRow icon="📋" label="Community guidelines" onPress={() => setSection("guidelines")} />
+            <SettingsRow icon={I.shield} label="Safety centre" sub="Block list, reports, tips" onPress={() => setSection("safety")} />
+            <SettingsRow icon={I.list} label="Community guidelines" onPress={() => setSection("guidelines")} />
           </div>
         </div>
         <div>
           <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: C.sub, padding: "0 4px", marginBottom: 8 }}>Subscription</p>
           <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
-            <SettingsRow icon="✨" label="Agape+" sub={state.currentUser?.subscriptionStatus === "active" ? "Active" : "Not subscribed"} onPress={() => setSection("subscription")} />
-            <SettingsRow icon="💳" label="Billing & payments" onPress={() => setSection("billing")} />
+            <SettingsRow icon={I.sparkle} label="Agape+" sub={state.currentUser?.subscriptionStatus === "active" ? "Active" : "Not subscribed"} onPress={() => setSection("subscription")} />
+            <SettingsRow icon={I.card} label="Billing & payments" onPress={() => setSection("billing")} />
           </div>
         </div>
         <div>
           <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: C.sub, padding: "0 4px", marginBottom: 8 }}>Support</p>
           <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
-            <SettingsRow icon="💬" label="Help & feedback" onPress={() => setSection("help")} />
-            <SettingsRow icon="📄" label="Terms of service" onPress={() => setSection("terms")} />
-            <SettingsRow icon="🔐" label="Privacy policy" onPress={() => setSection("privacypolicy")} />
+            <SettingsRow icon={I.msg} label="Help & feedback" onPress={() => setSection("help")} />
+            <SettingsRow icon={I.file} label="Terms of service" onPress={() => setSection("terms")} />
+            <SettingsRow icon={I.keyhole} label="Privacy policy" onPress={() => setSection("privacypolicy")} />
           </div>
         </div>
         <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
-          <SettingsRow icon="🚪" label="Log out" danger onPress={() => { track("logout"); actions.logout(); }} />
-          <SettingsRow icon="🗑️" label="Delete account" danger onPress={() => { track("delete_account_tapped"); setShowDeleteConfirm(true); }} />
+          <SettingsRow icon={I.logout} label="Log out" danger onPress={() => { track("logout"); actions.logout(); }} />
+          <SettingsRow icon={I.trash} label="Delete account" danger onPress={() => { track("delete_account_tapped"); setShowDeleteConfirm(true); }} />
         </div>
         {showDeleteConfirm && (
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
@@ -1407,10 +1441,10 @@ export default function Profile() {
           <div style={{ marginTop: 4 }}>
             <p style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em", color: C.sub, padding: "0 4px", marginBottom: 8 }}>Account</p>
             {[
-              { icon: "🔔", label: "Notifications", section: "notifications" },
-              { icon: "🙏", label: "Faith Preferences", section: "faith" },
-              { icon: "📍", label: "Location & Distance", section: "location" },
-              { icon: "💳", label: "Subscription", section: "subscription" },
+              { icon: I.bell, label: "Notifications", section: "notifications" },
+              { icon: I.cross, label: "Faith Preferences", section: "faith" },
+              { icon: I.mapPin, label: "Location & Distance", section: "location" },
+              { icon: I.card, label: "Subscription", section: "subscription" },
             ].map((item) => (
               <div
                 key={item.label}
@@ -1454,9 +1488,9 @@ export default function Profile() {
           <div>
             <p style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em", color: C.sub, padding: "0 4px", marginBottom: 8 }}>Safety & Privacy</p>
             {[
-              { icon: "🛡️", label: "Safety Centre", section: "safety" },
-              { icon: "🔒", label: "Privacy", section: "privacy" },
-              { icon: "🚫", label: "Blocked Profiles", section: "safety" },
+              { icon: I.shield, label: "Safety Centre", section: "safety" },
+              { icon: I.lock, label: "Privacy", section: "privacy" },
+              { icon: I.ban, label: "Blocked Profiles", section: "safety" },
             ].map((item) => (
               <div
                 key={item.label}
