@@ -8,6 +8,7 @@ import { track } from "../services/posthog";
 
 const STEPS = [
   "welcome",
+  "value_prop",
   "consent",
   "phone",
   "verify",
@@ -246,6 +247,7 @@ export default function Onboarding() {
   const canProceed = () => {
     switch (currentStep) {
       case "welcome": return true;
+      case "value_prop": return true;
       case "consent": return faithConsent;
       case "name": return form.name.trim().length > 0;
       case "phone": return phone.length >= 10;
@@ -370,6 +372,39 @@ export default function Onboarding() {
             Sign in
           </button>
           <p className="welcome-terms">By continuing you agree to our Terms & Privacy Policy</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (currentStep === "value_prop") {
+    const features = [
+      { icon: "✝️", title: "Faith First", desc: "Everyone here shares your Christian values" },
+      { icon: "🕊️", title: "Intentional Dating", desc: "3-day deadline to ask her on a date — no endless chatting" },
+      { icon: "📸", title: "Verified Profiles", desc: "Church & Bible selfies prove you're real" },
+      { icon: "🤝", title: "Real Commitment", desc: "Designed for serious relationships, not hookups" },
+    ];
+    return (
+      <div className="welcome-step" style={{ justifyContent: "center" }}>
+        <div style={{ padding: "0 28px", maxWidth: 430, margin: "0 auto", width: "100%" }}>
+          <h2 style={{ fontSize: 24, fontWeight: 800, color: "#1A1612", textAlign: "center", marginBottom: 8, fontFamily: "'Outfit', system-ui, sans-serif" }}>Why Agape?</h2>
+          <p style={{ fontSize: 14, color: "#8C857C", textAlign: "center", marginBottom: 28 }}>What makes us different</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            {features.map((f, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, background: "white", borderRadius: 14, padding: "14px 16px", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
+                <span style={{ fontSize: 28, flexShrink: 0, width: 40, textAlign: "center" }}>{f.icon}</span>
+                <div>
+                  <p style={{ fontSize: 15, fontWeight: 700, color: "#1A1612", marginBottom: 2 }}>{f.title}</p>
+                  <p style={{ fontSize: 13, color: "#8C857C", lineHeight: 1.3 }}>{f.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="welcome-bottom" style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "0 28px 32px" }}>
+          <button className="onboarding-cta" onClick={goNext} style={{ width: "100%", maxWidth: 430, margin: "0 auto", display: "block" }}>
+            Continue
+          </button>
         </div>
       </div>
     );
