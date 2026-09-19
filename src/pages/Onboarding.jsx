@@ -134,8 +134,10 @@ export default function Onboarding() {
     setPasswordError("");
     try {
       await actions.setPassword(password);
+      track("password_set");
       goNext();
     } catch (err) {
+      track("password_set_failed", { error: err.message });
       setPasswordError(err.message);
     }
     setSubmitting(false);
@@ -196,6 +198,7 @@ export default function Onboarding() {
     setLoginError("");
     try {
       await actions.loginWithPhone(loginPhone, loginPassword);
+      track("login_success", { method: "phone" });
     } catch (err) {
       track("login_failed", { error: err.message });
       setLoginError(err.message);
