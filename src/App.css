@@ -1449,7 +1449,43 @@ input[type="range"] {
   font-size: 10px;
 }
 
-/* Stacked X + Heart on the right */
+/* Action bar — X left, Heart right */
+.discover-actions {
+  display: flex;
+  justify-content: center;
+  gap: 48px;
+  padding: 16px 0 8px;
+}
+
+.discover-action-btn {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.12s;
+}
+
+.discover-action-btn:active {
+  transform: scale(0.88);
+}
+
+.discover-skip {
+  background: var(--surface);
+  color: #999;
+  border: 2px solid var(--border);
+}
+
+.discover-heart {
+  background: var(--gold);
+  color: white;
+  box-shadow: 0 4px 16px rgba(184,145,42,0.4);
+}
+
+/* Stacked X + Heart on the right (legacy) */
 .id-actions {
   display: flex;
   flex-direction: column;

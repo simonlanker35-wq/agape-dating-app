@@ -293,20 +293,22 @@ export default function Discover() {
                   )}
                 </div>
               </div>
-              <div className="id-actions" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <div style={{ background: "rgba(0,0,0,0.5)", borderRadius: 20, padding: "4px 10px", display: "flex", alignItems: "center", gap: 4 }}>
-                  <Heart size={10} fill="white" stroke="white" />
-                  <span style={{ color: "white", fontSize: 11, fontWeight: 700, fontFamily: "'Outfit', system-ui, sans-serif" }}>{likesLeft}</span>
-                </div>
-                <button className="id-btn id-skip" onClick={handleSkip}>
-                  <X size={17} />
-                </button>
-                <button className="id-btn id-heart" onClick={() => onHeartPress("profile", 0)}>
-                  <Heart size={17} fill="white" stroke="white" />
-                </button>
+              <div style={{ background: "rgba(0,0,0,0.5)", borderRadius: 20, padding: "4px 10px", display: "flex", alignItems: "center", gap: 4 }}>
+                <Heart size={10} fill="white" stroke="white" />
+                <span style={{ color: "white", fontSize: 11, fontWeight: 700, fontFamily: "'Outfit', system-ui, sans-serif" }}>{likesLeft}</span>
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Action buttons — X left, Heart right */}
+        <div className="discover-actions">
+          <button className="discover-action-btn discover-skip" onClick={handleSkip}>
+            <X size={26} strokeWidth={2.5} />
+          </button>
+          <button className="discover-action-btn discover-heart" onClick={() => onHeartPress("profile", 0)}>
+            <Heart size={26} fill="white" stroke="white" />
+          </button>
         </div>
 
         {/* Prompts — white sheet with rounded top overlapping photo */}
