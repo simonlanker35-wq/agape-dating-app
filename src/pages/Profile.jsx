@@ -920,7 +920,7 @@ export default function Profile() {
       {/* Header — full bleed photo */}
       <div
         className="profile-hero-photo"
-        style={{ position: "relative", height: 260, flexShrink: 0, cursor: "pointer" }}
+        style={{ position: "relative", height: 380, flexShrink: 0, cursor: "pointer" }}
         onClick={() => { setEditPhotos((v) => { if (!v) setTimeout(() => photosRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 50); return !v; }); }}
       >
         <img
