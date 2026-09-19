@@ -1,46 +1,116 @@
 import { useState, useEffect, useRef } from "react";
 import { useApp } from "../context/AppContext";
 import { PROMPT_CATEGORIES, TRAITS_POOL, LOOKING_FOR_POOL, DENOMINATIONS } from "../data/profiles";
-import { ChevronRight, Sparkles, Church, X, Check } from "lucide-react";
+import { ChevronRight, ChevronLeft, Sparkles, Church, X, Check, Plus, Camera } from "lucide-react";
 import AgapeCross from "../components/AgapeCross";
 import LocationPicker from "../components/LocationPicker";
 import { track } from "../services/posthog";
 
 const STEPS = [
   "welcome",
-  "value_prop",
-  "consent",
   "phone",
   "verify",
   "password",
+  "consent",
+  "rules",
   "name",
-  "age",
-  "height",
+  "birthday",
   "gender",
   "denomination",
   "location",
+  "distance",
+  "lookingFor",
+  "whoAreYou",
+  "traits",
+  "photos",
   "prompt_faith",
   "prompt_future",
   "prompt_aboutme",
-  "traits",
-  "whoAreYou",
-  "lookingFor",
-  "preferences",
+  "lifestyle",
 ];
 
 const PROMPT_STEP_MAP = {
-  prompt_faith: { category: "Faith", label: "Faith", icon: "✝" },
-  prompt_future: { category: "Future", label: "Future", icon: "🌅" },
-  prompt_aboutme: { category: "About Me", label: "About Me", icon: "👋" },
+  prompt_faith: { category: "Faith", label: "Faith" },
+  prompt_future: { category: "Future", label: "Future" },
+  prompt_aboutme: { category: "About Me", label: "About Me" },
+};
+
+const COUNTRY_CODES = [
+  { code: "+48", flag: "🇵🇱", name: "Poland" },
+  { code: "+41", flag: "🇨🇭", name: "Switzerland" },
+  { code: "+49", flag: "🇩🇪", name: "Germany" },
+  { code: "+43", flag: "🇦🇹", name: "Austria" },
+  { code: "+44", flag: "🇬🇧", name: "UK" },
+  { code: "+33", flag: "🇫🇷", name: "France" },
+  { code: "+39", flag: "🇮🇹", name: "Italy" },
+  { code: "+34", flag: "🇪🇸", name: "Spain" },
+  { code: "+1", flag: "🇺🇸", name: "USA" },
+  { code: "+31", flag: "🇳🇱", name: "Netherlands" },
+  { code: "+46", flag: "🇸🇪", name: "Sweden" },
+  { code: "+47", flag: "🇳🇴", name: "Norway" },
+  { code: "+45", flag: "🇩🇰", name: "Denmark" },
+  { code: "+351", flag: "🇵🇹", name: "Portugal" },
+  { code: "+420", flag: "🇨🇿", name: "Czechia" },
+  { code: "+36", flag: "🇭🇺", name: "Hungary" },
+  { code: "+40", flag: "🇷🇴", name: "Romania" },
+  { code: "+359", flag: "🇧🇬", name: "Bulgaria" },
+  { code: "+385", flag: "🇭🇷", name: "Croatia" },
+  { code: "+421", flag: "🇸🇰", name: "Slovakia" },
+  { code: "+386", flag: "🇸🇮", name: "Slovenia" },
+  { code: "+370", flag: "🇱🇹", name: "Lithuania" },
+  { code: "+371", flag: "🇱🇻", name: "Latvia" },
+  { code: "+372", flag: "🇪🇪", name: "Estonia" },
+];
+
+const LOOKING_FOR_OPTIONS = [
+  { label: "Long-term partner", icon: "💍" },
+  { label: "Long-term, open to short", icon: "😊" },
+  { label: "Short-term, open to long", icon: "🥂" },
+  { label: "New friends", icon: "👋" },
+  { label: "Still figuring it out", icon: "🤔" },
+];
+
+const LIFESTYLE_CATEGORIES = [
+  {
+    label: "Exercise",
+    options: ["Active", "Sometimes", "Almost never"],
+  },
+  {
+    label: "Drinking",
+    options: ["Not for me", "Sober curious", "On special occasions", "Socially", "Most nights"],
+  },
+  {
+    label: "Smoking",
+    options: ["Non-smoker", "Social smoker", "Smoker when drinking", "Smoker"],
+  },
+  {
+    label: "Pets",
+    options: ["Dog", "Cat", "Fish", "Don't have but love", "Allergic", "Other", "Pet-free"],
+  },
+];
+
+const DEV_TEST = false;
+
+const S = {
+  bg: "#1A1612",
+  card: "#252118",
+  surface: "#2E281F",
+  primary: "#B8912A",
+  primarySoft: "rgba(184,145,42,0.15)",
+  text: "#F5F0E8",
+  sub: "#A39888",
+  border: "#3D362B",
+  white: "#FFFFFF",
 };
 
 export default function Onboarding() {
   const { actions } = useApp();
   const [step, setStep] = useState(0);
   const [mode, setMode] = useState("signup");
-  const [phone, setPhone] = useState("+48");
-  const [otpCode, setOtpCode] = useState("");
-  const [otpSent, setOtpSent] = useState(false);
+  const [countryCode, setCountryCode] = useState("+48");
+  const [phoneNum, setPhoneNum] = useState("");
+  const [showCountryPicker, setShowCountryPicker] = useState(false);
+  const [otpDigits, setOtpDigits] = useState(["", "", "", "", "", ""]);
   const [otpError, setOtpError] = useState("");
   const [signupError, setSignupError] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -50,10 +120,9 @@ export default function Onboarding() {
   const [loginPhone, setLoginPhone] = useState("+48");
   const [loginPassword, setLoginPassword] = useState("");
   const [loginError, setLoginError] = useState("");
-  const inputRef = useRef(null);
-  const answerRef = useRef(null);
   const [faithConsent, setFaithConsent] = useState(false);
   const [customDenom, setCustomDenom] = useState("");
+  const [showNameConfirm, setShowNameConfirm] = useState(false);
   const [promptSelections, setPromptSelections] = useState({
     Faith: { prompt: "", answer: "" },
     Future: { prompt: "", answer: "" },
@@ -62,26 +131,45 @@ export default function Onboarding() {
   const [editingAnswer, setEditingAnswer] = useState(false);
   const [form, setForm] = useState({
     name: "",
-    age: 25,
-    height: 170,
+    birthDay: "",
+    birthMonth: "",
+    birthYear: "",
     gender: "",
     denomination: "",
     job: "",
     school: "",
     location: "",
+    locationLat: null,
+    locationLng: null,
     traits: [],
     whoAreYou: [],
-    lookingFor: [],
-    maxAge: 35,
+    lookingFor: "",
     maxDistance: 30,
+    photos: [null, null, null, null, null, null],
+    lifestyle: {},
   });
 
+  const inputRef = useRef(null);
+  const answerRef = useRef(null);
+  const otpRefs = useRef([]);
+  const photoInputRef = useRef(null);
+  const [photoSlotIndex, setPhotoSlotIndex] = useState(null);
+
   const currentStep = STEPS[step];
+  const phone = countryCode + phoneNum;
+
+  const calcAge = () => {
+    const { birthDay, birthMonth, birthYear } = form;
+    if (!birthDay || !birthMonth || !birthYear || birthYear.length < 4) return null;
+    const d = parseInt(birthDay), m = parseInt(birthMonth), y = parseInt(birthYear);
+    const today = new Date();
+    let age = today.getFullYear() - y;
+    if (today.getMonth() + 1 < m || (today.getMonth() + 1 === m && today.getDate() < d)) age--;
+    return age;
+  };
 
   useEffect(() => {
-    if (inputRef.current) {
-      setTimeout(() => inputRef.current?.focus(), 100);
-    }
+    if (inputRef.current) setTimeout(() => inputRef.current?.focus(), 150);
   }, [step]);
 
   const goNext = () => {
@@ -94,12 +182,15 @@ export default function Onboarding() {
     }
   };
 
+  const goBack = () => {
+    if (step > 0) setStep(step - 1);
+  };
+
   const handleSendOtp = async () => {
     setSubmitting(true);
     setOtpError("");
     try {
       await actions.sendOtp(phone);
-      setOtpSent(true);
       goNext();
     } catch (err) {
       setOtpError(err.message);
@@ -108,7 +199,7 @@ export default function Onboarding() {
   };
 
   const handleVerifyOtp = async (code) => {
-    const codeToVerify = code || otpCode;
+    const codeToVerify = code || otpDigits.join("");
     if (codeToVerify.length !== 6) return;
     setSubmitting(true);
     setOtpError("");
@@ -122,15 +213,25 @@ export default function Onboarding() {
     setSubmitting(false);
   };
 
+  const handleOtpDigitChange = (index, value) => {
+    if (value.length > 1) value = value.slice(-1);
+    if (value && !/\d/.test(value)) return;
+    const next = [...otpDigits];
+    next[index] = value;
+    setOtpDigits(next);
+    if (value && index < 5) otpRefs.current[index + 1]?.focus();
+    if (next.every(d => d !== "")) handleVerifyOtp(next.join(""));
+  };
+
+  const handleOtpKeyDown = (index, e) => {
+    if (e.key === "Backspace" && !otpDigits[index] && index > 0) {
+      otpRefs.current[index - 1]?.focus();
+    }
+  };
+
   const handleSetPassword = async () => {
-    if (password.length < 6) {
-      setPasswordError("Password must be at least 6 characters");
-      return;
-    }
-    if (password !== passwordConfirm) {
-      setPasswordError("Passwords don't match");
-      return;
-    }
+    if (password.length < 6) { setPasswordError("Password must be at least 6 characters"); return; }
+    if (password !== passwordConfirm) { setPasswordError("Passwords don't match"); return; }
     setSubmitting(true);
     setPasswordError("");
     try {
@@ -148,43 +249,66 @@ export default function Onboarding() {
     if (currentStep !== "verify" || !("OTPCredential" in window)) return;
     const ac = new AbortController();
     navigator.credentials.get({ otp: { transport: ["sms"] }, signal: ac.signal })
-      .then((otp) => { if (otp?.code) { setOtpCode(otp.code); handleVerifyOtp(otp.code); } })
+      .then((otp) => {
+        if (otp?.code) {
+          const digits = otp.code.split("");
+          setOtpDigits(digits);
+          handleVerifyOtp(otp.code);
+        }
+      })
       .catch(() => {});
     return () => ac.abort();
   }, [currentStep]);
 
+  const handlePhotoUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file || photoSlotIndex === null) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const next = [...form.photos];
+      next[photoSlotIndex] = ev.target.result;
+      setForm({ ...form, photos: next });
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  };
+
   const finishOnboarding = async () => {
     setSubmitting(true);
     setSignupError("");
+    if (DEV_TEST) { console.log("DEV_TEST: would register", form); setSubmitting(false); alert("Onboarding complete! (dev test mode — no API call)"); return; }
     try {
       const prompts = Object.values(promptSelections).filter(p => p.prompt && p.answer);
+      const age = calcAge() || 25;
 
       await actions.register({
         phone,
         name: form.name,
-        age: form.age,
+        age,
         gender: form.gender,
         denomination: form.denomination,
       });
 
       await actions.updateProfile({
-        height: form.height,
         job: form.job || undefined,
         school: form.school || undefined,
-        location: form.location
+        location: form.locationLat
+          ? { type: "Point", coordinates: [form.locationLng, form.locationLat], city: form.location }
+          : form.location
           ? { type: "Point", coordinates: [8.65, 47.02], city: form.location }
           : undefined,
-        photos: [],
+        photos: form.photos.filter(Boolean),
         prompts,
         interests: form.traits,
         traits: form.traits,
         whoAreYou: form.whoAreYou,
-        lookingFor: form.lookingFor,
+        lookingFor: [form.lookingFor].filter(Boolean),
         filters: {
-          maxAge: form.maxAge,
+          maxAge: 35,
           minAge: 18,
           maxDistance: form.maxDistance,
         },
+        lifestyle: form.lifestyle,
       });
     } catch (err) {
       setSignupError(err.message);
@@ -205,13 +329,6 @@ export default function Onboarding() {
       setLoginError(err.message);
     }
     setSubmitting(false);
-  };
-
-
-  const handleKeyDown = (e) => {
-    if (e.key === "Enter" && canProceed()) {
-      goNext();
-    }
   };
 
   const selectGender = (g) => {
@@ -247,17 +364,21 @@ export default function Onboarding() {
   const canProceed = () => {
     switch (currentStep) {
       case "welcome": return true;
-      case "value_prop": return true;
       case "consent": return faithConsent;
+      case "rules": return true;
       case "name": return form.name.trim().length > 0;
-      case "phone": return phone.length >= 10;
-      case "verify": return otpCode.length === 6;
+      case "phone": return phoneNum.length >= 7;
+      case "verify": return otpDigits.every(d => d !== "");
       case "password": return password.length >= 6 && password === passwordConfirm;
-      case "age": return form.age >= 18;
-      case "height": return form.height >= 100 && form.height <= 250;
+      case "birthday": {
+        const age = calcAge();
+        return age !== null && age >= 18 && age < 120;
+      }
       case "gender": return form.gender !== "";
       case "denomination": return form.denomination !== "";
       case "location": return true;
+      case "distance": return true;
+      case "lookingFor": return form.lookingFor !== "";
       case "prompt_faith":
       case "prompt_future":
       case "prompt_aboutme": {
@@ -266,8 +387,8 @@ export default function Onboarding() {
       }
       case "traits": return form.traits.length >= 3;
       case "whoAreYou": return form.whoAreYou.length >= 3;
-      case "lookingFor": return form.lookingFor.length >= 3;
-      case "preferences": return true;
+      case "photos": return form.photos.filter(Boolean).length >= 1;
+      case "lifestyle": return true;
       default: return true;
     }
   };
@@ -302,542 +423,726 @@ export default function Onboarding() {
 
   const progress = ((step) / (STEPS.length - 1)) * 100;
 
+  const selectedCountry = COUNTRY_CODES.find(c => c.code === countryCode) || COUNTRY_CODES[0];
+
+  // -- Shared wrapper --
+  const Wrap = ({ children, showBack = true, showProgress = true }) => (
+    <div style={{ minHeight: "100vh", background: S.bg, display: "flex", flexDirection: "column", maxWidth: 430, margin: "0 auto" }}>
+      <div style={{ padding: "max(12px, env(safe-area-inset-top, 12px)) 20px 0", display: "flex", alignItems: "center", gap: 12 }}>
+        {showBack && step > 0 ? (
+          <button onClick={goBack} style={{ background: "none", border: "none", color: S.sub, padding: 4, cursor: "pointer" }}>
+            <ChevronLeft size={24} />
+          </button>
+        ) : <div style={{ width: 32 }} />}
+        {showProgress && (
+          <div style={{ flex: 1, height: 3, background: S.border, borderRadius: 2 }}>
+            <div style={{ height: "100%", width: `${progress}%`, background: S.primary, borderRadius: 2, transition: "width 0.4s ease" }} />
+          </div>
+        )}
+        <div style={{ width: 32 }} />
+      </div>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "24px 24px 32px" }}>
+        {children}
+      </div>
+    </div>
+  );
+
+  const BigBtn = ({ onClick, disabled, children, style }) => (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      style={{
+        width: "100%", padding: "16px", background: S.primary, color: "#000", borderRadius: 999,
+        fontSize: 16, fontWeight: 700, border: "none", cursor: disabled ? "not-allowed" : "pointer",
+        opacity: disabled ? 0.4 : 1, marginTop: "auto", letterSpacing: 0.2,
+        fontFamily: "'Outfit', system-ui, sans-serif", ...style,
+      }}
+    >
+      {children}
+    </button>
+  );
+
+  // ---- LOGIN ----
   if (mode === "login") {
     return (
-      <div className="onboarding">
-        <div className="onboarding-content">
-          <div className="onboarding-step single-question" key="login">
-            <div className="welcome-icon">
-              <AgapeCross size={56} strokeWidth={1.2} />
-            </div>
-            <h2>Welcome back</h2>
-            <p style={{ fontSize: 14, color: "#8C857C", marginBottom: 16 }}>Sign in with your phone number and password</p>
-            <input
-              type="tel"
-              value={loginPhone}
-              onChange={(e) => setLoginPhone(e.target.value)}
-              placeholder="+48 123 456 789"
-              className="onboarding-input"
-              autoComplete="tel"
-              autoFocus
-            />
-            <input
-              type="password"
-              value={loginPassword}
-              onChange={(e) => setLoginPassword(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleLoginSubmit()}
-              placeholder="Password"
-              className="onboarding-input"
-              autoComplete="current-password"
-              style={{ marginTop: 8 }}
-            />
-            {loginError && <p className="onboarding-error">{loginError}</p>}
-            {loginPhone.length >= 10 && loginPassword.length >= 6 && (
-              <button
-                className="onboarding-cta"
-                onClick={handleLoginSubmit}
-                disabled={submitting}
-              >
-                {submitting ? "Signing in..." : "Sign in"}
-              </button>
-            )}
-            <button className="skip-btn-text" onClick={() => { track("login_switch_to_signup"); setMode("signup"); setLoginError(""); }} style={{ marginTop: 16 }}>
-              Create an account instead
-            </button>
-          </div>
-        </div>
+      <div style={{ minHeight: "100vh", background: S.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "24px 28px", maxWidth: 430, margin: "0 auto" }}>
+        <AgapeCross size={48} strokeWidth={1.2} style={{ color: S.primary }} />
+        <h2 style={{ color: S.text, fontSize: 28, fontWeight: 800, marginTop: 20, marginBottom: 4, fontFamily: "'Outfit', system-ui, sans-serif" }}>Welcome back</h2>
+        <p style={{ color: S.sub, fontSize: 14, marginBottom: 28 }}>Sign in with your phone and password</p>
+        <input
+          type="tel" value={loginPhone} onChange={(e) => setLoginPhone(e.target.value)}
+          placeholder="+48 123 456 789"
+          style={{ width: "100%", padding: "16px", background: S.surface, border: `1.5px solid ${S.border}`, borderRadius: 12, fontSize: 18, color: S.text, outline: "none", fontFamily: "'Outfit', system-ui, sans-serif", marginBottom: 10 }}
+          autoComplete="tel" autoFocus
+        />
+        <input
+          type="password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && handleLoginSubmit()}
+          placeholder="Password"
+          style={{ width: "100%", padding: "16px", background: S.surface, border: `1.5px solid ${S.border}`, borderRadius: 12, fontSize: 18, color: S.text, outline: "none", fontFamily: "'Outfit', system-ui, sans-serif" }}
+          autoComplete="current-password"
+        />
+        {loginError && <p style={{ color: "#e53e3e", fontSize: 14, marginTop: 8 }}>{loginError}</p>}
+        <BigBtn onClick={handleLoginSubmit} disabled={submitting || loginPhone.length < 10 || loginPassword.length < 6} style={{ marginTop: 24 }}>
+          {submitting ? "Signing in..." : "Sign in"}
+        </BigBtn>
+        <button onClick={() => { track("login_switch_to_signup"); setMode("signup"); setLoginError(""); }} style={{ background: "none", border: "none", color: S.sub, fontSize: 15, fontWeight: 600, marginTop: 16, cursor: "pointer" }}>
+          Create an account instead
+        </button>
       </div>
     );
   }
 
+  // ---- WELCOME ----
   if (currentStep === "welcome") {
     return (
-      <div className="welcome-step">
-        <div className="welcome-icon">
+      <div style={{ minHeight: "100vh", background: "#F5F0E8", display: "flex", flexDirection: "column", alignItems: "center", color: "#1A1612", maxWidth: 430, margin: "0 auto" }}>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, padding: "80px 28px 0" }}>
           <div style={{ width: 80, height: 80, borderRadius: 20, background: "white", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 16px rgba(0,0,0,0.06)" }}>
             <AgapeCross size={36} strokeWidth={1.5} />
           </div>
           <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: "#B8912A", marginTop: 8 }}>Faith + Love</p>
-          <span className="welcome-logo-text">agape</span>
+          <span style={{ fontSize: 48, fontWeight: 800, letterSpacing: -1, color: "#1A1612", fontFamily: "'Outfit', system-ui, sans-serif" }}>agape</span>
+          <p style={{ fontSize: 16, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "#B8912A", lineHeight: 1.4, textAlign: "center", marginTop: 8 }}>Created by Christians<br />for Christians</p>
         </div>
-        <div style={{ textAlign: "center", padding: "32px 28px 0" }}>
-          <p style={{ fontSize: 16, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "#B8912A", lineHeight: 1.4 }}>Created by Christians<br />for Christians</p>
-        </div>
-        <div className="welcome-bottom">
-          <div className="welcome-divider" />
-          <button className="onboarding-cta" onClick={goNext}>
+        <div style={{ padding: "0 28px 56px", width: "100%" }}>
+          <div style={{ height: 1, background: "linear-gradient(to right, transparent, #B8912A, transparent)", marginBottom: 32 }} />
+          <button onClick={goNext} style={{ width: "100%", padding: 16, background: "#B8912A", color: "#fff", borderRadius: 999, fontSize: 16, fontWeight: 700, border: "none", cursor: "pointer", fontFamily: "'Outfit', system-ui, sans-serif" }}>
             Create account
           </button>
-          <button className="welcome-signin-btn" onClick={() => { track("welcome_sign_in_tapped"); setMode("login"); }}>
+          <button onClick={() => { track("welcome_sign_in_tapped"); setMode("login"); }} style={{ width: "100%", marginTop: 12, padding: 16, background: "transparent", color: "#1A1612", border: "1.5px solid #D4C9B8", borderRadius: 999, fontSize: 16, fontWeight: 700, cursor: "pointer", fontFamily: "'Outfit', system-ui, sans-serif" }}>
             Sign in
           </button>
-          <p className="welcome-terms">By continuing you agree to our Terms & Privacy Policy</p>
+          <p style={{ fontSize: 11, color: "#8C857C", marginTop: 24, textAlign: "center" }}>By continuing you agree to our Terms & Privacy Policy</p>
         </div>
       </div>
     );
   }
 
-  if (currentStep === "value_prop") {
-    const features = [
-      { icon: "✝️", title: "Faith First", desc: "Everyone here shares your Christian values" },
-      { icon: "🕊️", title: "Intentional Dating", desc: "3-day deadline to ask her on a date — no endless chatting" },
-      { icon: "📸", title: "Verified Profiles", desc: "Church & Bible selfies prove you're real" },
-      { icon: "🤝", title: "Real Commitment", desc: "Designed for serious relationships, not hookups" },
+  // ---- PHONE ----
+  if (currentStep === "phone") {
+    return (
+      <Wrap>
+        <h2 style={{ color: S.text, fontSize: 30, fontWeight: 800, marginBottom: 8, fontFamily: "'Outfit', system-ui, sans-serif" }}>My number is</h2>
+        <p style={{ color: S.sub, fontSize: 14, marginBottom: 24, lineHeight: 1.5 }}>
+          We'll text you a verification code. Message and data rates may apply.
+        </p>
+
+        <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
+          <button
+            onClick={() => setShowCountryPicker(!showCountryPicker)}
+            style={{ display: "flex", alignItems: "center", gap: 6, padding: "14px 12px", background: S.surface, border: `1.5px solid ${S.border}`, borderRadius: 12, fontSize: 16, color: S.text, cursor: "pointer", whiteSpace: "nowrap", fontFamily: "'Outfit', system-ui, sans-serif" }}
+          >
+            {selectedCountry.flag} {selectedCountry.code} <ChevronRight size={14} style={{ transform: showCountryPicker ? "rotate(90deg)" : "none", transition: "transform 0.2s" }} />
+          </button>
+          <input
+            ref={inputRef}
+            type="tel"
+            value={phoneNum}
+            onChange={(e) => setPhoneNum(e.target.value.replace(/[^\d\s]/g, ""))}
+            onKeyDown={(e) => e.key === "Enter" && phoneNum.length >= 7 && handleSendOtp()}
+            placeholder="Phone number"
+            style={{ flex: 1, padding: "14px 16px", background: S.surface, border: `1.5px solid ${S.border}`, borderRadius: 12, fontSize: 18, color: S.text, outline: "none", fontFamily: "'Outfit', system-ui, sans-serif" }}
+            autoComplete="tel"
+            autoFocus
+          />
+        </div>
+
+        {showCountryPicker && (
+          <div style={{ background: S.surface, borderRadius: 12, border: `1px solid ${S.border}`, maxHeight: 200, overflowY: "auto", marginBottom: 16 }}>
+            {COUNTRY_CODES.map((c) => (
+              <button
+                key={c.code}
+                onClick={() => { setCountryCode(c.code); setShowCountryPicker(false); }}
+                style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", background: countryCode === c.code ? S.primarySoft : "transparent", border: "none", borderBottom: `1px solid ${S.border}`, color: S.text, fontSize: 15, cursor: "pointer", textAlign: "left", fontFamily: "'Outfit', system-ui, sans-serif" }}
+              >
+                <span style={{ fontSize: 20 }}>{c.flag}</span>
+                <span style={{ flex: 1 }}>{c.name}</span>
+                <span style={{ color: S.sub }}>{c.code}</span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {otpError && <p style={{ color: "#e53e3e", fontSize: 14, marginTop: 8 }}>{otpError}</p>}
+
+        <div style={{ marginTop: "auto" }}>
+          <BigBtn onClick={handleSendOtp} disabled={submitting || phoneNum.length < 7}>
+            {submitting ? "Sending..." : "Continue"}
+          </BigBtn>
+          {DEV_TEST && <button onClick={goNext} style={{ background: "none", border: "none", color: "#e53e3e", fontSize: 12, marginTop: 8, cursor: "pointer", textAlign: "center", width: "100%" }}>Skip (dev test)</button>}
+        </div>
+      </Wrap>
+    );
+  }
+
+  // ---- VERIFY OTP ----
+  if (currentStep === "verify") {
+    return (
+      <Wrap>
+        <h2 style={{ color: S.text, fontSize: 30, fontWeight: 800, marginBottom: 8, fontFamily: "'Outfit', system-ui, sans-serif" }}>Enter your code</h2>
+        <p style={{ color: S.sub, fontSize: 14, marginBottom: 32 }}>Sent to {phone}</p>
+
+        <div style={{ display: "flex", gap: 10, justifyContent: "center", marginBottom: 24 }}>
+          {otpDigits.map((digit, i) => (
+            <input
+              key={i}
+              ref={(el) => (otpRefs.current[i] = el)}
+              type="text"
+              inputMode="numeric"
+              maxLength={1}
+              value={digit}
+              onChange={(e) => handleOtpDigitChange(i, e.target.value)}
+              onKeyDown={(e) => handleOtpKeyDown(i, e)}
+              onPaste={(e) => {
+                e.preventDefault();
+                const paste = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+                if (paste.length === 6) {
+                  const digits = paste.split("");
+                  setOtpDigits(digits);
+                  handleVerifyOtp(paste);
+                }
+              }}
+              autoFocus={i === 0}
+              style={{
+                width: 48, height: 56, textAlign: "center", fontSize: 24, fontWeight: 700,
+                background: S.surface, border: `2px solid ${digit ? S.primary : S.border}`, borderRadius: 12,
+                color: S.text, outline: "none", fontFamily: "'Outfit', system-ui, sans-serif",
+              }}
+            />
+          ))}
+        </div>
+
+        {otpError && <p style={{ color: "#e53e3e", fontSize: 14, textAlign: "center" }}>{otpError}</p>}
+
+        <button onClick={() => { handleSendOtp(); }} style={{ background: "none", border: "none", color: S.primary, fontSize: 15, fontWeight: 600, cursor: "pointer", textAlign: "center", marginBottom: 8 }}>
+          Resend
+        </button>
+        <button onClick={() => { setStep(step - 1); setOtpDigits(["", "", "", "", "", ""]); setOtpError(""); }} style={{ background: "none", border: "none", color: S.sub, fontSize: 14, cursor: "pointer", textAlign: "center" }}>
+          Change number
+        </button>
+
+        <BigBtn onClick={() => handleVerifyOtp()} disabled={submitting || otpDigits.some(d => d === "")}>
+          {submitting ? "Verifying..." : "Verify"}
+        </BigBtn>
+        {DEV_TEST && <button onClick={goNext} style={{ background: "none", border: "none", color: "#e53e3e", fontSize: 12, marginTop: 8, cursor: "pointer", textAlign: "center", width: "100%" }}>Skip (dev test)</button>}
+      </Wrap>
+    );
+  }
+
+  // ---- PASSWORD ----
+  if (currentStep === "password") {
+    return (
+      <Wrap>
+        <h2 style={{ color: S.text, fontSize: 30, fontWeight: 800, marginBottom: 8, fontFamily: "'Outfit', system-ui, sans-serif" }}>Create a password</h2>
+        <p style={{ color: S.sub, fontSize: 14, marginBottom: 24 }}>You'll use this to sign in next time</p>
+        <input
+          ref={inputRef}
+          type="password" value={password}
+          onChange={(e) => { setPassword(e.target.value); setPasswordError(""); }}
+          placeholder="Password (min. 6 characters)"
+          style={{ width: "100%", padding: "16px", background: S.surface, border: `1.5px solid ${S.border}`, borderRadius: 12, fontSize: 18, color: S.text, outline: "none", fontFamily: "'Outfit', system-ui, sans-serif", marginBottom: 10 }}
+          autoComplete="new-password" autoFocus
+        />
+        <input
+          type="password" value={passwordConfirm}
+          onChange={(e) => { setPasswordConfirm(e.target.value); setPasswordError(""); }}
+          onKeyDown={(e) => e.key === "Enter" && canProceed() && handleSetPassword()}
+          placeholder="Confirm password"
+          style={{ width: "100%", padding: "16px", background: S.surface, border: `1.5px solid ${S.border}`, borderRadius: 12, fontSize: 18, color: S.text, outline: "none", fontFamily: "'Outfit', system-ui, sans-serif" }}
+          autoComplete="new-password"
+        />
+        {passwordError && <p style={{ color: "#e53e3e", fontSize: 14, marginTop: 8 }}>{passwordError}</p>}
+        <BigBtn onClick={handleSetPassword} disabled={submitting || !canProceed()}>
+          {submitting ? "Setting password..." : "Continue"}
+        </BigBtn>
+        {DEV_TEST && <button onClick={goNext} style={{ background: "none", border: "none", color: "#e53e3e", fontSize: 12, marginTop: 8, cursor: "pointer", textAlign: "center", width: "100%" }}>Skip (dev test)</button>}
+      </Wrap>
+    );
+  }
+
+  // ---- FAITH CONSENT ----
+  if (currentStep === "consent") {
+    return (
+      <Wrap>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", flex: 1 }}>
+          <Church size={40} style={{ color: S.primary, marginBottom: 16 }} />
+          <h2 style={{ color: S.text, fontSize: 26, fontWeight: 800, marginBottom: 12, fontFamily: "'Outfit', system-ui, sans-serif" }}>Faith-Based Matching</h2>
+          <p style={{ color: S.sub, fontSize: 14, lineHeight: 1.6, marginBottom: 12, maxWidth: 340 }}>
+            Agape is a Christian dating app. To connect you with people who share your faith, we collect and process information about your religious beliefs, including your denomination.
+          </p>
+          <p style={{ color: S.sub, fontSize: 14, lineHeight: 1.6, marginBottom: 24, maxWidth: 340 }}>
+            This data is used solely for matching purposes and will be visible to other users on your profile.
+          </p>
+          <button
+            onClick={() => setFaithConsent(!faithConsent)}
+            style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: 16, background: S.surface, borderRadius: 12, cursor: "pointer", border: `1.5px solid ${faithConsent ? S.primary : S.border}`, textAlign: "left", width: "100%", maxWidth: 360 }}
+          >
+            <div style={{ width: 22, height: 22, minWidth: 22, borderRadius: 6, border: `2px solid ${faithConsent ? S.primary : S.border}`, background: faithConsent ? S.primary : "transparent", display: "flex", alignItems: "center", justifyContent: "center", marginTop: 1 }}>
+              {faithConsent && <Check size={14} color="#000" />}
+            </div>
+            <span style={{ fontSize: 14, lineHeight: 1.5, color: S.text }}>I consent to the processing of my religious beliefs for matching purposes</span>
+          </button>
+        </div>
+        <BigBtn onClick={goNext} disabled={!faithConsent}>Continue</BigBtn>
+      </Wrap>
+    );
+  }
+
+  // ---- HOUSE RULES ----
+  if (currentStep === "rules") {
+    const rules = [
+      { title: "Be yourself", desc: "Make sure your photos, age, and bio are true to who you are" },
+      { title: "Stay safe", desc: "Don't be too quick to give out personal information" },
+      { title: "Play it cool", desc: "Respect others and treat them as you'd like to be treated" },
+      { title: "Be proactive", desc: "Always report bad behaviour" },
     ];
     return (
-      <div className="welcome-step" style={{ justifyContent: "center" }}>
-        <div style={{ padding: "0 28px", maxWidth: 430, margin: "0 auto", width: "100%" }}>
-          <h2 style={{ fontSize: 24, fontWeight: 800, color: "#1A1612", textAlign: "center", marginBottom: 8, fontFamily: "'Outfit', system-ui, sans-serif" }}>Why Agape?</h2>
-          <p style={{ fontSize: 14, color: "#8C857C", textAlign: "center", marginBottom: 28 }}>What makes us different</p>
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            {features.map((f, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, background: "white", borderRadius: 14, padding: "14px 16px", boxShadow: "0 1px 4px rgba(0,0,0,0.04)" }}>
-                <span style={{ fontSize: 28, flexShrink: 0, width: 40, textAlign: "center" }}>{f.icon}</span>
+      <Wrap showProgress={false}>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
+          <h2 style={{ color: S.text, fontSize: 28, fontWeight: 800, marginBottom: 8, fontFamily: "'Outfit', system-ui, sans-serif" }}>Welcome to Agape</h2>
+          <p style={{ color: S.sub, fontSize: 14, marginBottom: 28 }}>Please follow these house rules</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+            {rules.map((r, i) => (
+              <div key={i} style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
+                <div style={{ width: 32, height: 32, borderRadius: 999, background: S.primarySoft, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <Check size={16} style={{ color: S.primary }} />
+                </div>
                 <div>
-                  <p style={{ fontSize: 15, fontWeight: 700, color: "#1A1612", marginBottom: 2 }}>{f.title}</p>
-                  <p style={{ fontSize: 13, color: "#8C857C", lineHeight: 1.3 }}>{f.desc}</p>
+                  <p style={{ color: S.text, fontSize: 16, fontWeight: 700, marginBottom: 2 }}>{r.title}</p>
+                  <p style={{ color: S.sub, fontSize: 13, lineHeight: 1.4 }}>{r.desc}</p>
                 </div>
               </div>
             ))}
           </div>
         </div>
-        <div className="welcome-bottom" style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "0 28px 32px" }}>
-          <button className="onboarding-cta" onClick={goNext} style={{ width: "100%", maxWidth: 430, margin: "0 auto", display: "block" }}>
-            Continue
-          </button>
-        </div>
-      </div>
+        <BigBtn onClick={goNext}>I agree</BigBtn>
+      </Wrap>
     );
   }
 
-  return (
-    <div className="onboarding">
-      <div style={{ padding: "12px 20px 0", display: "flex", alignItems: "center", gap: 12 }}>
-        <div className="onboarding-progress-bar" style={{ flex: 1 }}>
-          <div className="progress-fill" style={{ width: `${progress}%` }} />
+  // ---- NAME ----
+  if (currentStep === "name") {
+    return (
+      <Wrap>
+        <h2 style={{ color: S.text, fontSize: 30, fontWeight: 800, marginBottom: 8, fontFamily: "'Outfit', system-ui, sans-serif" }}>What's your first name?</h2>
+        <p style={{ color: S.sub, fontSize: 14, marginBottom: 24 }}>This is how it'll appear on your profile and you won't be able to change it</p>
+        <input
+          ref={inputRef}
+          type="text" value={form.name}
+          onChange={(e) => setForm({ ...form, name: e.target.value })}
+          onKeyDown={(e) => { if (e.key === "Enter" && form.name.trim()) setShowNameConfirm(true); }}
+          placeholder="First name"
+          style={{ width: "100%", padding: "16px", background: S.surface, border: `1.5px solid ${S.border}`, borderRadius: 12, fontSize: 22, color: S.text, outline: "none", fontFamily: "'Outfit', system-ui, sans-serif" }}
+          autoFocus
+        />
+        <BigBtn onClick={() => setShowNameConfirm(true)} disabled={!form.name.trim()}>Continue</BigBtn>
+
+        {showNameConfirm && (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 999, padding: 16 }}>
+            <div style={{ background: S.card, borderRadius: 20, padding: 24, width: "100%", maxWidth: 400 }}>
+              <h3 style={{ color: S.text, fontSize: 20, fontWeight: 700, textAlign: "center", marginBottom: 8 }}>Is {form.name} your name?</h3>
+              <p style={{ color: S.sub, fontSize: 14, textAlign: "center", marginBottom: 20 }}>You won't be able to change it later</p>
+              <button onClick={() => { setShowNameConfirm(false); goNext(); }} style={{ width: "100%", padding: 14, background: S.primary, color: "#000", borderRadius: 999, fontSize: 16, fontWeight: 700, border: "none", cursor: "pointer", marginBottom: 10, fontFamily: "'Outfit', system-ui, sans-serif" }}>
+                Yes, that's my name
+              </button>
+              <button onClick={() => setShowNameConfirm(false)} style={{ width: "100%", padding: 14, background: "transparent", color: S.sub, borderRadius: 999, fontSize: 16, fontWeight: 600, border: `1.5px solid ${S.border}`, cursor: "pointer", fontFamily: "'Outfit', system-ui, sans-serif" }}>
+                Edit name
+              </button>
+            </div>
+          </div>
+        )}
+      </Wrap>
+    );
+  }
+
+  // ---- BIRTHDAY ----
+  if (currentStep === "birthday") {
+    const age = calcAge();
+    const tooYoung = age !== null && age < 18;
+    return (
+      <Wrap>
+        <h2 style={{ color: S.text, fontSize: 30, fontWeight: 800, marginBottom: 8, fontFamily: "'Outfit', system-ui, sans-serif" }}>Your birthday</h2>
+        <p style={{ color: S.sub, fontSize: 14, marginBottom: 28 }}>Your profile shows your age, not your birthday</p>
+        <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
+          <input
+            ref={inputRef}
+            type="text" inputMode="numeric" maxLength={2} placeholder="DD" value={form.birthDay}
+            onChange={(e) => setForm({ ...form, birthDay: e.target.value.replace(/\D/g, "").slice(0, 2) })}
+            style={{ flex: 1, padding: "16px", textAlign: "center", background: S.surface, border: `1.5px solid ${S.border}`, borderRadius: 12, fontSize: 22, fontWeight: 600, color: S.text, outline: "none", fontFamily: "'Outfit', system-ui, sans-serif" }}
+            autoFocus
+          />
+          <input
+            type="text" inputMode="numeric" maxLength={2} placeholder="MM" value={form.birthMonth}
+            onChange={(e) => setForm({ ...form, birthMonth: e.target.value.replace(/\D/g, "").slice(0, 2) })}
+            style={{ flex: 1, padding: "16px", textAlign: "center", background: S.surface, border: `1.5px solid ${S.border}`, borderRadius: 12, fontSize: 22, fontWeight: 600, color: S.text, outline: "none", fontFamily: "'Outfit', system-ui, sans-serif" }}
+          />
+          <input
+            type="text" inputMode="numeric" maxLength={4} placeholder="YYYY" value={form.birthYear}
+            onChange={(e) => setForm({ ...form, birthYear: e.target.value.replace(/\D/g, "").slice(0, 4) })}
+            style={{ flex: 1.4, padding: "16px", textAlign: "center", background: S.surface, border: `1.5px solid ${S.border}`, borderRadius: 12, fontSize: 22, fontWeight: 600, color: S.text, outline: "none", fontFamily: "'Outfit', system-ui, sans-serif" }}
+          />
         </div>
-        <span style={{ fontSize: 12, fontWeight: 600, color: "#8C857C", whiteSpace: "nowrap" }}>
-          {step} of {STEPS.length - 1}
-        </span>
-      </div>
+        {age !== null && !tooYoung && <p style={{ color: S.sub, fontSize: 14, marginBottom: 8 }}>Age: {age}</p>}
+        {tooYoung && <p style={{ color: "#e53e3e", fontSize: 14 }}>You must be at least 18 years old</p>}
+        <BigBtn onClick={goNext} disabled={!canProceed()}>Continue</BigBtn>
+      </Wrap>
+    );
+  }
 
-      <div className="onboarding-content">
-
-        {currentStep === "consent" && (
-          <div className="onboarding-step single-question consent-step" key="consent">
-            <div className="consent-icon">
-              <Church size={32} />
-            </div>
-            <h2>Faith-Based Matching</h2>
-            <p className="consent-desc">
-              Agape is a Christian dating app. To connect you with people who share your faith, we collect and process information about your religious beliefs, including your denomination.
-            </p>
-            <p className="consent-desc">
-              This data is used solely for matching purposes and will be visible to other users on your profile.
-            </p>
-            <label className="consent-checkbox" onClick={() => setFaithConsent(!faithConsent)}>
-              <div className={`consent-check-box ${faithConsent ? "checked" : ""}`}>
-                {faithConsent && <Check size={14} />}
-              </div>
-              <span>I consent to the processing of my religious beliefs for matching purposes</span>
-            </label>
-            {faithConsent && (
-              <button className="onboarding-cta" onClick={goNext}>
-                Continue <ChevronRight size={18} />
-              </button>
-            )}
-          </div>
-        )}
-
-        {currentStep === "name" && (
-          <div className="onboarding-step single-question" key="name">
-            <h2>What's your first name?</h2>
-            <input
-              ref={inputRef}
-              type="text"
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              onKeyDown={handleKeyDown}
-              placeholder="Your first name"
-              className="onboarding-input"
-              autoFocus
-            />
-            {form.name.trim() && (
-              <button className="onboarding-cta" onClick={goNext}>
-                Continue <ChevronRight size={18} />
-              </button>
-            )}
-          </div>
-        )}
-
-        {currentStep === "phone" && (
-          <div className="onboarding-step single-question" key="phone">
-            <h2>Your phone number</h2>
-            <p style={{ fontSize: 14, color: "#8C857C", marginBottom: 16 }}>We'll send you a code to verify it's really you</p>
-            <input
-              ref={inputRef}
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && phone.length >= 10 && handleSendOtp()}
-              placeholder="+48 123 456 789"
-              className="onboarding-input"
-              autoComplete="tel"
-              autoFocus
-            />
-            {otpError && <p className="onboarding-error">{otpError}</p>}
-            {phone.length >= 10 && (
-              <button className="onboarding-cta" onClick={handleSendOtp} disabled={submitting}>
-                {submitting ? "Sending code..." : "Send Code"} {!submitting && <ChevronRight size={18} />}
-              </button>
-            )}
-          </div>
-        )}
-
-        {currentStep === "verify" && (
-          <div className="onboarding-step single-question" key="verify">
-            <h2>Enter your code</h2>
-            <p style={{ fontSize: 14, color: "#8C857C", marginBottom: 16 }}>Sent to {phone}</p>
-            <input
-              ref={inputRef}
-              type="text"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              maxLength={6}
-              value={otpCode}
-              onChange={(e) => {
-                const val = e.target.value.replace(/\D/g, "");
-                setOtpCode(val);
-                if (val.length === 6) handleVerifyOtp(val);
+  // ---- GENDER ----
+  if (currentStep === "gender") {
+    return (
+      <Wrap>
+        <h2 style={{ color: S.text, fontSize: 30, fontWeight: 800, marginBottom: 24, fontFamily: "'Outfit', system-ui, sans-serif" }}>I am a...</h2>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {[{ value: "male", label: "Man" }, { value: "female", label: "Woman" }].map((g) => (
+            <button
+              key={g.value}
+              onClick={() => selectGender(g.value)}
+              style={{
+                padding: "20px 24px", background: form.gender === g.value ? S.primarySoft : S.surface,
+                border: `2px solid ${form.gender === g.value ? S.primary : S.border}`, borderRadius: 14,
+                fontSize: 18, fontWeight: 600, color: S.text, cursor: "pointer", textAlign: "left",
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                fontFamily: "'Outfit', system-ui, sans-serif",
               }}
-              onKeyDown={(e) => e.key === "Enter" && otpCode.length === 6 && handleVerifyOtp()}
-              placeholder="000000"
-              className="onboarding-input"
-              style={{ textAlign: "center", fontSize: 28, letterSpacing: 12, fontWeight: 700 }}
-              autoFocus
-            />
-            {otpError && <p className="onboarding-error">{otpError}</p>}
-            {otpCode.length === 6 && (
-              <button className="onboarding-cta" onClick={handleVerifyOtp} disabled={submitting}>
-                {submitting ? "Verifying..." : "Verify"} {!submitting && <ChevronRight size={18} />}
-              </button>
-            )}
-            <button className="skip-btn-text" onClick={() => { setStep(step - 1); setOtpCode(""); setOtpError(""); setOtpSent(false); }} style={{ marginTop: 12 }}>
-              Change number
+            >
+              {g.label}
+              {form.gender === g.value && <Check size={20} style={{ color: S.primary }} />}
             </button>
-          </div>
-        )}
+          ))}
+        </div>
+      </Wrap>
+    );
+  }
 
-        {currentStep === "password" && (
-          <div className="onboarding-step single-question" key="password">
-            <h2>Create a password</h2>
-            <p style={{ fontSize: 14, color: "#8C857C", marginBottom: 16 }}>You'll use this to sign in next time</p>
-            <input
-              ref={inputRef}
-              type="password"
-              value={password}
-              onChange={(e) => { setPassword(e.target.value); setPasswordError(""); }}
-              placeholder="Password (min. 6 characters)"
-              className="onboarding-input"
-              autoComplete="new-password"
-              autoFocus
-            />
-            <input
-              type="password"
-              value={passwordConfirm}
-              onChange={(e) => { setPasswordConfirm(e.target.value); setPasswordError(""); }}
-              onKeyDown={(e) => e.key === "Enter" && canProceed() && handleSetPassword()}
-              placeholder="Confirm password"
-              className="onboarding-input"
-              autoComplete="new-password"
-              style={{ marginTop: 8 }}
-            />
-            {passwordError && <p className="onboarding-error">{passwordError}</p>}
-            {canProceed() && (
-              <button className="onboarding-cta" onClick={handleSetPassword} disabled={submitting}>
-                {submitting ? "Setting password..." : "Continue"} {!submitting && <ChevronRight size={18} />}
-              </button>
-            )}
-          </div>
-        )}
-
-        {currentStep === "age" && (
-          <div className="onboarding-step single-question" key="age">
-            <h2>How old are you, {form.name}?</h2>
-            <input
-              ref={inputRef}
-              type="number"
-              value={form.age}
-              onChange={(e) => setForm({ ...form, age: parseInt(e.target.value) || 18 })}
-              onKeyDown={handleKeyDown}
-              min={18}
-              max={99}
-              className="onboarding-input age-input"
-            />
-            <button className="onboarding-cta" onClick={goNext}>
-              Continue <ChevronRight size={18} />
-            </button>
-          </div>
-        )}
-
-        {currentStep === "height" && (
-          <div className="onboarding-step single-question" key="height">
-            <h2>How tall are you?</h2>
-            <div className="height-display">{form.height} cm</div>
-            <input
-              type="range"
-              min={100}
-              max={220}
-              value={form.height}
-              onChange={(e) => setForm({ ...form, height: parseInt(e.target.value) })}
-              className="height-slider"
-            />
-            <button className="onboarding-cta" onClick={goNext}>
-              Continue <ChevronRight size={18} />
-            </button>
-          </div>
-        )}
-
-        {currentStep === "gender" && (
-          <div className="onboarding-step single-question" key="gender">
-            <h2>I am a...</h2>
-            <div className="gender-options">
-              <button
-                className={`gender-card ${form.gender === "male" ? "selected" : ""}`}
-                onClick={() => selectGender("male")}
-              >
-                Man
-              </button>
-              <button
-                className={`gender-card ${form.gender === "female" ? "selected" : ""}`}
-                onClick={() => selectGender("female")}
-              >
-                Woman
-              </button>
-            </div>
-          </div>
-        )}
-
-        {currentStep === "denomination" && (
-          <div className="onboarding-step single-question" key="denomination">
-            <h2>My denomination</h2>
-            <div className="denomination-options">
-              {DENOMINATIONS.map((d) => (
-                <button
-                  key={d}
-                  className={`denomination-card ${form.denomination === d ? "selected" : ""} ${d === "Different" && !customDenom ? "different-btn" : ""}`}
-                  onClick={() => {
-                    if (d === "Different") return;
-                    selectDenomination(d);
-                  }}
-                >
-                  <Church size={16} />
-                  {d === "Different" ? (
-                    <input
-                      type="text"
-                      value={customDenom}
-                      onChange={(e) => {
-                        e.stopPropagation();
-                        setCustomDenom(e.target.value);
-                        setForm({ ...form, denomination: e.target.value });
-                      }}
-                      onKeyDown={(e) => {
-                        e.stopPropagation();
-                        if (e.key === "Enter" && customDenom.trim()) {
-                          setForm({ ...form, denomination: customDenom.trim() });
-                          setTimeout(goNext, 300);
-                        }
-                      }}
-                      onClick={(e) => e.stopPropagation()}
-                      placeholder="Other denomination..."
-                      className="custom-denom-input"
-                    />
-                  ) : d}
-                </button>
-              ))}
-            </div>
-            {customDenom.trim() && (
-              <button className="onboarding-cta" onClick={() => { setForm({ ...form, denomination: customDenom.trim() }); setTimeout(goNext, 100); }}>
-                Continue <ChevronRight size={18} />
-              </button>
-            )}
-          </div>
-        )}
-
-        {currentStep === "location" && (
-          <div className="onboarding-step single-question" key="location">
-            <h2>Where are you based?</h2>
-            <LocationPicker
-              value={form.location}
-              onChange={(text) => setForm({ ...form, location: text })}
-              onSelect={(item) => setForm({ ...form, location: item.display, locationLat: item.lat, locationLng: item.lng })}
-              placeholder="Search city..."
-              className="onboarding-input"
-            />
-            <div className="skip-or-continue">
-              <button className="skip-btn-text" onClick={goNext}>Skip</button>
-              {form.location.trim() && (
-                <button className="onboarding-cta small" onClick={goNext}>
-                  Continue <ChevronRight size={18} />
-                </button>
+  // ---- DENOMINATION ----
+  if (currentStep === "denomination") {
+    return (
+      <Wrap>
+        <h2 style={{ color: S.text, fontSize: 30, fontWeight: 800, marginBottom: 8, fontFamily: "'Outfit', system-ui, sans-serif" }}>My denomination</h2>
+        <p style={{ color: S.sub, fontSize: 14, marginBottom: 20 }}>This will show on your profile</p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, flex: 1, overflowY: "auto" }}>
+          {DENOMINATIONS.map((d) => (
+            <button
+              key={d}
+              onClick={() => {
+                if (d === "Different") return;
+                selectDenomination(d);
+              }}
+              style={{
+                padding: "16px 20px", background: form.denomination === d ? S.primarySoft : S.surface,
+                border: `2px solid ${form.denomination === d ? S.primary : S.border}`, borderRadius: 12,
+                fontSize: 16, fontWeight: 500, color: S.text, cursor: "pointer", textAlign: "left",
+                display: "flex", alignItems: "center", gap: 12,
+                fontFamily: "'Outfit', system-ui, sans-serif",
+                borderStyle: d === "Different" && !customDenom ? "dashed" : "solid",
+              }}
+            >
+              <Church size={16} style={{ color: form.denomination === d ? S.primary : S.sub, flexShrink: 0 }} />
+              {d === "Different" ? (
+                <input
+                  type="text" value={customDenom}
+                  onChange={(e) => { e.stopPropagation(); setCustomDenom(e.target.value); setForm({ ...form, denomination: e.target.value }); }}
+                  onKeyDown={(e) => { e.stopPropagation(); if (e.key === "Enter" && customDenom.trim()) { setForm({ ...form, denomination: customDenom.trim() }); setTimeout(goNext, 300); } }}
+                  onClick={(e) => e.stopPropagation()}
+                  placeholder="Other denomination..."
+                  style={{ background: "transparent", border: "none", outline: "none", fontSize: 16, color: S.text, flex: 1, fontFamily: "'Outfit', system-ui, sans-serif" }}
+                />
+              ) : (
+                <span style={{ flex: 1 }}>{d}</span>
               )}
+              {form.denomination === d && d !== "Different" && <Check size={18} style={{ color: S.primary }} />}
+            </button>
+          ))}
+        </div>
+        {customDenom.trim() && (
+          <BigBtn onClick={() => { setForm({ ...form, denomination: customDenom.trim() }); setTimeout(goNext, 100); }}>
+            Continue
+          </BigBtn>
+        )}
+      </Wrap>
+    );
+  }
+
+  // ---- LOCATION ----
+  if (currentStep === "location") {
+    return (
+      <Wrap>
+        <h2 style={{ color: S.text, fontSize: 30, fontWeight: 800, marginBottom: 8, fontFamily: "'Outfit', system-ui, sans-serif" }}>Where are you?</h2>
+        <p style={{ color: S.sub, fontSize: 14, marginBottom: 24 }}>This helps us find people near you</p>
+        <div style={{ background: S.surface, borderRadius: 12, border: `1.5px solid ${S.border}`, padding: "4px 0" }}>
+          <LocationPicker
+            value={form.location}
+            onChange={(text) => setForm({ ...form, location: text })}
+            onSelect={(item) => setForm({ ...form, location: item.display, locationLat: item.lat, locationLng: item.lng })}
+            placeholder="Search city..."
+            className="onboarding-input"
+            style={{ background: "transparent", color: S.text, border: "none" }}
+          />
+        </div>
+        <div style={{ display: "flex", gap: 12, marginTop: "auto" }}>
+          <button onClick={goNext} style={{ flex: 1, padding: 14, background: "transparent", color: S.sub, borderRadius: 999, fontSize: 15, fontWeight: 600, border: `1.5px solid ${S.border}`, cursor: "pointer", fontFamily: "'Outfit', system-ui, sans-serif" }}>
+            Skip
+          </button>
+          {form.location.trim() && (
+            <BigBtn onClick={goNext} style={{ flex: 2, marginTop: 0 }}>Continue</BigBtn>
+          )}
+        </div>
+      </Wrap>
+    );
+  }
+
+  // ---- DISTANCE PREFERENCE ----
+  if (currentStep === "distance") {
+    return (
+      <Wrap>
+        <h2 style={{ color: S.text, fontSize: 30, fontWeight: 800, marginBottom: 8, fontFamily: "'Outfit', system-ui, sans-serif" }}>Distance preference</h2>
+        <p style={{ color: S.sub, fontSize: 14, marginBottom: 40 }}>How far away are you willing to search?</p>
+        <div style={{ textAlign: "center", marginBottom: 24 }}>
+          <span style={{ fontSize: 56, fontWeight: 800, color: S.text, fontFamily: "'Outfit', system-ui, sans-serif" }}>{form.maxDistance}</span>
+          <span style={{ fontSize: 20, fontWeight: 600, color: S.sub, marginLeft: 4 }}>km</span>
+        </div>
+        <input
+          type="range" min={1} max={200} value={form.maxDistance}
+          onChange={(e) => setForm({ ...form, maxDistance: parseInt(e.target.value) })}
+          style={{ width: "100%", accentColor: S.primary, height: 6, marginBottom: 32 }}
+        />
+        <BigBtn onClick={goNext}>Continue</BigBtn>
+      </Wrap>
+    );
+  }
+
+  // ---- LOOKING FOR ----
+  if (currentStep === "lookingFor") {
+    return (
+      <Wrap>
+        <h2 style={{ color: S.text, fontSize: 30, fontWeight: 800, marginBottom: 8, fontFamily: "'Outfit', system-ui, sans-serif" }}>What are you looking for?</h2>
+        <p style={{ color: S.sub, fontSize: 14, marginBottom: 24 }}>Increase compatibility by sharing yours</p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {LOOKING_FOR_OPTIONS.map((opt) => (
+            <button
+              key={opt.label}
+              onClick={() => { setForm({ ...form, lookingFor: opt.label }); track("onboarding_looking_for", { value: opt.label }); }}
+              style={{
+                display: "flex", alignItems: "center", gap: 14, padding: "16px 18px",
+                background: form.lookingFor === opt.label ? S.primarySoft : S.surface,
+                border: `2px solid ${form.lookingFor === opt.label ? S.primary : S.border}`, borderRadius: 14,
+                color: S.text, fontSize: 16, fontWeight: 500, cursor: "pointer", textAlign: "left",
+                fontFamily: "'Outfit', system-ui, sans-serif",
+              }}
+            >
+              <span style={{ fontSize: 24 }}>{opt.icon}</span>
+              <span style={{ flex: 1 }}>{opt.label}</span>
+              {form.lookingFor === opt.label && <Check size={18} style={{ color: S.primary }} />}
+            </button>
+          ))}
+        </div>
+        <BigBtn onClick={goNext} disabled={!form.lookingFor}>Continue</BigBtn>
+      </Wrap>
+    );
+  }
+
+  // ---- WHO ARE YOU (personality traits) ----
+  if (currentStep === "whoAreYou") {
+    return (
+      <Wrap>
+        <h2 style={{ color: S.text, fontSize: 28, fontWeight: 800, marginBottom: 4, fontFamily: "'Outfit', system-ui, sans-serif" }}>Who are you?</h2>
+        <p style={{ color: S.sub, fontSize: 14, marginBottom: 20 }}>Pick 3-8 traits that describe you</p>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16, flex: 1, alignContent: "flex-start", overflowY: "auto" }}>
+          {LOOKING_FOR_POOL.map((trait) => (
+            <button
+              key={trait}
+              onClick={() => toggleTrait(trait, "whoAreYou")}
+              style={{
+                padding: "8px 16px", borderRadius: 999, fontSize: 14, fontWeight: 500,
+                border: `1.5px solid ${form.whoAreYou.includes(trait) ? S.primary : S.border}`,
+                background: form.whoAreYou.includes(trait) ? S.primary : "transparent",
+                color: form.whoAreYou.includes(trait) ? "#000" : S.text,
+                cursor: "pointer", fontFamily: "'Outfit', system-ui, sans-serif",
+              }}
+            >
+              {trait}
+            </button>
+          ))}
+        </div>
+        <p style={{ color: S.sub, fontSize: 13, textAlign: "center", marginBottom: 8 }}>{form.whoAreYou.length}/8 selected</p>
+        <BigBtn onClick={goNext} disabled={form.whoAreYou.length < 3}>Continue</BigBtn>
+      </Wrap>
+    );
+  }
+
+  // ---- INTERESTS ----
+  if (currentStep === "traits") {
+    return (
+      <Wrap>
+        <h2 style={{ color: S.text, fontSize: 28, fontWeight: 800, marginBottom: 4, fontFamily: "'Outfit', system-ui, sans-serif" }}>What are you into?</h2>
+        <p style={{ color: S.sub, fontSize: 14, marginBottom: 20 }}>Pick 3-8 interests</p>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16, flex: 1, alignContent: "flex-start", overflowY: "auto" }}>
+          {TRAITS_POOL.map((trait) => (
+            <button
+              key={trait}
+              onClick={() => toggleTrait(trait, "traits")}
+              style={{
+                padding: "8px 16px", borderRadius: 999, fontSize: 14, fontWeight: 500,
+                border: `1.5px solid ${form.traits.includes(trait) ? S.primary : S.border}`,
+                background: form.traits.includes(trait) ? S.primary : "transparent",
+                color: form.traits.includes(trait) ? "#000" : S.text,
+                cursor: "pointer", fontFamily: "'Outfit', system-ui, sans-serif",
+              }}
+            >
+              {trait}
+            </button>
+          ))}
+        </div>
+        <p style={{ color: S.sub, fontSize: 13, textAlign: "center", marginBottom: 8 }}>{form.traits.length}/8 selected</p>
+        <BigBtn onClick={goNext} disabled={form.traits.length < 3}>Continue</BigBtn>
+      </Wrap>
+    );
+  }
+
+  // ---- PHOTOS ----
+  if (currentStep === "photos") {
+    return (
+      <Wrap>
+        <h2 style={{ color: S.text, fontSize: 28, fontWeight: 800, marginBottom: 4, fontFamily: "'Outfit', system-ui, sans-serif" }}>Add photos</h2>
+        <p style={{ color: S.sub, fontSize: 14, marginBottom: 20 }}>Add at least 1 photo to continue</p>
+        <input type="file" accept="image/*" ref={photoInputRef} style={{ display: "none" }} onChange={handlePhotoUpload} />
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 16 }}>
+          {form.photos.map((photo, i) => (
+            <button
+              key={i}
+              onClick={() => {
+                if (photo) {
+                  const next = [...form.photos];
+                  next[i] = null;
+                  setForm({ ...form, photos: next });
+                } else {
+                  setPhotoSlotIndex(i);
+                  photoInputRef.current?.click();
+                }
+              }}
+              style={{
+                aspectRatio: "3/4", borderRadius: 12, border: `2px dashed ${photo ? "transparent" : i === 0 ? S.primary : S.border}`,
+                background: photo ? `url(${photo}) center/cover` : S.surface,
+                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                gap: 4, cursor: "pointer", position: "relative", overflow: "hidden",
+              }}
+            >
+              {photo ? (
+                <div style={{ position: "absolute", top: 6, right: 6, width: 24, height: 24, borderRadius: 999, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <X size={14} color="#fff" />
+                </div>
+              ) : (
+                <>
+                  <Plus size={24} style={{ color: i === 0 ? S.primary : S.sub }} />
+                  {i === 0 && <span style={{ fontSize: 10, color: S.primary, fontWeight: 600 }}>Required</span>}
+                </>
+              )}
+            </button>
+          ))}
+        </div>
+        <p style={{ color: S.sub, fontSize: 12, textAlign: "center", fontStyle: "italic", marginBottom: 16 }}>Tip: Add a mix of photos to show your personality</p>
+        <BigBtn onClick={goNext} disabled={!form.photos.filter(Boolean).length}>Continue</BigBtn>
+      </Wrap>
+    );
+  }
+
+  // ---- PROMPTS ----
+  if (isPromptStep) {
+    return (
+      <Wrap>
+        <h2 style={{ color: S.text, fontSize: 28, fontWeight: 800, marginBottom: 4, fontFamily: "'Outfit', system-ui, sans-serif" }}>{promptStepInfo.label}</h2>
+        <p style={{ color: S.sub, fontSize: 14, marginBottom: 20 }}>Pick a prompt and write your answer</p>
+
+        {currentPromptSelection.prompt ? (
+          <div style={{ background: S.surface, borderRadius: 14, padding: 16, marginBottom: 16 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
+              <span style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.3, color: S.sub }}>{currentPromptSelection.prompt}</span>
+              <button onClick={clearPromptForStep} style={{ background: "none", border: "none", color: S.sub, padding: 2, cursor: "pointer" }}>
+                <X size={16} />
+              </button>
             </div>
+            <textarea
+              ref={answerRef}
+              value={currentPromptSelection.answer}
+              onChange={(e) => updatePromptAnswer(e.target.value)}
+              placeholder="Your answer..."
+              maxLength={250}
+              rows={3}
+              style={{ width: "100%", background: "transparent", border: "none", outline: "none", fontSize: 16, lineHeight: 1.5, color: S.text, resize: "none", fontFamily: "'Outfit', system-ui, sans-serif" }}
+              autoFocus={editingAnswer}
+            />
+          </div>
+        ) : (
+          <div style={{ flex: 1, overflowY: "auto", maxHeight: "55vh" }}>
+            {PROMPT_CATEGORIES[promptStepInfo.category]?.map((prompt) => (
+              <button
+                key={prompt}
+                onClick={() => selectPromptForStep(prompt)}
+                style={{
+                  display: "block", width: "100%", textAlign: "left", padding: "16px 0",
+                  fontSize: 17, fontWeight: 500, color: S.text, borderBottom: `1px solid ${S.border}`,
+                  background: "none", border: "none", borderBottom: `1px solid ${S.border}`, cursor: "pointer",
+                  fontFamily: "'Outfit', system-ui, sans-serif",
+                }}
+              >
+                {prompt}
+              </button>
+            ))}
           </div>
         )}
 
-        {isPromptStep && (
-          <div className="onboarding-step prompts-step" key={currentStep}>
-            <div className="prompts-header">
-              <span className="prompt-step-icon">{promptStepInfo.icon}</span>
-              <h2>{promptStepInfo.label}</h2>
-              <p className="step-hint">Pick a prompt and write your answer</p>
-            </div>
+        <div style={{ display: "flex", gap: 12, marginTop: "auto" }}>
+          <button onClick={goNext} style={{ flex: 1, padding: 14, background: "transparent", color: S.sub, borderRadius: 999, fontSize: 15, fontWeight: 600, border: `1.5px solid ${S.border}`, cursor: "pointer", fontFamily: "'Outfit', system-ui, sans-serif" }}>
+            Skip
+          </button>
+          {canProceed() && (
+            <BigBtn onClick={goNext} style={{ flex: 2, marginTop: 0 }}>Continue</BigBtn>
+          )}
+        </div>
+      </Wrap>
+    );
+  }
 
-            {currentPromptSelection.prompt ? (
-              <div className="selected-prompts">
-                <div className="selected-prompt-card">
-                  <div className="selected-prompt-header">
-                    <span className="selected-prompt-q">{currentPromptSelection.prompt}</span>
-                    <button className="remove-prompt-btn" onClick={clearPromptForStep}>
-                      <X size={16} />
-                    </button>
-                  </div>
-                  <textarea
-                    ref={answerRef}
-                    value={currentPromptSelection.answer}
-                    onChange={(e) => updatePromptAnswer(e.target.value)}
-                    placeholder="Your answer..."
-                    maxLength={250}
-                    rows={3}
-                    className="prompt-answer-input"
-                    autoFocus={editingAnswer}
-                  />
-                </div>
-              </div>
-            ) : (
-              <div className="prompt-list">
-                {PROMPT_CATEGORIES[promptStepInfo.category]?.map((prompt) => (
+  // ---- LIFESTYLE ----
+  if (currentStep === "lifestyle") {
+    return (
+      <Wrap>
+        <h2 style={{ color: S.text, fontSize: 28, fontWeight: 800, marginBottom: 4, fontFamily: "'Outfit', system-ui, sans-serif" }}>Lifestyle</h2>
+        <p style={{ color: S.sub, fontSize: 14, marginBottom: 24 }}>Help others get to know you better</p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 24, flex: 1, overflowY: "auto" }}>
+          {LIFESTYLE_CATEGORIES.map((cat) => (
+            <div key={cat.label}>
+              <p style={{ color: S.sub, fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>{cat.label}</p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {cat.options.map((opt) => (
                   <button
-                    key={prompt}
-                    className="prompt-list-item"
-                    onClick={() => selectPromptForStep(prompt)}
+                    key={opt}
+                    onClick={() => setForm({ ...form, lifestyle: { ...form.lifestyle, [cat.label]: form.lifestyle[cat.label] === opt ? undefined : opt } })}
+                    style={{
+                      padding: "8px 14px", borderRadius: 999, fontSize: 13, fontWeight: 500,
+                      border: `1.5px solid ${form.lifestyle[cat.label] === opt ? S.primary : S.border}`,
+                      background: form.lifestyle[cat.label] === opt ? S.primary : "transparent",
+                      color: form.lifestyle[cat.label] === opt ? "#000" : S.text,
+                      cursor: "pointer", fontFamily: "'Outfit', system-ui, sans-serif",
+                    }}
                   >
-                    {prompt}
+                    {opt}
                   </button>
                 ))}
               </div>
-            )}
-
-            {canProceed() && (
-              <button className="onboarding-cta" onClick={goNext}>
-                Continue <ChevronRight size={18} />
-              </button>
-            )}
-          </div>
-        )}
-
-        {currentStep === "traits" && (
-          <div className="onboarding-step" key="traits">
-            <h2>What are you into?</h2>
-            <p className="step-hint">Pick 3-8 things you enjoy</p>
-            <div className="interests-grid">
-              {TRAITS_POOL.map((trait) => (
-                <button
-                  key={trait}
-                  className={`interest-chip ${form.traits.includes(trait) ? "selected" : ""}`}
-                  onClick={() => toggleTrait(trait, "traits")}
-                >
-                  {trait}
-                </button>
-              ))}
             </div>
-            <p className="interest-count">{form.traits.length}/8 selected</p>
-            {form.traits.length >= 3 && (
-              <button className="onboarding-cta" onClick={goNext}>
-                Continue <ChevronRight size={18} />
-              </button>
-            )}
-          </div>
-        )}
+          ))}
+        </div>
+        {signupError && <p style={{ color: "#e53e3e", fontSize: 14, marginTop: 8, textAlign: "center" }}>{signupError}</p>}
+        <BigBtn onClick={finishOnboarding} disabled={submitting}>
+          {submitting ? "Creating account..." : "Start matching"}
+        </BigBtn>
+      </Wrap>
+    );
+  }
 
-        {currentStep === "whoAreYou" && (
-          <div className="onboarding-step" key="whoAreYou">
-            <h2>Who are you?</h2>
-            <p className="step-hint">Pick 3-8 traits that describe you</p>
-            <div className="interests-grid">
-              {LOOKING_FOR_POOL.map((trait) => (
-                <button
-                  key={trait}
-                  className={`interest-chip ${form.whoAreYou.includes(trait) ? "selected" : ""}`}
-                  onClick={() => toggleTrait(trait, "whoAreYou")}
-                >
-                  {trait}
-                </button>
-              ))}
-            </div>
-            <p className="interest-count">{form.whoAreYou.length}/8 selected</p>
-            {form.whoAreYou.length >= 3 && (
-              <button className="onboarding-cta" onClick={goNext}>
-                Continue <ChevronRight size={18} />
-              </button>
-            )}
-          </div>
-        )}
-
-        {currentStep === "lookingFor" && (
-          <div className="onboarding-step" key="lookingFor">
-            <h2>What are you looking for?</h2>
-            <p className="step-hint">Pick 3-8 traits you value in a partner</p>
-            <div className="interests-grid">
-              {LOOKING_FOR_POOL.map((trait) => (
-                <button
-                  key={trait}
-                  className={`interest-chip ${form.lookingFor.includes(trait) ? "selected" : ""}`}
-                  onClick={() => toggleTrait(trait, "lookingFor")}
-                >
-                  {trait}
-                </button>
-              ))}
-            </div>
-            <p className="interest-count">{form.lookingFor.length}/8 selected</p>
-            {form.lookingFor.length >= 3 && (
-              <button className="onboarding-cta" onClick={goNext}>
-                Continue <ChevronRight size={18} />
-              </button>
-            )}
-          </div>
-        )}
-
-        {currentStep === "preferences" && (
-          <div className="onboarding-step single-question" key="preferences">
-            <h2>Almost there</h2>
-            <div className="pref-group">
-              <label>Show people up to age {form.maxAge}</label>
-              <input
-                type="range"
-                min={18}
-                max={50}
-                value={form.maxAge}
-                onChange={(e) => setForm({ ...form, maxAge: parseInt(e.target.value) })}
-              />
-            </div>
-            <div className="pref-group">
-              <label>Within {form.maxDistance} km</label>
-              <input
-                type="range"
-                min={1}
-                max={200}
-                value={form.maxDistance}
-                onChange={(e) => setForm({ ...form, maxDistance: parseInt(e.target.value) })}
-              />
-            </div>
-            {signupError && <p className="onboarding-error">{signupError}</p>}
-            <button className="onboarding-cta" onClick={finishOnboarding} disabled={submitting}>
-              {submitting ? "Creating account..." : "Start Matching"} {!submitting && <Sparkles size={18} />}
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
-  );
+  return null;
 }
