@@ -515,6 +515,40 @@ a {
   margin-bottom: 24px;
 }
 
+/* Distance slider for onboarding */
+.distance-slider-onboarding {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: #3D362B;
+  outline: none;
+  touch-action: none;
+}
+
+.distance-slider-onboarding::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #B8912A;
+  cursor: pointer;
+  border: 3px solid #F5F0E8;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.distance-slider-onboarding::-moz-range-thumb {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #B8912A;
+  cursor: pointer;
+  border: 3px solid #F5F0E8;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
 /* Gender cards */
 .gender-options {
   display: flex;

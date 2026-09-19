@@ -12,14 +12,13 @@ const STEPS = [
   "verify",
   "password",
   "consent",
-  "rules",
   "name",
   "birthday",
   "gender",
   "denomination",
+  "email",
   "location",
   "distance",
-  "lookingFor",
   "whoAreYou",
   "traits",
   "photos",
@@ -60,14 +59,6 @@ const COUNTRY_CODES = [
   { code: "+370", flag: "🇱🇹", name: "Lithuania" },
   { code: "+371", flag: "🇱🇻", name: "Latvia" },
   { code: "+372", flag: "🇪🇪", name: "Estonia" },
-];
-
-const LOOKING_FOR_OPTIONS = [
-  { label: "Long-term partner", icon: "💍" },
-  { label: "Long-term, open to short", icon: "😊" },
-  { label: "Short-term, open to long", icon: "🥂" },
-  { label: "New friends", icon: "👋" },
-  { label: "Still figuring it out", icon: "🤔" },
 ];
 
 const LIFESTYLE_CATEGORIES = [
@@ -136,6 +127,7 @@ export default function Onboarding() {
     birthYear: "",
     gender: "",
     denomination: "",
+    email: "",
     job: "",
     school: "",
     location: "",
@@ -143,7 +135,6 @@ export default function Onboarding() {
     locationLng: null,
     traits: [],
     whoAreYou: [],
-    lookingFor: "",
     maxDistance: 30,
     photos: [null, null, null, null, null, null],
     lifestyle: {},
@@ -154,6 +145,8 @@ export default function Onboarding() {
   const otpRefs = useRef([]);
   const photoInputRef = useRef(null);
   const [photoSlotIndex, setPhotoSlotIndex] = useState(null);
+  const [gpsLoading, setGpsLoading] = useState(false);
+  const [gpsError, setGpsError] = useState("");
 
   const currentStep = STEPS[step];
   const phone = countryCode + phoneNum;
@@ -219,7 +212,9 @@ export default function Onboarding() {
     const next = [...otpDigits];
     next[index] = value;
     setOtpDigits(next);
-    if (value && index < 5) otpRefs.current[index + 1]?.focus();
+    if (value && index < 5) {
+      setTimeout(() => otpRefs.current[index + 1]?.focus(), 0);
+    }
     if (next.every(d => d !== "")) handleVerifyOtp(next.join(""));
   };
 
@@ -302,7 +297,7 @@ export default function Onboarding() {
         interests: form.traits,
         traits: form.traits,
         whoAreYou: form.whoAreYou,
-        lookingFor: [form.lookingFor].filter(Boolean),
+        lookingFor: [],
         filters: {
           maxAge: 35,
           minAge: 18,
@@ -365,7 +360,7 @@ export default function Onboarding() {
     switch (currentStep) {
       case "welcome": return true;
       case "consent": return faithConsent;
-      case "rules": return true;
+
       case "name": return form.name.trim().length > 0;
       case "phone": return phoneNum.length >= 7;
       case "verify": return otpDigits.every(d => d !== "");
@@ -376,9 +371,9 @@ export default function Onboarding() {
       }
       case "gender": return form.gender !== "";
       case "denomination": return form.denomination !== "";
-      case "location": return true;
+      case "email": return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email);
+      case "location": return form.location.trim().length > 0;
       case "distance": return true;
-      case "lookingFor": return form.lookingFor !== "";
       case "prompt_faith":
       case "prompt_future":
       case "prompt_aboutme": {
@@ -689,38 +684,6 @@ export default function Onboarding() {
     );
   }
 
-  // ---- HOUSE RULES ----
-  if (currentStep === "rules") {
-    const rules = [
-      { title: "Be yourself", desc: "Make sure your photos, age, and bio are true to who you are" },
-      { title: "Stay safe", desc: "Don't be too quick to give out personal information" },
-      { title: "Play it cool", desc: "Respect others and treat them as you'd like to be treated" },
-      { title: "Be proactive", desc: "Always report bad behaviour" },
-    ];
-    return (
-      <Wrap showProgress={false}>
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
-          <h2 style={{ color: S.text, fontSize: 28, fontWeight: 800, marginBottom: 8, fontFamily: "'Outfit', system-ui, sans-serif" }}>Welcome to Agape</h2>
-          <p style={{ color: S.sub, fontSize: 14, marginBottom: 28 }}>Please follow these house rules</p>
-          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-            {rules.map((r, i) => (
-              <div key={i} style={{ display: "flex", gap: 14, alignItems: "flex-start" }}>
-                <div style={{ width: 32, height: 32, borderRadius: 999, background: S.primarySoft, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  <Check size={16} style={{ color: S.primary }} />
-                </div>
-                <div>
-                  <p style={{ color: S.text, fontSize: 16, fontWeight: 700, marginBottom: 2 }}>{r.title}</p>
-                  <p style={{ color: S.sub, fontSize: 13, lineHeight: 1.4 }}>{r.desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-        <BigBtn onClick={goNext}>I agree</BigBtn>
-      </Wrap>
-    );
-  }
-
   // ---- NAME ----
   if (currentStep === "name") {
     return (
@@ -764,24 +727,43 @@ export default function Onboarding() {
       <Wrap>
         <h2 style={{ color: S.text, fontSize: 30, fontWeight: 800, marginBottom: 8, fontFamily: "'Outfit', system-ui, sans-serif" }}>Your birthday</h2>
         <p style={{ color: S.sub, fontSize: 14, marginBottom: 28 }}>Your profile shows your age, not your birthday</p>
-        <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
-          <input
-            ref={inputRef}
-            type="text" inputMode="numeric" maxLength={2} placeholder="DD" value={form.birthDay}
-            onChange={(e) => setForm({ ...form, birthDay: e.target.value.replace(/\D/g, "").slice(0, 2) })}
-            style={{ flex: 1, padding: "16px", textAlign: "center", background: S.surface, border: `1.5px solid ${S.border}`, borderRadius: 12, fontSize: 22, fontWeight: 600, color: S.text, outline: "none", fontFamily: "'Outfit', system-ui, sans-serif" }}
-            autoFocus
-          />
-          <input
-            type="text" inputMode="numeric" maxLength={2} placeholder="MM" value={form.birthMonth}
-            onChange={(e) => setForm({ ...form, birthMonth: e.target.value.replace(/\D/g, "").slice(0, 2) })}
-            style={{ flex: 1, padding: "16px", textAlign: "center", background: S.surface, border: `1.5px solid ${S.border}`, borderRadius: 12, fontSize: 22, fontWeight: 600, color: S.text, outline: "none", fontFamily: "'Outfit', system-ui, sans-serif" }}
-          />
-          <input
-            type="text" inputMode="numeric" maxLength={4} placeholder="YYYY" value={form.birthYear}
-            onChange={(e) => setForm({ ...form, birthYear: e.target.value.replace(/\D/g, "").slice(0, 4) })}
-            style={{ flex: 1.4, padding: "16px", textAlign: "center", background: S.surface, border: `1.5px solid ${S.border}`, borderRadius: 12, fontSize: 22, fontWeight: 600, color: S.text, outline: "none", fontFamily: "'Outfit', system-ui, sans-serif" }}
-          />
+        <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
+            <label style={{ fontSize: 11, fontWeight: 600, color: S.sub, textAlign: "center", textTransform: "uppercase", letterSpacing: "0.05em" }}>Day</label>
+            <input
+              ref={inputRef}
+              type="text" inputMode="numeric" maxLength={2} placeholder="DD" value={form.birthDay}
+              onChange={(e) => {
+                const v = e.target.value.replace(/\D/g, "").slice(0, 2);
+                setForm({ ...form, birthDay: v });
+                if (v.length === 2) document.getElementById("ob-month")?.focus();
+              }}
+              style={{ width: "100%", padding: "14px 8px", textAlign: "center", background: S.surface, border: `1.5px solid ${S.border}`, borderRadius: 12, fontSize: 24, fontWeight: 600, color: S.text, outline: "none", fontFamily: "'Outfit', system-ui, sans-serif", boxSizing: "border-box" }}
+              autoFocus
+            />
+          </div>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>
+            <label style={{ fontSize: 11, fontWeight: 600, color: S.sub, textAlign: "center", textTransform: "uppercase", letterSpacing: "0.05em" }}>Month</label>
+            <input
+              id="ob-month"
+              type="text" inputMode="numeric" maxLength={2} placeholder="MM" value={form.birthMonth}
+              onChange={(e) => {
+                const v = e.target.value.replace(/\D/g, "").slice(0, 2);
+                setForm({ ...form, birthMonth: v });
+                if (v.length === 2) document.getElementById("ob-year")?.focus();
+              }}
+              style={{ width: "100%", padding: "14px 8px", textAlign: "center", background: S.surface, border: `1.5px solid ${S.border}`, borderRadius: 12, fontSize: 24, fontWeight: 600, color: S.text, outline: "none", fontFamily: "'Outfit', system-ui, sans-serif", boxSizing: "border-box" }}
+            />
+          </div>
+          <div style={{ flex: 1.3, display: "flex", flexDirection: "column", gap: 6 }}>
+            <label style={{ fontSize: 11, fontWeight: 600, color: S.sub, textAlign: "center", textTransform: "uppercase", letterSpacing: "0.05em" }}>Year</label>
+            <input
+              id="ob-year"
+              type="text" inputMode="numeric" maxLength={4} placeholder="YYYY" value={form.birthYear}
+              onChange={(e) => setForm({ ...form, birthYear: e.target.value.replace(/\D/g, "").slice(0, 4) })}
+              style={{ width: "100%", padding: "14px 8px", textAlign: "center", background: S.surface, border: `1.5px solid ${S.border}`, borderRadius: 12, fontSize: 24, fontWeight: 600, color: S.text, outline: "none", fontFamily: "'Outfit', system-ui, sans-serif", boxSizing: "border-box" }}
+            />
+          </div>
         </div>
         {age !== null && !tooYoung && <p style={{ color: S.sub, fontSize: 14, marginBottom: 8 }}>Age: {age}</p>}
         {tooYoung && <p style={{ color: "#e53e3e", fontSize: 14 }}>You must be at least 18 years old</p>}
@@ -866,30 +848,87 @@ export default function Onboarding() {
     );
   }
 
+  // ---- EMAIL ----
+  if (currentStep === "email") {
+    return (
+      <Wrap>
+        <h2 style={{ color: S.text, fontSize: 30, fontWeight: 800, marginBottom: 8, fontFamily: "'Outfit', system-ui, sans-serif" }}>Your email?</h2>
+        <p style={{ color: S.sub, fontSize: 14, marginBottom: 24 }}>Don't lose access to your account</p>
+        <input
+          ref={inputRef}
+          type="email" value={form.email}
+          onChange={(e) => setForm({ ...form, email: e.target.value })}
+          onKeyDown={(e) => e.key === "Enter" && canProceed() && goNext()}
+          placeholder="Email address"
+          style={{ width: "100%", padding: "16px", background: S.surface, border: `1.5px solid ${S.border}`, borderRadius: 12, fontSize: 18, color: S.text, outline: "none", fontFamily: "'Outfit', system-ui, sans-serif" }}
+          autoComplete="email" autoFocus
+        />
+        <BigBtn onClick={goNext} disabled={!canProceed()}>Continue</BigBtn>
+      </Wrap>
+    );
+  }
+
   // ---- LOCATION ----
   if (currentStep === "location") {
+    const requestGps = () => {
+      setGpsLoading(true);
+      setGpsError("");
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          try {
+            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}&format=json`);
+            const data = await res.json();
+            const city = data.address?.city || data.address?.town || data.address?.village || data.address?.municipality || "Unknown";
+            setForm({ ...form, location: city, locationLat: pos.coords.latitude, locationLng: pos.coords.longitude });
+            setGpsLoading(false);
+          } catch {
+            setForm({ ...form, location: "My location", locationLat: pos.coords.latitude, locationLng: pos.coords.longitude });
+            setGpsLoading(false);
+          }
+        },
+        () => {
+          setGpsError("denied");
+          setGpsLoading(false);
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    };
+
     return (
       <Wrap>
         <h2 style={{ color: S.text, fontSize: 30, fontWeight: 800, marginBottom: 8, fontFamily: "'Outfit', system-ui, sans-serif" }}>Where are you?</h2>
         <p style={{ color: S.sub, fontSize: 14, marginBottom: 24 }}>This helps us find people near you</p>
-        <div style={{ background: S.surface, borderRadius: 12, border: `1.5px solid ${S.border}`, padding: "4px 0" }}>
-          <LocationPicker
-            value={form.location}
-            onChange={(text) => setForm({ ...form, location: text })}
-            onSelect={(item) => setForm({ ...form, location: item.display, locationLat: item.lat, locationLng: item.lng })}
-            placeholder="Search city..."
-            className="onboarding-input"
-            style={{ background: "transparent", color: S.text, border: "none" }}
-          />
-        </div>
-        <div style={{ display: "flex", gap: 12, marginTop: "auto" }}>
-          <button onClick={goNext} style={{ flex: 1, padding: 14, background: "transparent", color: S.sub, borderRadius: 999, fontSize: 15, fontWeight: 600, border: `1.5px solid ${S.border}`, cursor: "pointer", fontFamily: "'Outfit', system-ui, sans-serif" }}>
-            Skip
-          </button>
-          {form.location.trim() && (
-            <BigBtn onClick={goNext} style={{ flex: 2, marginTop: 0 }}>Continue</BigBtn>
-          )}
-        </div>
+
+        {!gpsError ? (
+          <>
+            <button
+              onClick={requestGps}
+              disabled={gpsLoading}
+              style={{ width: "100%", padding: "18px", background: S.primarySoft, border: `2px solid ${S.primary}`, borderRadius: 14, fontSize: 16, fontWeight: 600, color: S.text, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, fontFamily: "'Outfit', system-ui, sans-serif", marginBottom: 16 }}
+            >
+              {gpsLoading ? "Getting location..." : "📍 Use my current location"}
+            </button>
+            {form.location && (
+              <p style={{ color: S.primary, fontSize: 15, fontWeight: 600, textAlign: "center", marginBottom: 8 }}>{form.location}</p>
+            )}
+          </>
+        ) : (
+          <>
+            <p style={{ color: S.sub, fontSize: 14, marginBottom: 16 }}>Location permission denied. Please enter your city manually.</p>
+            <div style={{ background: S.surface, borderRadius: 12, border: `1.5px solid ${S.border}`, padding: "4px 0" }}>
+              <LocationPicker
+                value={form.location}
+                onChange={(text) => setForm({ ...form, location: text })}
+                onSelect={(item) => setForm({ ...form, location: item.display, locationLat: item.lat, locationLng: item.lng })}
+                placeholder="Search city..."
+                className="onboarding-input"
+                style={{ background: "transparent", color: S.text, border: "none" }}
+              />
+            </div>
+          </>
+        )}
+
+        <BigBtn onClick={goNext} disabled={!form.location.trim()}>Continue</BigBtn>
       </Wrap>
     );
   }
@@ -904,42 +943,14 @@ export default function Onboarding() {
           <span style={{ fontSize: 56, fontWeight: 800, color: S.text, fontFamily: "'Outfit', system-ui, sans-serif" }}>{form.maxDistance}</span>
           <span style={{ fontSize: 20, fontWeight: 600, color: S.sub, marginLeft: 4 }}>km</span>
         </div>
-        <input
-          type="range" min={1} max={200} value={form.maxDistance}
-          onChange={(e) => setForm({ ...form, maxDistance: parseInt(e.target.value) })}
-          style={{ width: "100%", accentColor: S.primary, height: 6, marginBottom: 32 }}
-        />
-        <BigBtn onClick={goNext}>Continue</BigBtn>
-      </Wrap>
-    );
-  }
-
-  // ---- LOOKING FOR ----
-  if (currentStep === "lookingFor") {
-    return (
-      <Wrap>
-        <h2 style={{ color: S.text, fontSize: 30, fontWeight: 800, marginBottom: 8, fontFamily: "'Outfit', system-ui, sans-serif" }}>What are you looking for?</h2>
-        <p style={{ color: S.sub, fontSize: 14, marginBottom: 24 }}>Increase compatibility by sharing yours</p>
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {LOOKING_FOR_OPTIONS.map((opt) => (
-            <button
-              key={opt.label}
-              onClick={() => { setForm({ ...form, lookingFor: opt.label }); track("onboarding_looking_for", { value: opt.label }); }}
-              style={{
-                display: "flex", alignItems: "center", gap: 14, padding: "16px 18px",
-                background: form.lookingFor === opt.label ? S.primarySoft : S.surface,
-                border: `2px solid ${form.lookingFor === opt.label ? S.primary : S.border}`, borderRadius: 14,
-                color: S.text, fontSize: 16, fontWeight: 500, cursor: "pointer", textAlign: "left",
-                fontFamily: "'Outfit', system-ui, sans-serif",
-              }}
-            >
-              <span style={{ fontSize: 24 }}>{opt.icon}</span>
-              <span style={{ flex: 1 }}>{opt.label}</span>
-              {form.lookingFor === opt.label && <Check size={18} style={{ color: S.primary }} />}
-            </button>
-          ))}
+        <div style={{ padding: "0 4px", marginBottom: 32 }}>
+          <input
+            type="range" min={1} max={200} step={1} value={form.maxDistance}
+            onChange={(e) => setForm({ ...form, maxDistance: parseInt(e.target.value) })}
+            className="distance-slider-onboarding"
+          />
         </div>
-        <BigBtn onClick={goNext} disabled={!form.lookingFor}>Continue</BigBtn>
+        <BigBtn onClick={goNext}>Continue</BigBtn>
       </Wrap>
     );
   }
@@ -1094,7 +1105,7 @@ export default function Onboarding() {
           </div>
         )}
 
-        <div style={{ display: "flex", gap: 12, marginTop: "auto" }}>
+        <div style={{ display: "flex", gap: 12, marginTop: 16, flexShrink: 0 }}>
           <button onClick={goNext} style={{ flex: 1, padding: 14, background: "transparent", color: S.sub, borderRadius: 999, fontSize: 15, fontWeight: 600, border: `1.5px solid ${S.border}`, cursor: "pointer", fontFamily: "'Outfit', system-ui, sans-serif" }}>
             Skip
           </button>
