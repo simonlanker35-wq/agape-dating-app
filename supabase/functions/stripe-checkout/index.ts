@@ -62,32 +62,32 @@ Deno.serve(async (req) => {
     if (!priceId) throw new Error("Missing priceId");
 
     let customerId = profile?.stripe_customer_id;
-    if (!customerId) {
-      const customerData: Record<string, unknown> = {
-        metadata: { supabase_user_id: user.id },
-      };
-      const email = user.email || (profile?.email?.includes("@") ? profile.email : null);
-      if (email) customerData.email = email;
-      if (profile?.name) customerData.name = profile.name;
-      if (user.phone) customerData.phone = user.phone;
-      const customer = await stripe.customers.create(customerData);
-      customerId = customer.id;
-      await supabase
-        .from("profiles")
-        .update({ stripe_customer_id: customerId })
-        .eq("id", user.id);
-    }
 
     const origin = req.headers.get("origin") || "https://agape-dating-app-frontend.onrender.com";
 
-    const session = await stripe.checkout.sessions.create({
-      customer: customerId,
+    const sessionData: Record<string, unknown> = {
       mode: "subscription",
       line_items: [{ price: priceId, quantity: 1 }],
       success_url: `${origin}?subscription=success`,
       cancel_url: `${origin}?subscription=cancelled`,
       metadata: { supabase_user_id: user.id },
-    });
+    };
+
+    if (customerId) {
+      sessionData.customer = customerId;
+    } else {
+      const email = user.email || (profile?.email?.includes("@") ? profile.email : null);
+      if (email) sessionData.customer_email = email;
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionData);
+
+    if (!customerId && session.customer) {
+      await supabase
+        .from("profiles")
+        .update({ stripe_customer_id: session.customer })
+        .eq("id", user.id);
+    }
 
     return new Response(
       JSON.stringify({ sessionId: session.id, url: session.url }),
