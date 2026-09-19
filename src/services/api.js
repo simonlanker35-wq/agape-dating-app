@@ -38,14 +38,33 @@ function mapProfile(p) {
 
 // ─── AUTH ───
 
+const FUNCTIONS_URL = "https://ksscosugtbdzgekrszck.supabase.co/functions/v1";
+
 export async function sendOtp(phone) {
-  const { data, error } = await supabase.auth.signInWithOtp({ phone });
-  if (error) throw new Error(error.message);
+  const res = await fetch(`${FUNCTIONS_URL}/send-sms`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ phone, action: "send" }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Failed to send code");
   return data;
 }
 
-export async function verifyOtp(phone, token) {
-  const { data, error } = await supabase.auth.verifyOtp({ phone, token, type: "sms" });
+export async function verifyOtp(phone, code) {
+  const res = await fetch(`${FUNCTIONS_URL}/send-sms`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ phone, action: "verify", code }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Invalid code");
+
+  // Sign into Supabase with the temporary token
+  const { error } = await supabase.auth.signInWithPassword({
+    phone,
+    password: data.token,
+  });
   if (error) throw new Error(error.message);
   return data;
 }
