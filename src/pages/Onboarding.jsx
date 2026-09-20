@@ -94,6 +94,42 @@ const S = {
   white: "#FFFFFF",
 };
 
+const Wrap = ({ children, showBack = true, showProgress = true, step, goBack, progress }) => (
+  <div style={{ minHeight: "100vh", background: S.bg, display: "flex", flexDirection: "column", maxWidth: 430, margin: "0 auto" }}>
+    <div style={{ padding: "max(12px, env(safe-area-inset-top, 12px)) 20px 0", display: "flex", alignItems: "center", gap: 12 }}>
+      {showBack && step > 0 ? (
+        <button onClick={goBack} style={{ background: "none", border: "none", color: S.sub, padding: 4, cursor: "pointer" }}>
+          <ChevronLeft size={24} />
+        </button>
+      ) : <div style={{ width: 32 }} />}
+      {showProgress && (
+        <div style={{ flex: 1, height: 3, background: S.border, borderRadius: 2 }}>
+          <div style={{ height: "100%", width: `${progress}%`, background: S.primary, borderRadius: 2, transition: "width 0.4s ease" }} />
+        </div>
+      )}
+      <div style={{ width: 32 }} />
+    </div>
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "24px 24px 32px" }}>
+      {children}
+    </div>
+  </div>
+);
+
+const BigBtn = ({ onClick, disabled, children, style }) => (
+  <button
+    onClick={onClick}
+    disabled={disabled}
+    style={{
+      width: "100%", padding: "16px", background: S.primary, color: "#000", borderRadius: 999,
+      fontSize: 16, fontWeight: 700, border: "none", cursor: disabled ? "not-allowed" : "pointer",
+      opacity: disabled ? 0.4 : 1, marginTop: "auto", letterSpacing: 0.2,
+      fontFamily: "'Outfit', system-ui, sans-serif", ...style,
+    }}
+  >
+    {children}
+  </button>
+);
+
 export default function Onboarding() {
   const { actions } = useApp();
   const [step, setStep] = useState(0);
@@ -162,7 +198,10 @@ export default function Onboarding() {
   };
 
   useEffect(() => {
-    if (inputRef.current) setTimeout(() => inputRef.current?.focus(), 150);
+    setTimeout(() => {
+      if (inputRef.current) { inputRef.current.focus(); return; }
+      document.getElementById("ob-pw1")?.focus();
+    }, 150);
   }, [step]);
 
   const goNext = () => {
@@ -420,42 +459,7 @@ export default function Onboarding() {
 
   const selectedCountry = COUNTRY_CODES.find(c => c.code === countryCode) || COUNTRY_CODES[0];
 
-  // -- Shared wrapper --
-  const Wrap = ({ children, showBack = true, showProgress = true }) => (
-    <div style={{ minHeight: "100vh", background: S.bg, display: "flex", flexDirection: "column", maxWidth: 430, margin: "0 auto" }}>
-      <div style={{ padding: "max(12px, env(safe-area-inset-top, 12px)) 20px 0", display: "flex", alignItems: "center", gap: 12 }}>
-        {showBack && step > 0 ? (
-          <button onClick={goBack} style={{ background: "none", border: "none", color: S.sub, padding: 4, cursor: "pointer" }}>
-            <ChevronLeft size={24} />
-          </button>
-        ) : <div style={{ width: 32 }} />}
-        {showProgress && (
-          <div style={{ flex: 1, height: 3, background: S.border, borderRadius: 2 }}>
-            <div style={{ height: "100%", width: `${progress}%`, background: S.primary, borderRadius: 2, transition: "width 0.4s ease" }} />
-          </div>
-        )}
-        <div style={{ width: 32 }} />
-      </div>
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "24px 24px 32px" }}>
-        {children}
-      </div>
-    </div>
-  );
-
-  const BigBtn = ({ onClick, disabled, children, style }) => (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      style={{
-        width: "100%", padding: "16px", background: S.primary, color: "#000", borderRadius: 999,
-        fontSize: 16, fontWeight: 700, border: "none", cursor: disabled ? "not-allowed" : "pointer",
-        opacity: disabled ? 0.4 : 1, marginTop: "auto", letterSpacing: 0.2,
-        fontFamily: "'Outfit', system-ui, sans-serif", ...style,
-      }}
-    >
-      {children}
-    </button>
-  );
+  const wrapProps = { step, goBack, progress };
 
   // ---- LOGIN ----
   if (mode === "login") {
@@ -517,7 +521,7 @@ export default function Onboarding() {
   // ---- PHONE ----
   if (currentStep === "phone") {
     return (
-      <Wrap>
+      <Wrap {...wrapProps}>
         <h2 style={{ color: S.text, fontSize: 30, fontWeight: 800, marginBottom: 8, fontFamily: "'Outfit', system-ui, sans-serif" }}>My number is</h2>
         <p style={{ color: S.sub, fontSize: 14, marginBottom: 24, lineHeight: 1.5 }}>
           We'll text you a verification code. Message and data rates may apply.
@@ -574,7 +578,7 @@ export default function Onboarding() {
   // ---- VERIFY OTP ----
   if (currentStep === "verify") {
     return (
-      <Wrap>
+      <Wrap {...wrapProps}>
         <h2 style={{ color: S.text, fontSize: 30, fontWeight: 800, marginBottom: 8, fontFamily: "'Outfit', system-ui, sans-serif" }}>Enter your code</h2>
         <p style={{ color: S.sub, fontSize: 14, marginBottom: 32 }}>Sent to {phone}</p>
 
@@ -628,15 +632,16 @@ export default function Onboarding() {
   // ---- PASSWORD ----
   if (currentStep === "password") {
     return (
-      <Wrap>
+      <Wrap {...wrapProps}>
         <h2 style={{ color: S.text, fontSize: 30, fontWeight: 800, marginBottom: 8, fontFamily: "'Outfit', system-ui, sans-serif" }}>Create a password</h2>
         <p style={{ color: S.sub, fontSize: 14, marginBottom: 24 }}>You'll use this to sign in next time</p>
         <input
+          id="ob-pw1"
           type="password" value={password}
           onChange={(e) => { setPassword(e.target.value); setPasswordError(""); }}
           placeholder="Password (min. 6 characters)"
           style={{ width: "100%", padding: "16px", background: S.surface, border: `1.5px solid ${S.border}`, borderRadius: 12, fontSize: 18, color: S.text, outline: "none", fontFamily: "'Outfit', system-ui, sans-serif", marginBottom: 10 }}
-          autoComplete="new-password" autoFocus
+          autoComplete="new-password"
         />
         <input
           type="password" value={passwordConfirm}
@@ -658,7 +663,7 @@ export default function Onboarding() {
   // ---- FAITH CONSENT ----
   if (currentStep === "consent") {
     return (
-      <Wrap>
+      <Wrap {...wrapProps}>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", flex: 1 }}>
           <Church size={40} style={{ color: S.primary, marginBottom: 16 }} />
           <h2 style={{ color: S.text, fontSize: 26, fontWeight: 800, marginBottom: 12, fontFamily: "'Outfit', system-ui, sans-serif" }}>Faith-Based Matching</h2>
@@ -686,7 +691,7 @@ export default function Onboarding() {
   // ---- NAME ----
   if (currentStep === "name") {
     return (
-      <Wrap>
+      <Wrap {...wrapProps}>
         <h2 style={{ color: S.text, fontSize: 30, fontWeight: 800, marginBottom: 8, fontFamily: "'Outfit', system-ui, sans-serif" }}>What's your first name?</h2>
         <p style={{ color: S.sub, fontSize: 14, marginBottom: 24 }}>This is how it'll appear on your profile and you won't be able to change it</p>
         <input
@@ -723,7 +728,7 @@ export default function Onboarding() {
     const age = calcAge();
     const tooYoung = age !== null && age < 18;
     return (
-      <Wrap>
+      <Wrap {...wrapProps}>
         <h2 style={{ color: S.text, fontSize: 30, fontWeight: 800, marginBottom: 8, fontFamily: "'Outfit', system-ui, sans-serif" }}>Your birthday</h2>
         <p style={{ color: S.sub, fontSize: 14, marginBottom: 28 }}>Your profile shows your age, not your birthday</p>
         <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
@@ -774,7 +779,7 @@ export default function Onboarding() {
   // ---- GENDER ----
   if (currentStep === "gender") {
     return (
-      <Wrap>
+      <Wrap {...wrapProps}>
         <h2 style={{ color: S.text, fontSize: 30, fontWeight: 800, marginBottom: 24, fontFamily: "'Outfit', system-ui, sans-serif" }}>I am a...</h2>
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {[{ value: "male", label: "Man" }, { value: "female", label: "Woman" }].map((g) => (
@@ -801,7 +806,7 @@ export default function Onboarding() {
   // ---- DENOMINATION ----
   if (currentStep === "denomination") {
     return (
-      <Wrap>
+      <Wrap {...wrapProps}>
         <h2 style={{ color: S.text, fontSize: 30, fontWeight: 800, marginBottom: 8, fontFamily: "'Outfit', system-ui, sans-serif" }}>My denomination</h2>
         <p style={{ color: S.sub, fontSize: 14, marginBottom: 20 }}>This will show on your profile</p>
         <div style={{ display: "flex", flexDirection: "column", gap: 8, flex: 1, overflowY: "auto" }}>
@@ -850,7 +855,7 @@ export default function Onboarding() {
   // ---- EMAIL ----
   if (currentStep === "email") {
     return (
-      <Wrap>
+      <Wrap {...wrapProps}>
         <h2 style={{ color: S.text, fontSize: 30, fontWeight: 800, marginBottom: 8, fontFamily: "'Outfit', system-ui, sans-serif" }}>Your email?</h2>
         <p style={{ color: S.sub, fontSize: 14, marginBottom: 24 }}>Don't lose access to your account</p>
         <input
@@ -894,7 +899,7 @@ export default function Onboarding() {
     };
 
     return (
-      <Wrap>
+      <Wrap {...wrapProps}>
         <h2 style={{ color: S.text, fontSize: 30, fontWeight: 800, marginBottom: 8, fontFamily: "'Outfit', system-ui, sans-serif" }}>Where are you?</h2>
         <p style={{ color: S.sub, fontSize: 14, marginBottom: 24 }}>This helps us find people near you</p>
 
@@ -935,7 +940,7 @@ export default function Onboarding() {
   // ---- DISTANCE PREFERENCE ----
   if (currentStep === "distance") {
     return (
-      <Wrap>
+      <Wrap {...wrapProps}>
         <h2 style={{ color: S.text, fontSize: 30, fontWeight: 800, marginBottom: 8, fontFamily: "'Outfit', system-ui, sans-serif" }}>Distance preference</h2>
         <p style={{ color: S.sub, fontSize: 14, marginBottom: 40 }}>How far away are you willing to search?</p>
         <div style={{ textAlign: "center", marginBottom: 24 }}>
@@ -957,7 +962,7 @@ export default function Onboarding() {
   // ---- WHO ARE YOU (personality traits) ----
   if (currentStep === "whoAreYou") {
     return (
-      <Wrap>
+      <Wrap {...wrapProps}>
         <h2 style={{ color: S.text, fontSize: 28, fontWeight: 800, marginBottom: 4, fontFamily: "'Outfit', system-ui, sans-serif" }}>Who are you?</h2>
         <p style={{ color: S.sub, fontSize: 14, marginBottom: 20 }}>Pick 3-8 traits that describe you</p>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16, flex: 1, alignContent: "flex-start", overflowY: "auto" }}>
@@ -986,7 +991,7 @@ export default function Onboarding() {
   // ---- INTERESTS ----
   if (currentStep === "traits") {
     return (
-      <Wrap>
+      <Wrap {...wrapProps}>
         <h2 style={{ color: S.text, fontSize: 28, fontWeight: 800, marginBottom: 4, fontFamily: "'Outfit', system-ui, sans-serif" }}>What are you into?</h2>
         <p style={{ color: S.sub, fontSize: 14, marginBottom: 20 }}>Pick 3-8 interests</p>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16, flex: 1, alignContent: "flex-start", overflowY: "auto" }}>
@@ -1015,7 +1020,7 @@ export default function Onboarding() {
   // ---- PHOTOS ----
   if (currentStep === "photos") {
     return (
-      <Wrap>
+      <Wrap {...wrapProps}>
         <h2 style={{ color: S.text, fontSize: 28, fontWeight: 800, marginBottom: 4, fontFamily: "'Outfit', system-ui, sans-serif" }}>Add photos</h2>
         <p style={{ color: S.sub, fontSize: 14, marginBottom: 20 }}>Add at least 1 photo to continue</p>
         <input type="file" accept="image/*" ref={photoInputRef} style={{ display: "none" }} onChange={handlePhotoUpload} />
@@ -1062,7 +1067,7 @@ export default function Onboarding() {
   // ---- PROMPTS ----
   if (isPromptStep) {
     return (
-      <Wrap>
+      <Wrap {...wrapProps}>
         <h2 style={{ color: S.text, fontSize: 28, fontWeight: 800, marginBottom: 4, fontFamily: "'Outfit', system-ui, sans-serif" }}>{promptStepInfo.label}</h2>
         <p style={{ color: S.sub, fontSize: 14, marginBottom: 20 }}>Pick a prompt and write your answer</p>
 
@@ -1119,7 +1124,7 @@ export default function Onboarding() {
   // ---- LIFESTYLE ----
   if (currentStep === "lifestyle") {
     return (
-      <Wrap>
+      <Wrap {...wrapProps}>
         <h2 style={{ color: S.text, fontSize: 28, fontWeight: 800, marginBottom: 4, fontFamily: "'Outfit', system-ui, sans-serif" }}>Lifestyle</h2>
         <p style={{ color: S.sub, fontSize: 14, marginBottom: 24 }}>Help others get to know you better</p>
         <div style={{ display: "flex", flexDirection: "column", gap: 24, flex: 1, overflowY: "auto" }}>
