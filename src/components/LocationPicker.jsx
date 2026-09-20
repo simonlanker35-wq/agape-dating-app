@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 
-export default function LocationPicker({ value, onChange, onSelect, placeholder = "Search city...", className = "", style = {}, inputStyle = {} }) {
+export default function LocationPicker({ value, onChange, onSelect, placeholder = "Search city...", className = "", style = {}, inputStyle = {}, dropdownStyle = {}, itemStyle = {} }) {
   const [query, setQuery] = useState(value || "");
   const [results, setResults] = useState([]);
   const [open, setOpen] = useState(false);
@@ -88,6 +88,7 @@ export default function LocationPicker({ value, onChange, onSelect, placeholder 
           overflow: "hidden",
           maxHeight: 220,
           overflowY: "auto",
+          ...dropdownStyle,
         }}>
           {results.map((r, i) => (
             <button
@@ -107,6 +108,7 @@ export default function LocationPicker({ value, onChange, onSelect, placeholder 
                 borderBottom: i < results.length - 1 ? "1px solid #E8E4DF" : "none",
                 cursor: "pointer",
                 textAlign: "left",
+                ...itemStyle,
               }}
             >
               <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="#8C857C" strokeWidth={2} style={{ flexShrink: 0 }}>

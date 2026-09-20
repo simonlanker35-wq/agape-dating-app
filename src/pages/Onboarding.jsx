@@ -321,6 +321,7 @@ export default function Onboarding() {
         age,
         gender: form.gender,
         denomination: form.denomination,
+        email: form.email || null,
       });
 
       await actions.updateProfile({
@@ -903,34 +904,33 @@ export default function Onboarding() {
         <h2 style={{ color: S.text, fontSize: 30, fontWeight: 800, marginBottom: 8, fontFamily: "'Outfit', system-ui, sans-serif" }}>Where are you?</h2>
         <p style={{ color: S.sub, fontSize: 14, marginBottom: 24 }}>This helps us find people near you</p>
 
-        {!gpsError ? (
-          <>
-            <button
-              onClick={requestGps}
-              disabled={gpsLoading}
-              style={{ width: "100%", padding: "18px", background: S.primarySoft, border: `2px solid ${S.primary}`, borderRadius: 14, fontSize: 16, fontWeight: 600, color: S.text, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, fontFamily: "'Outfit', system-ui, sans-serif", marginBottom: 16 }}
-            >
-              {gpsLoading ? "Getting location..." : "📍 Use my current location"}
-            </button>
-            {form.location && (
-              <p style={{ color: S.primary, fontSize: 15, fontWeight: 600, textAlign: "center", marginBottom: 8 }}>{form.location}</p>
-            )}
-          </>
-        ) : (
-          <>
-            <p style={{ color: S.sub, fontSize: 14, marginBottom: 16 }}>Location permission denied. Please enter your city manually.</p>
-            <div style={{ background: S.surface, borderRadius: 12, border: `1.5px solid ${S.border}`, padding: "4px 0" }}>
-              <LocationPicker
-                value={form.location}
-                onChange={(text) => setForm({ ...form, location: text })}
-                onSelect={(item) => setForm({ ...form, location: item.display, locationLat: item.lat, locationLng: item.lng })}
-                placeholder="Search city..."
-                className="onboarding-input"
-                style={{ background: "transparent", color: S.text, border: "none" }}
-              />
-            </div>
-          </>
+        {!gpsError && (
+          <button
+            onClick={requestGps}
+            disabled={gpsLoading}
+            style={{ width: "100%", padding: "18px", background: S.primarySoft, border: `2px solid ${S.primary}`, borderRadius: 14, fontSize: 16, fontWeight: 600, color: S.text, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, fontFamily: "'Outfit', system-ui, sans-serif", marginBottom: 16 }}
+          >
+            {gpsLoading ? "Getting location..." : "Use my current location"}
+          </button>
         )}
+        {gpsError && <p style={{ color: S.sub, fontSize: 13, marginBottom: 12 }}>Location permission denied. Search your city below.</p>}
+        {form.location && (
+          <p style={{ color: S.primary, fontSize: 15, fontWeight: 600, textAlign: "center", marginBottom: 12 }}>{form.location}</p>
+        )}
+
+        <p style={{ color: S.sub, fontSize: 13, textAlign: "center", marginBottom: 8 }}>or search your city</p>
+        <div style={{ background: S.surface, borderRadius: 12, border: `1.5px solid ${S.border}`, padding: "4px 0", marginBottom: 16 }}>
+          <LocationPicker
+            value={form.location}
+            onChange={(text) => setForm({ ...form, location: text, locationLat: null, locationLng: null })}
+            onSelect={(item) => setForm({ ...form, location: item.display, locationLat: item.lat, locationLng: item.lng })}
+            placeholder="Search city..."
+            className="onboarding-input"
+            inputStyle={{ width: "100%", padding: "14px 16px", background: "transparent", color: S.text, border: "none", fontSize: 16, outline: "none", fontFamily: "'Outfit', system-ui, sans-serif" }}
+            dropdownStyle={{ background: S.surface, border: `1px solid ${S.border}` }}
+            itemStyle={{ color: S.text, borderBottomColor: S.border }}
+          />
+        </div>
 
         <BigBtn onClick={goNext} disabled={!form.location.trim()}>Continue</BigBtn>
       </Wrap>

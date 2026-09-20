@@ -83,7 +83,7 @@ export async function createProfile(data) {
 
   const profile = {
     id: user.id,
-    email: user.email || "",
+    email: data.email || user.email || null,
     name: data.name,
     age: data.age,
     height: data.height || null,
