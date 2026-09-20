@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useApp } from "../context/AppContext";
 import { PROMPT_CATEGORIES, TRAITS_POOL, LOOKING_FOR_POOL, DENOMINATIONS } from "../data/profiles";
-import { ChevronRight, ChevronLeft, Sparkles, Church, X, Check, Plus, Camera } from "lucide-react";
+import { ChevronRight, ChevronLeft, Sparkles, Church, X, Check, Plus, Camera, ZoomIn, ZoomOut } from "lucide-react";
 import AgapeCross from "../components/AgapeCross";
 import LocationPicker from "../components/LocationPicker";
 import { track } from "../services/posthog";
@@ -64,7 +64,7 @@ const COUNTRY_CODES = [
 const LIFESTYLE_CATEGORIES = [
   {
     label: "Exercise",
-    options: ["Active", "Sometimes", "Almost never"],
+    options: ["Daily", "Almost daily", "Sometimes", "Never"],
   },
   {
     label: "Drinking",
@@ -76,7 +76,7 @@ const LIFESTYLE_CATEGORIES = [
   },
   {
     label: "Pets",
-    options: ["Dog", "Cat", "Fish", "Don't have but love", "Allergic", "Other", "Pet-free"],
+    options: ["Dog", "Cat", "Fish", "Bird", "Hamster", "Reptile", "Don't have but love", "Allergic", "Other", "Pet-free"],
   },
 ];
 
@@ -183,6 +183,12 @@ export default function Onboarding() {
   const [photoSlotIndex, setPhotoSlotIndex] = useState(null);
   const [gpsLoading, setGpsLoading] = useState(false);
   const [gpsError, setGpsError] = useState("");
+  const [cropImage, setCropImage] = useState(null);
+  const [cropScale, setCropScale] = useState(1);
+  const [cropOffset, setCropOffset] = useState({ x: 0, y: 0 });
+  const [dragging, setDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const cropCanvasRef = useRef(null);
 
   const currentStep = STEPS[step];
   const phone = countryCode + phoneNum;
@@ -299,12 +305,50 @@ export default function Onboarding() {
     if (!file || photoSlotIndex === null) return;
     const reader = new FileReader();
     reader.onload = (ev) => {
-      const next = [...form.photos];
-      next[photoSlotIndex] = ev.target.result;
-      setForm({ ...form, photos: next });
+      setCropImage(ev.target.result);
+      setCropScale(1);
+      setCropOffset({ x: 0, y: 0 });
     };
     reader.readAsDataURL(file);
     e.target.value = "";
+  };
+
+  const openCropForExisting = (index) => {
+    setPhotoSlotIndex(index);
+    setCropImage(form.photos[index]);
+    setCropScale(1);
+    setCropOffset({ x: 0, y: 0 });
+  };
+
+  const confirmCrop = () => {
+    const canvas = document.createElement("canvas");
+    const size = 600;
+    canvas.width = size;
+    canvas.height = size * (4 / 3);
+    const ctx = canvas.getContext("2d");
+    const img = new Image();
+    img.onload = () => {
+      const aspect = img.width / img.height;
+      const targetAspect = 3 / 4;
+      let drawW, drawH;
+      if (aspect > targetAspect) {
+        drawH = canvas.height * cropScale;
+        drawW = drawH * aspect;
+      } else {
+        drawW = canvas.width * cropScale;
+        drawH = drawW / aspect;
+      }
+      const dx = (canvas.width - drawW) / 2 + cropOffset.x * (drawW / canvas.width);
+      const dy = (canvas.height - drawH) / 2 + cropOffset.y * (drawH / canvas.height);
+      ctx.fillStyle = "#000";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, dx, dy, drawW, drawH);
+      const next = [...form.photos];
+      next[photoSlotIndex] = canvas.toDataURL("image/jpeg", 0.85);
+      setForm({ ...form, photos: next });
+      setCropImage(null);
+    };
+    img.src = cropImage;
   };
 
   const finishOnboarding = async () => {
@@ -1026,40 +1070,85 @@ export default function Onboarding() {
         <input type="file" accept="image/*" ref={photoInputRef} style={{ display: "none" }} onChange={handlePhotoUpload} />
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 16 }}>
           {form.photos.map((photo, i) => (
-            <button
-              key={i}
-              onClick={() => {
-                if (photo) {
-                  const next = [...form.photos];
-                  next[i] = null;
-                  setForm({ ...form, photos: next });
-                } else {
-                  setPhotoSlotIndex(i);
-                  photoInputRef.current?.click();
-                }
-              }}
-              style={{
-                aspectRatio: "3/4", borderRadius: 12, border: `2px dashed ${photo ? "transparent" : i === 0 ? S.primary : S.border}`,
-                background: photo ? `url(${photo}) center/cover` : S.surface,
-                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-                gap: 4, cursor: "pointer", position: "relative", overflow: "hidden",
-              }}
-            >
-              {photo ? (
-                <div style={{ position: "absolute", top: 6, right: 6, width: 24, height: 24, borderRadius: 999, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div key={i} style={{ position: "relative" }}>
+              <button
+                onClick={() => {
+                  if (photo) {
+                    openCropForExisting(i);
+                  } else {
+                    setPhotoSlotIndex(i);
+                    photoInputRef.current?.click();
+                  }
+                }}
+                style={{
+                  width: "100%", aspectRatio: "3/4", borderRadius: 12, border: `2px dashed ${photo ? "transparent" : i === 0 ? S.primary : S.border}`,
+                  background: photo ? `url(${photo}) center/cover` : S.surface,
+                  display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                  gap: 4, cursor: "pointer", overflow: "hidden",
+                }}
+              >
+                {!photo && (
+                  <>
+                    <Plus size={24} style={{ color: i === 0 ? S.primary : S.sub }} />
+                    {i === 0 && <span style={{ fontSize: 10, color: S.primary, fontWeight: 600 }}>Required</span>}
+                  </>
+                )}
+              </button>
+              {photo && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); const next = [...form.photos]; next[i] = null; setForm({ ...form, photos: next }); }}
+                  style={{ position: "absolute", top: 6, right: 6, width: 26, height: 26, borderRadius: 999, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", border: "none", cursor: "pointer", padding: 0 }}
+                >
                   <X size={14} color="#fff" />
-                </div>
-              ) : (
-                <>
-                  <Plus size={24} style={{ color: i === 0 ? S.primary : S.sub }} />
-                  {i === 0 && <span style={{ fontSize: 10, color: S.primary, fontWeight: 600 }}>Required</span>}
-                </>
+                </button>
               )}
-            </button>
+            </div>
           ))}
         </div>
-        <p style={{ color: S.sub, fontSize: 12, textAlign: "center", fontStyle: "italic", marginBottom: 16 }}>Tip: Add a mix of photos to show your personality</p>
+        <p style={{ color: S.sub, fontSize: 12, textAlign: "center", fontStyle: "italic", marginBottom: 16 }}>Tap a photo to crop & scale it</p>
         <BigBtn onClick={goNext} disabled={!form.photos.filter(Boolean).length}>Continue</BigBtn>
+
+        {cropImage && (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.92)", zIndex: 1000, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ width: "min(85vw, 380px)", aspectRatio: "3/4", borderRadius: 16, overflow: "hidden", position: "relative", touchAction: "none", background: "#000" }}
+              onPointerDown={(e) => { setDragging(true); setDragStart({ x: e.clientX - cropOffset.x, y: e.clientY - cropOffset.y }); e.currentTarget.setPointerCapture(e.pointerId); }}
+              onPointerMove={(e) => { if (!dragging) return; setCropOffset({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y }); }}
+              onPointerUp={() => setDragging(false)}
+            >
+              <img
+                src={cropImage}
+                alt=""
+                draggable={false}
+                style={{
+                  position: "absolute", top: "50%", left: "50%",
+                  transform: `translate(calc(-50% + ${cropOffset.x}px), calc(-50% + ${cropOffset.y}px)) scale(${cropScale})`,
+                  minWidth: "100%", minHeight: "100%", objectFit: "cover", userSelect: "none", pointerEvents: "none",
+                }}
+              />
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: 16, marginTop: 20 }}>
+              <button onClick={() => setCropScale(Math.max(0.5, cropScale - 0.1))} style={{ background: "rgba(255,255,255,0.15)", border: "none", borderRadius: 999, width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                <ZoomOut size={22} color="#fff" />
+              </button>
+              <input type="range" min={50} max={300} value={Math.round(cropScale * 100)} onChange={(e) => setCropScale(parseInt(e.target.value) / 100)}
+                style={{ width: 140, accentColor: S.primary }}
+              />
+              <button onClick={() => setCropScale(Math.min(3, cropScale + 0.1))} style={{ background: "rgba(255,255,255,0.15)", border: "none", borderRadius: 999, width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                <ZoomIn size={22} color="#fff" />
+              </button>
+            </div>
+
+            <div style={{ display: "flex", gap: 16, marginTop: 24 }}>
+              <button onClick={() => setCropImage(null)} style={{ padding: "14px 32px", borderRadius: 999, background: "rgba(255,255,255,0.15)", border: "none", color: "#fff", fontSize: 16, fontWeight: 600, cursor: "pointer", fontFamily: "'Outfit', system-ui, sans-serif" }}>
+                Cancel
+              </button>
+              <button onClick={confirmCrop} style={{ padding: "14px 32px", borderRadius: 999, background: S.primary, border: "none", color: "#000", fontSize: 16, fontWeight: 700, cursor: "pointer", fontFamily: "'Outfit', system-ui, sans-serif" }}>
+                Save
+              </button>
+            </div>
+          </div>
+        )}
       </Wrap>
     );
   }
@@ -1109,13 +1198,8 @@ export default function Onboarding() {
           </div>
         )}
 
-        <div style={{ display: "flex", gap: 12, marginTop: 16, flexShrink: 0 }}>
-          <button onClick={goNext} style={{ flex: 1, padding: 14, background: "transparent", color: S.sub, borderRadius: 999, fontSize: 15, fontWeight: 600, border: `1.5px solid ${S.border}`, cursor: "pointer", fontFamily: "'Outfit', system-ui, sans-serif" }}>
-            Skip
-          </button>
-          {canProceed() && (
-            <BigBtn onClick={goNext} style={{ flex: 2, marginTop: 0 }}>Continue</BigBtn>
-          )}
+        <div style={{ marginTop: 16, flexShrink: 0 }}>
+          <BigBtn onClick={goNext} disabled={!canProceed()}>Continue</BigBtn>
         </div>
       </Wrap>
     );
