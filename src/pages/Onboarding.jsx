@@ -632,7 +632,6 @@ export default function Onboarding() {
         <h2 style={{ color: S.text, fontSize: 30, fontWeight: 800, marginBottom: 8, fontFamily: "'Outfit', system-ui, sans-serif" }}>Create a password</h2>
         <p style={{ color: S.sub, fontSize: 14, marginBottom: 24 }}>You'll use this to sign in next time</p>
         <input
-          ref={inputRef}
           type="password" value={password}
           onChange={(e) => { setPassword(e.target.value); setPasswordError(""); }}
           placeholder="Password (min. 6 characters)"
