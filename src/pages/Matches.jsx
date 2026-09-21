@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useApp } from "../context/AppContext";
 import * as api from "../services/api";
-import { MessageCircle, Ban, Flag, UserMinus, Calendar, Video, Heart, Lock, CheckCircle } from "lucide-react";
+import { MessageCircle, Ban, Flag, UserMinus, Calendar, Video, Heart, Lock, CheckCircle, Clock } from "lucide-react";
 import AgapeCross from "../components/AgapeCross";
 import LocationPicker from "../components/LocationPicker";
 import { track } from "../services/posthog";
@@ -819,7 +819,7 @@ function ChatThread({ match, onBack }) {
         {/* Deadline banner */}
         {firstMessageTime && !timerStopped && !chatLocked && timeLeftMs !== null && (
           <div style={{ marginTop: 8, borderRadius: 12, padding: "8px 16px", display: "flex", alignItems: "center", gap: 8, background: timeLeftMs < 86400000 ? "#FEF2F2" : C.surface }}>
-            <span style={{ fontSize: 14 }}>⏰</span>
+            <Clock size={14} color={C.primary} style={{ flexShrink: 0 }} />
             <p style={{ fontSize: 12, fontWeight: 600, color: timeLeftMs < 86400000 ? "#EF4444" : C.sub, margin: 0 }}>
               {isMale
                 ? `${formatTimeLeft(timeLeftMs)} left to plan a date${nudgeSent || match.nudgeAt ? " — 🌹 she sent a rose! (+36h)" : ""}`
@@ -1285,9 +1285,9 @@ export default function Matches() {
 
       <div style={{ flex: 1, overflowY: "auto", paddingBottom: 24 }}>
         {sortedMatches.length === 0 ? (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "60px 20px", textAlign: "center" }}>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", padding: "60px 20px", textAlign: "center" }}>
             <MessageCircle size={48} strokeWidth={1.4} color={C.primary} style={{ marginBottom: 16 }} />
-            <h3 style={{ color: C.text, fontFamily: FONT, fontSize: 18, fontWeight: 700 }}>No messages yet</h3>
+            <h2 style={{ color: C.text, fontFamily: FONT, fontSize: 20, fontWeight: 700 }}>No messages yet</h2>
             <p style={{ color: C.sub, fontSize: 14, marginTop: 4 }}>When you match with someone, you can chat here.</p>
           </div>
         ) : (

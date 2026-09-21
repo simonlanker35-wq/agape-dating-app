@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { useApp } from "../context/AppContext";
-import { Heart, X, MessageCircle, Ban, Flag } from "lucide-react";
+import { Heart, X, MessageCircle, Ban, Flag, Star } from "lucide-react";
 import AgapeCross from "../components/AgapeCross";
 import DoveIcon from "../components/DoveIcon";
 import WaveformBar from "../components/WaveformBar";
@@ -116,10 +116,10 @@ export default function Standouts() {
     nextWed.setDate(now.getDate() + ((3 - now.getDay() + 7) % 7 || 7));
     const dayName = nextWed.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric" });
     return (
-      <div className="discover-empty">
-        <span style={{ fontSize: 48 }}>⭐</span>
-        <h2>Your next pick arrives Wednesday</h2>
-        <p>Every Wednesday you get 1 handpicked profile chosen just for you. Come back {dayName}.</p>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", padding: "60px 20px", textAlign: "center" }}>
+        <Star size={48} strokeWidth={1.4} color={C.primary} style={{ marginBottom: 16 }} />
+        <h2 style={{ color: C.text, fontFamily: FONT, fontSize: 20, fontWeight: 700 }}>Your next pick arrives Wednesday</h2>
+        <p style={{ color: C.sub, fontSize: 14, marginTop: 4 }}>Every Wednesday you get 1 handpicked profile chosen just for you. Come back {dayName}.</p>
       </div>
     );
   }
