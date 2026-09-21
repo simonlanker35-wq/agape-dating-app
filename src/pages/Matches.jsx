@@ -26,10 +26,10 @@ const WARDROBE_OPTIONS = [
 ];
 
 const DAY_SLOTS = [
-  { id: "morning", label: "Morning", short: "Morn", time: "10:00" },
-  { id: "lunch", label: "Lunch", short: "Lunch", time: "12:30" },
-  { id: "afternoon", label: "Afternoon", short: "Aft", time: "15:00" },
-  { id: "evening", label: "Evening", short: "Eve", time: "19:00" },
+  { id: "morning", label: "Morning", hint: "9 – 12", time: "10:00" },
+  { id: "lunch", label: "Lunch", hint: "12 – 14", time: "12:30" },
+  { id: "afternoon", label: "Afternoon", hint: "14 – 17", time: "15:00" },
+  { id: "evening", label: "Evening", hint: "17 – 22", time: "19:00" },
 ];
 const MAX_SLOTS = 12;
 
@@ -116,6 +116,7 @@ function DateBuilder({ profileName, userLocation, onSend, onClose }) {
   const [wardrobe, setWardrobe] = useState(null);
   const [selections, setSelections] = useState([]);
   const days = useMemo(() => getNextDays(14), []);
+  const [activeDay, setActiveDay] = useState(days[0]);
 
   const isSelected = (day, slot) => selections.some((s) => s.date === day.date && s.slot === slot.id);
   const toSelection = (day, slot) => ({ date: day.date, label: `${day.dayName} ${day.dayNum} ${day.month}`, slot: slot.id, time: slot.time });
@@ -264,60 +265,83 @@ function DateBuilder({ profileName, userLocation, onSend, onClose }) {
         {step === 4 && (
           <>
             <p style={{ fontSize: 18, fontWeight: 700, color: C.text, fontFamily: FONT, marginBottom: 4 }}>When are you free?</p>
-            <p style={{ fontSize: 13, color: C.sub, marginBottom: 12 }}>
-              Tap the slots that work for you over the next two weeks — at least 2, up to {MAX_SLOTS}. She picks from these.
-            </p>
+            <p style={{ fontSize: 13, color: C.sub, marginBottom: 14 }}>Pick a day, then the times of day that suit you. At least 2 — she chooses from these.</p>
 
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+            <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 6, marginBottom: 14, scrollbarWidth: "none" }}>
+              {days.map((d) => {
+                const n = selections.filter((s) => s.date === d.date).length;
+                const active = activeDay.date === d.date;
+                return (
+                  <button
+                    key={d.date}
+                    onClick={() => setActiveDay(d)}
+                    style={{
+                      flexShrink: 0, width: 64, padding: "10px 0 8px", borderRadius: 16, position: "relative", cursor: "pointer",
+                      border: active ? `2px solid ${C.primary}` : `1.5px solid ${n ? C.primary : C.border}`,
+                      background: active ? C.primarySoft : C.card,
+                    }}
+                  >
+                    <span style={{ display: "block", fontSize: 11, fontWeight: 700, color: d.isWeekend ? C.primary : C.sub, fontFamily: FONT }}>{d.dayName}</span>
+                    <span style={{ display: "block", fontSize: 20, fontWeight: 700, color: C.text, fontFamily: FONT, lineHeight: 1.2 }}>{d.dayNum}</span>
+                    <span style={{ display: "block", fontSize: 10, color: C.sub, fontFamily: FONT }}>{d.month}</span>
+                    {n > 0 && (
+                      <span style={{ position: "absolute", top: -6, right: -6, minWidth: 18, height: 18, padding: "0 5px", borderRadius: 9, background: C.primary, color: "white", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: FONT }}>{n}</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            <p style={{ fontSize: 13, fontWeight: 700, color: C.text, fontFamily: FONT, marginBottom: 10 }}>
+              {activeDay.dayName} {activeDay.dayNum} {activeDay.month}
+            </p>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              {DAY_SLOTS.map((s) => {
+                const on = isSelected(activeDay, s);
+                const full = !on && selections.length >= MAX_SLOTS;
+                return (
+                  <button
+                    key={s.id}
+                    onClick={() => toggleSlot(activeDay, s)}
+                    disabled={full}
+                    aria-label={`${activeDay.dayName} ${activeDay.dayNum} ${s.label}`}
+                    style={{
+                      padding: "18px 14px", borderRadius: 16, textAlign: "left", cursor: full ? "default" : "pointer", opacity: full ? 0.4 : 1,
+                      border: on ? `2px solid ${C.primary}` : `1.5px solid ${C.border}`,
+                      background: on ? C.primary : C.card,
+                      display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
+                    }}
+                  >
+                    <span>
+                      <span style={{ display: "block", fontSize: 15, fontWeight: 700, color: on ? "white" : C.text, fontFamily: FONT }}>{s.label}</span>
+                      <span style={{ display: "block", fontSize: 12, color: on ? "rgba(255,255,255,0.8)" : C.sub, fontFamily: FONT, marginTop: 2 }}>{s.hint}</span>
+                    </span>
+                    <span style={{ width: 22, height: 22, borderRadius: "50%", flexShrink: 0, border: on ? "none" : `1.5px solid ${C.border}`, background: on ? "white" : "transparent", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      {on && <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke={C.primary} strokeWidth={3}><path d="M20 6L9 17l-5-5" /></svg>}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 14 }}>
               {[
                 { label: "All evenings", pick: (d, s) => s.id === "evening" },
                 { label: "Weekends", pick: (d) => d.isWeekend },
-                { label: "Weekend afternoons", pick: (d, s) => d.isWeekend && s.id === "afternoon" },
               ].map((q) => (
-                <button key={q.label} onClick={() => quickSelect(q.pick)} style={{ padding: "6px 12px", borderRadius: 9999, fontSize: 12, fontWeight: 600, fontFamily: FONT, background: C.surface, color: C.text, border: `1px solid ${C.border}`, cursor: "pointer" }}>
+                <button key={q.label} onClick={() => quickSelect(q.pick)} style={{ padding: "7px 12px", borderRadius: 9999, fontSize: 12, fontWeight: 600, fontFamily: FONT, background: C.surface, color: C.text, border: `1px solid ${C.border}`, cursor: "pointer" }}>
                   + {q.label}
                 </button>
               ))}
               {selections.length > 0 && (
-                <button onClick={() => setSelections([])} style={{ padding: "6px 12px", borderRadius: 9999, fontSize: 12, fontWeight: 600, fontFamily: FONT, background: "none", color: C.sub, border: `1px solid ${C.border}`, cursor: "pointer" }}>
-                  Clear
+                <button onClick={() => setSelections([])} style={{ padding: "7px 12px", borderRadius: 9999, fontSize: 12, fontWeight: 600, fontFamily: FONT, background: "none", color: C.sub, border: `1px solid ${C.border}`, cursor: "pointer" }}>
+                  Clear all
                 </button>
               )}
             </div>
 
-            <div style={{ borderRadius: 14, border: `1.5px solid ${C.border}`, overflow: "hidden" }}>
-              <div style={{ display: "grid", gridTemplateColumns: "72px repeat(4, 1fr)", background: C.surface, borderBottom: `1px solid ${C.border}` }}>
-                <div />
-                {DAY_SLOTS.map((s) => (
-                  <div key={s.id} style={{ padding: "8px 2px", textAlign: "center", fontSize: 11, fontWeight: 700, color: C.sub, fontFamily: FONT }}>{s.short}</div>
-                ))}
-              </div>
-              {days.map((d, i) => (
-                <div key={d.date} style={{ display: "grid", gridTemplateColumns: "72px repeat(4, 1fr)", alignItems: "center", background: d.isWeekend ? C.card : C.bg, borderBottom: i < days.length - 1 ? `1px solid ${C.border}` : "none" }}>
-                  <div style={{ padding: "6px 10px", lineHeight: 1.15 }}>
-                    <span style={{ display: "block", fontSize: 11, fontWeight: 700, color: d.isWeekend ? C.primary : C.sub, fontFamily: FONT }}>{d.dayName}</span>
-                    <span style={{ display: "block", fontSize: 13, fontWeight: 600, color: C.text, fontFamily: FONT }}>{d.dayNum} {d.month}</span>
-                  </div>
-                  {DAY_SLOTS.map((s) => {
-                    const on = isSelected(d, s);
-                    const full = !on && selections.length >= MAX_SLOTS;
-                    return (
-                      <button
-                        key={s.id}
-                        onClick={() => toggleSlot(d, s)}
-                        disabled={full}
-                        aria-label={`${d.dayName} ${d.dayNum} ${s.label}`}
-                        style={{ margin: 4, height: 34, borderRadius: 9, border: on ? `2px solid ${C.primary}` : `1.5px solid ${C.border}`, background: on ? C.primary : "white", cursor: full ? "default" : "pointer", opacity: full ? 0.35 : 1, display: "flex", alignItems: "center", justifyContent: "center" }}
-                      >
-                        {on && <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={3}><path d="M20 6L9 17l-5-5" /></svg>}
-                      </button>
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
-            <p style={{ fontSize: 12, color: selections.length >= 2 ? C.primary : C.sub, fontWeight: 600, marginTop: 10, textAlign: "center", fontFamily: FONT }}>
-              {selections.length} of {MAX_SLOTS} slots selected{selections.length < 2 ? " — pick at least 2" : ""}
+            <p style={{ fontSize: 12, color: selections.length >= 2 ? C.primary : C.sub, fontWeight: 600, marginTop: 12, textAlign: "center", fontFamily: FONT }}>
+              {selections.length === 0 ? "Nothing selected yet" : `${selections.length} time${selections.length === 1 ? "" : "s"} selected${selections.length < 2 ? " — pick at least 2" : ""}`}
             </p>
           </>
         )}
