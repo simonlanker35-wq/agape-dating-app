@@ -5,6 +5,7 @@ import { MessageCircle, Ban, Flag, UserMinus, Calendar, CheckCircle } from "luci
 import AgapeCross from "../components/AgapeCross";
 import LocationPicker from "../components/LocationPicker";
 import ReliabilityBadge from "../components/ReliabilityBadge";
+import NotificationPrompt from "../components/NotificationPrompt";
 import { track } from "../services/posthog";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -379,7 +380,6 @@ function DateCard({ invitation, isMe, isMale, onRespond, onConfirm, onDecline, o
   const [showDecline, setShowDecline] = useState(false);
   const [declineReasons, setDeclineReasons] = useState([]);
   const [confirming, setConfirming] = useState(null);
-  const [exactTime, setExactTime] = useState("");
   const [showPicker, setShowPicker] = useState(false);
   const responded = invitation.response_times || [];
   const allRows = useMemo(buildAllRows, []);
@@ -418,8 +418,9 @@ function DateCard({ invitation, isMe, isMale, onRespond, onConfirm, onDecline, o
     if (!confirming) return;
     track("date_confirmed");
     setSending(true);
-    await onConfirm(invitation.id, { ...confirming, time: exactTime || confirming.time });
+    await onConfirm(invitation.id, confirming);
     setSending(false);
+    setShowPicker(false);
   };
 
   const toggleDeclineReason = (r) => {
@@ -603,28 +604,13 @@ function DateCard({ invitation, isMe, isMale, onRespond, onConfirm, onDecline, o
             {showPicker && (
               <AvailabilitySheet
                 title={pickerTitle}
-                subtitle={`These are the times ${themName} is free. Tap one, then set the exact time.`}
+                subtitle={`These are the times ${themName} is free. Tap one to confirm it.`}
                 onClose={() => setShowPicker(false)}
                 footer={
                   confirming ? (
-                    <div>
-                      <p style={{ fontSize: 12, fontWeight: 600, color: C.sub, margin: "0 0 8px", fontFamily: FONT }}>{longDay(confirming.date)} · {slotName(confirming)} — what time exactly?</p>
-                      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                        <input
-                          type="time"
-                          value={exactTime}
-                          onChange={(e) => setExactTime(e.target.value)}
-                          style={{ flex: 1, padding: "12px", borderRadius: 12, fontSize: 18, fontWeight: 700, fontFamily: FONT, border: `1.5px solid ${C.border}`, background: "white", color: C.text, outline: "none" }}
-                        />
-                        <button
-                          onClick={handleConfirm}
-                          disabled={sending || !exactTime}
-                          style={{ ...primaryBtn, width: "auto", padding: "14px 20px", background: exactTime ? GREEN : C.border, cursor: exactTime ? "pointer" : "default" }}
-                        >
-                          {sending ? "..." : "Confirm date"}
-                        </button>
-                      </div>
-                    </div>
+                    <button onClick={handleConfirm} disabled={sending} style={{ ...primaryBtn, background: GREEN }}>
+                      {sending ? "..." : `Confirm ${longDay(confirming.date)} · ${confirming.time}`}
+                    </button>
                   ) : (
                     <p style={{ fontSize: 13, color: C.sub, textAlign: "center", fontFamily: FONT, margin: 0 }}>Tap a time in your column to choose it</p>
                   )
@@ -637,7 +623,6 @@ function DateCard({ invitation, isMe, isMale, onRespond, onConfirm, onDecline, o
                   onToggle={(t) => {
                     const same = confirming && timeKey(confirming) === timeKey(t);
                     setConfirming(same ? null : t);
-                    setExactTime(t.time);
                   }}
                   highlightKey={confirming ? timeKey(confirming) : null}
                   meAvatar={meAvatar}
@@ -753,11 +738,15 @@ function ChatThread({ match, onBack }) {
     }
   };
 
+  const myName = state.currentUser?.name || "Your match";
+  const notifyThem = (title, body, tag) => api.notifyUser(profile.id, { title, body, url: "/?tab=matches", tag: `${tag}-${match.id}` });
+
   const handleSendDate = async (data) => {
     setShowDateBuilder(false);
     try {
       const inv = await api.createDateInvitation(match.id, data);
       setDateInvitations((prev) => [...prev, inv]);
+      notifyThem(`${myName} planned a date`, "Open Agape and say when you're free.", "date");
     } catch (err) {
       console.error("Date invite failed:", err);
     }
@@ -767,6 +756,7 @@ function ChatThread({ match, onBack }) {
     try {
       const updated = await api.respondToDate(invId, selectedTimes);
       setDateInvitations((prev) => prev.map((inv) => (inv.id === invId ? updated : inv)));
+      notifyThem(`${myName} is free`, `Pick one of her ${selectedTimes.length} time${selectedTimes.length === 1 ? "" : "s"} to set the date.`, "date");
     } catch (err) {
       console.error("Respond failed:", err);
     }
@@ -776,6 +766,7 @@ function ChatThread({ match, onBack }) {
     try {
       const updated = await api.confirmDate(invId, confirmedTime);
       setDateInvitations((prev) => prev.map((inv) => (inv.id === invId ? updated : inv)));
+      notifyThem("Date confirmed", `${myName} picked ${longDay(confirmedTime.date)} · ${confirmedTime.time}. The chat is open.`, "date");
     } catch (err) {
       console.error("Confirm failed:", err);
     }
@@ -785,6 +776,7 @@ function ChatThread({ match, onBack }) {
     try {
       const updated = await api.declineDate(invId, reasons);
       setDateInvitations((prev) => prev.map((inv) => (inv.id === invId ? updated : inv)));
+      notifyThem(`${myName} passed on the plan`, "Open Agape to propose something else.", "date");
     } catch (err) {
       console.error("Decline failed:", err);
     }
@@ -1146,6 +1138,8 @@ export default function Matches() {
       <div style={{ padding: "40px 20px 16px" }}>
         <h1 style={{ color: C.text, fontFamily: FONT, fontSize: 24, fontWeight: 700, letterSpacing: "-0.4px", margin: 0 }}>Messages</h1>
       </div>
+
+      <NotificationPrompt />
 
       <div style={{ flex: 1, overflowY: "auto", paddingBottom: 24 }}>
         {sortedMatches.length === 0 ? (

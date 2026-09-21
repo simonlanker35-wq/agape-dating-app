@@ -564,6 +564,34 @@ export async function declineDate(invitationId, reasons) {
   return data;
 }
 
+// ─── PUSH NOTIFICATIONS ───
+
+export async function savePushSubscription(sub) {
+  const user = await currentUser();
+  if (!user) return;
+  const { error } = await supabase.from("push_subscriptions").upsert(
+    { user_id: user.id, endpoint: sub.endpoint, p256dh: sub.keys?.p256dh, auth: sub.keys?.auth, user_agent: navigator.userAgent.slice(0, 200) },
+    { onConflict: "endpoint" }
+  );
+  if (error) throw new Error(error.message);
+}
+
+export async function deletePushSubscription(endpoint) {
+  await supabase.from("push_subscriptions").delete().eq("endpoint", endpoint);
+}
+
+// Fire-and-forget: a failed push must never break the action that triggered it
+export function notifyUser(userId, { title, body, url, tag }) {
+  supabase.auth.getSession().then(({ data: { session } }) => {
+    if (!session || !userId) return;
+    return fetch("https://ksscosugtbdzgekrszck.supabase.co/functions/v1/send-push", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+      body: JSON.stringify({ userId, title, body, url, tag }),
+    });
+  }).catch(() => {});
+}
+
 // ─── DATE FEEDBACK (showed up / no-show) ───
 
 export async function getReliability(ids) {

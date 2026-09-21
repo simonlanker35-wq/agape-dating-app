@@ -2,6 +2,7 @@ import { createContext, useContext, useReducer, useEffect, useCallback } from "r
 import * as api from "../services/api";
 import { supabase } from "../services/supabase";
 import { getSubscriptionStatus } from "../services/stripe";
+import { syncPushSubscription } from "../services/push";
 import { identify, track, reset as resetPosthog } from "../services/posthog";
 
 const AppContext = createContext();
@@ -167,8 +168,17 @@ export function AppProvider({ children }) {
     const params = new URLSearchParams(window.location.search);
     if (params.has("subscription")) {
       track("subscription_checkout_returned", { result: params.get("subscription") });
-      window.history.replaceState({}, "", window.location.pathname);
     }
+    if (params.get("tab")) dispatch({ type: "SET_TAB", payload: params.get("tab") });
+    if (params.has("subscription") || params.has("tab")) window.history.replaceState({}, "", window.location.pathname);
+
+    // A tapped notification hands us its target URL while the app is already open
+    const onSwMessage = (e) => {
+      if (e.data?.type !== "open") return;
+      const tab = new URL(e.data.url, window.location.origin).searchParams.get("tab");
+      if (tab) dispatch({ type: "SET_TAB", payload: tab });
+    };
+    navigator.serviceWorker?.addEventListener("message", onSwMessage);
 
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
@@ -189,11 +199,15 @@ export function AppProvider({ children }) {
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+      navigator.serviceWorker?.removeEventListener("message", onSwMessage);
+    };
   }, []);
 
   useEffect(() => {
     if (state.onboardingComplete && state.currentUser) {
+      syncPushSubscription();
       loadDiscover();
       loadLikesReceived();
       loadMatches();
@@ -341,6 +355,9 @@ export function AppProvider({ children }) {
         const matches = await api.getMatches();
         dispatch({ type: "SET_MATCHES", payload: matches });
         matchData = matches.find((m) => m.profileId === profileId) || null;
+        api.notifyUser(profileId, { title: "It's a match", body: `You and ${state.currentUser?.name || "someone"} liked each other. Time to plan a date.`, url: "/?tab=matches", tag: "match" });
+      } else {
+        api.notifyUser(profileId, { title: isDove ? "You received a Dove" : "Someone new likes you", body: "Open Sparks to see who.", url: "/?tab=likes", tag: "like" });
       }
       dispatch({
         type: "LIKE_PROFILE",
@@ -368,6 +385,7 @@ export function AppProvider({ children }) {
       }
       if (res.matched) {
         track("match_created", { fromSparks: true });
+        api.notifyUser(like.fromId, { title: "It's a match", body: `${state.currentUser?.name || "Someone"} liked you back. Time to plan a date.`, url: "/?tab=matches", tag: "match" });
         const alreadyMatched = state.matches.some(
           (m) => m.profileId === like.fromId
         );
@@ -403,6 +421,10 @@ export function AppProvider({ children }) {
       const message = await api.sendMessage(matchId, text);
       track("message_sent");
       dispatch({ type: "ADD_MESSAGE", payload: { matchId, message } });
+      const m = state.matches.find((x) => x.id === matchId);
+      if (m?.profileId) {
+        api.notifyUser(m.profileId, { title: state.currentUser?.name || "New message", body: text.slice(0, 120), url: "/?tab=matches", tag: `msg-${matchId}` });
+      }
       return message;
     },
 

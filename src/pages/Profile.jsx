@@ -7,6 +7,7 @@ import LocationPicker from "../components/LocationPicker";
 import { redirectToCheckout, getSubscriptionStatus } from "../services/stripe";
 import { getDovesRemaining } from "../services/limits";
 import { track } from "../services/posthog";
+import { enablePush, disablePush, isPushEnabled, isPushSupported, getPermission, needsHomeScreenInstall } from "../services/push";
 
 const C = { bg: "#FFFFFF", card: "#FAFAF8", surface: "#F4F2EE", primary: "#B8912A", primarySoft: "#FBF5E6", text: "#1A1612", sub: "#8C857C", border: "#E8E4DF", sent: "#111111" };
 const FONT = "'Outfit', system-ui, sans-serif";
@@ -279,6 +280,9 @@ function SettingsScreen({ onBack, initialSection = null }) {
   const { state, dispatch, actions } = useApp();
   const { currentUser } = state;
   const [notifs, setNotifs] = useState({ matches: true, likes: true, messages: true, doves: true, prompts: false });
+  const [pushOn, setPushOn] = useState(false);
+  const [pushStatus, setPushStatus] = useState(() => (!isPushSupported() ? "unsupported" : needsHomeScreenInstall() ? "install" : getPermission() === "denied" ? "denied" : "ok"));
+  useEffect(() => { isPushEnabled().then(setPushOn).catch(() => {}); }, []);
   const [privacy, setPrivacy] = useState({ activeStatus: true, readReceipts: true, showDistance: true, incognito: false });
   const [faithPref, setFaithPref] = useState({ sameOnly: (state.filters?.denominations || []).length > 0, openToAll: (state.filters?.denominations || []).length === 0 });
   const [paused, setPaused] = useState(false);
@@ -343,6 +347,24 @@ function SettingsScreen({ onBack, initialSection = null }) {
         <div style={{ flex: 1, overflowY: "auto", padding: "0 16px 32px", display: "flex", flexDirection: "column", gap: 20 }}>
           {section === "notifications" && (
             <>
+              <div>
+                <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: C.sub, padding: "0 4px", marginBottom: 8 }}>Push notifications</p>
+                <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
+                  <SettingsRow
+                    icon={I.bell}
+                    label="Notifications on this device"
+                    sub={pushStatus === "unsupported" ? "Not supported in this browser" : pushStatus === "install" ? "Add Agape to your Home Screen first (Share → Add to Home Screen)" : pushStatus === "denied" ? "Blocked — allow notifications in your browser settings" : pushOn ? "On — likes, matches, dates and messages" : "Off"}
+                    toggle={{ on: pushOn, onToggle: async () => {
+                      if (pushStatus === "unsupported" || pushStatus === "install" || pushStatus === "denied") return;
+                      try {
+                        if (pushOn) { await disablePush(); setPushOn(false); track("push_disabled"); }
+                        else { await enablePush(); setPushOn(true); track("push_enabled", { source: "settings" }); }
+                      } catch (_) {}
+                      setPushStatus(getPermission() === "denied" ? "denied" : "ok");
+                    } }}
+                  />
+                </div>
+              </div>
               <div>
                 <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: C.sub, padding: "0 4px", marginBottom: 8 }}>Match & Like alerts</p>
                 <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
