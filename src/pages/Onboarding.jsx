@@ -1117,7 +1117,8 @@ export default function Onboarding() {
     return (
       <Wrap {...wrapProps}>
         <h2 style={{ color: S.text, fontSize: 30, fontWeight: 800, marginBottom: 8, fontFamily: "'Outfit', system-ui, sans-serif" }}>Where are you?</h2>
-        <p style={{ color: S.sub, fontSize: 14, marginBottom: 24 }}>This helps us find people near you</p>
+        <p style={{ color: S.sub, fontSize: 14, marginBottom: 6 }}>This helps us find people near you</p>
+        <p style={{ color: S.sub, fontSize: 12, marginBottom: 24, lineHeight: 1.5 }}>Your exact location is never shown — others only see it blurred to roughly 2 km.</p>
 
         {!gpsError && (
           <button

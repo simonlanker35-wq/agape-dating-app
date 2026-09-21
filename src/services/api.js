@@ -38,6 +38,19 @@ function mapProfile(p) {
 
 // ─── AUTH ───
 
+// Local session read — avoids a network round-trip to the auth server on every API call
+async function currentUser() {
+  const { data: { session } } = await supabase.auth.getSession();
+  return session?.user || null;
+}
+
+function withTimeout(promise, ms, message = "Request timed out — please check your connection and try again") {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(message)), ms)),
+  ]);
+}
+
 export async function sendOtp(phone) {
   const { data, error } = await supabase.auth.signInWithOtp({ phone });
   if (error) throw new Error(error.message);
@@ -71,14 +84,14 @@ export async function loginWithPhone(phone, password) {
 }
 
 export async function checkProfileExists() {
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await currentUser();
   if (!user) return false;
   const { data } = await supabase.from("profiles").select("id").eq("id", user.id).maybeSingle();
   return !!data;
 }
 
 export async function createProfile(data) {
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await currentUser();
   if (!user) throw new Error("Not authenticated");
 
   const profile = {
@@ -122,21 +135,20 @@ export async function login(email, password) {
 }
 
 export async function getMe() {
-  const { data: { user }, error } = await supabase.auth.getUser();
-  if (error || !user) throw new Error("Not authenticated");
+  const user = await currentUser();
+  if (!user) throw new Error("Not authenticated");
 
-  const { data: profile, error: profileError } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .single();
+  const { data: profile, error: profileError } = await withTimeout(
+    supabase.from("profiles").select("*").eq("id", user.id).single(),
+    20000
+  );
   if (profileError) throw new Error(profileError.message);
 
   return mapProfileToUser(profile, user.phone);
 }
 
 export async function getProfile() {
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await currentUser();
   const { data: profile, error } = await supabase
     .from("profiles")
     .select("*")
@@ -147,7 +159,7 @@ export async function getProfile() {
 }
 
 export async function updateProfile(data) {
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await currentUser();
   const updates = {};
   if (data.name !== undefined) updates.name = data.name;
   if (data.age !== undefined) updates.age = data.age;
@@ -167,14 +179,12 @@ export async function updateProfile(data) {
   if (data.filters !== undefined) updates.filters = data.filters;
   if (data.photos !== undefined) updates.photos = data.photos;
 
-  const { data: profile, error } = await supabase
-    .from("profiles")
-    .update(updates)
-    .eq("id", user.id)
-    .select()
-    .single();
+  const { data: profile, error } = await withTimeout(
+    supabase.from("profiles").update(updates).eq("id", user.id).select().single(),
+    20000
+  );
   if (error) throw new Error(error.message);
-  return mapProfileToUser(profile);
+  return mapProfileToUser(profile, user.phone);
 }
 
 // ─── DISCOVER ───
@@ -188,7 +198,7 @@ function haversineKm(lat1, lon1, lat2, lon2) {
 }
 
 export async function getDiscover() {
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await currentUser();
   const { data: me } = await supabase.from("profiles").select("*").eq("id", user.id).single();
 
   const targetGender = me.gender === "male" ? "female" : "male";
@@ -237,14 +247,14 @@ export async function getDiscover() {
 // ─── LIKES ───
 
 export async function sendLike(to, targetType, targetIndex, comment = null, isDove = false) {
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await currentUser();
 
   const { data: existing } = await supabase
     .from("likes")
     .select("id")
     .eq("from_user", user.id)
     .eq("to_user", to)
-    .single();
+    .maybeSingle();
 
   if (existing) throw new Error("Already liked");
 
@@ -268,7 +278,7 @@ export async function sendLike(to, targetType, targetIndex, comment = null, isDo
     .select("id")
     .eq("from_user", to)
     .eq("to_user", user.id)
-    .single();
+    .maybeSingle();
 
   let matched = false;
   let matchId = null;
@@ -300,7 +310,7 @@ export async function sendLike(to, targetType, targetIndex, comment = null, isDo
 }
 
 export async function getLikesReceived() {
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await currentUser();
 
   const { data: matchedUserIds } = await supabase
     .from("matches")
@@ -341,14 +351,14 @@ export async function dismissLike(likeId) {
 }
 
 export async function skipProfile(to) {
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await currentUser();
   await supabase.from("skips").insert({ from_user: user.id, to_user: to });
 }
 
 // ─── MATCHES ───
 
 export async function getMatches() {
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await currentUser();
 
   const { data: matches, error } = await supabase
     .from("matches")
@@ -372,7 +382,7 @@ export async function getMatches() {
       .eq("match_id", m.id)
       .order("created_at", { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
 
     let preview = lastMsg ? { text: lastMsg.text, sender: lastMsg.sender } : null;
     if (!preview) {
@@ -447,7 +457,7 @@ export async function getMessages(matchId) {
 }
 
 export async function sendMessage(matchId, text) {
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await currentUser();
 
   const { data: message, error } = await supabase
     .from("messages")
@@ -474,7 +484,7 @@ export async function unmatch(matchId) {
 // ─── DATE INVITATIONS ───
 
 export async function createDateInvitation(matchId, data) {
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await currentUser();
   const { data: invitation, error } = await supabase
     .from("date_invitations")
     .insert({

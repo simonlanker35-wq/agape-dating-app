@@ -286,6 +286,7 @@ function SettingsScreen({ onBack, initialSection = null }) {
   const [editField, setEditField] = useState(null);
   const [editValue, setEditValue] = useState("");
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [editLocationData, setEditLocationData] = useState(null);
   const [distanceVal, setDistanceVal] = useState(currentUser?.filters?.maxDistance || 80);
@@ -294,15 +295,15 @@ function SettingsScreen({ onBack, initialSection = null }) {
     if (!editField || !editValue.trim()) return;
     track("setting_saved", { field: editField });
     setSaving(true);
+    setSaveError("");
     try {
       const updates = {};
-      if (editField === "name") updates.name = editValue;
-      else if (editField === "age") updates.age = parseInt(editValue, 10);
+      if (editField === "name") updates.name = editValue.trim();
       else if (editField === "denomination") updates.denomination = editValue;
       await actions.updateProfile(updates);
       setEditField(null);
       setEditValue("");
-    } catch (err) { console.error(err); }
+    } catch (err) { setSaveError(err.message); }
     setSaving(false);
   };
 
@@ -574,6 +575,7 @@ function SettingsScreen({ onBack, initialSection = null }) {
                 <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
                   <SettingsRow icon={I.mapPin} label="Current location" sub={currentUser?.location?.city || "Not set"} onPress={() => { setEditField("location"); setEditValue(currentUser?.location?.city || ""); }} />
                 </div>
+                <p style={{ fontSize: 12, color: C.sub, padding: "8px 4px 0", lineHeight: 1.5 }}>Your exact location is never shown. Others only see it blurred to roughly 2 km.</p>
                 {editField === "location" && (
                   <div style={{ borderRadius: 16, padding: 16, background: C.card, marginTop: 8 }}>
                     <LocationPicker
@@ -594,9 +596,12 @@ function SettingsScreen({ onBack, initialSection = null }) {
                           locUpdate.locationLng = editLocationData.lng;
                           dispatch({ type: "SET_USER_LOCATION", payload: { lat: editLocationData.lat, lng: editLocationData.lng, city: editValue } });
                         }
-                        await actions.updateProfile(locUpdate);
-                        actions.refreshDiscover();
-                        setEditField(null); setEditValue(""); setEditLocationData(null); setSaving(false);
+                        try {
+                          await actions.updateProfile(locUpdate);
+                          actions.refreshDiscover();
+                          setEditField(null); setEditValue(""); setEditLocationData(null);
+                        } catch (err) { setSaveError(err.message); }
+                        setSaving(false);
                       }} disabled={saving} style={{ flex: 1, padding: "10px 0", borderRadius: 12, fontSize: 14, fontWeight: 600, background: C.primary, color: "white", border: "none", cursor: "pointer", opacity: saving ? 0.5 : 1 }}>{saving ? "Saving..." : "Save"}</button>
                     </div>
                   </div>
@@ -611,7 +616,7 @@ function SettingsScreen({ onBack, initialSection = null }) {
                 <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
                   <SettingsRow icon={I.user} label="Name" sub={currentUser?.name || "Not set"} onPress={() => { setEditField("name"); setEditValue(currentUser?.name || ""); }} />
                   <SettingsRow icon={I.phone} label="Phone" sub={state.currentUser?.phone || "Not set"} />
-                  <SettingsRow icon={I.cake} label="Age" sub={currentUser?.age ? `${currentUser.age} years old` : "Not set"} onPress={() => { setEditField("age"); setEditValue(String(currentUser?.age || "")); }} />
+                  <SettingsRow icon={I.cake} label="Age" sub={currentUser?.age ? `${currentUser.age} years old` : "Not set"} />
                   <SettingsRow icon={I.cross} label="Denomination" sub={currentUser?.denomination || "Not set"} onPress={() => { setEditField("denomination"); setEditValue(currentUser?.denomination || ""); }} />
                 </div>
               </div>
@@ -621,7 +626,7 @@ function SettingsScreen({ onBack, initialSection = null }) {
                     Edit {editField}
                   </p>
                   <input
-                    type={editField === "age" ? "number" : "text"}
+                    type="text"
                     value={editValue}
                     onChange={(e) => setEditValue(e.target.value)}
                     autoFocus
@@ -638,9 +643,10 @@ function SettingsScreen({ onBack, initialSection = null }) {
                       color: C.text,
                     }}
                   />
+                  {saveError && <p style={{ fontSize: 12, color: "#EF4444", marginTop: 8 }}>{saveError}</p>}
                   <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
                     <button
-                      onClick={() => { track("account_edit_cancelled", { field: editField }); setEditField(null); setEditValue(""); }}
+                      onClick={() => { track("account_edit_cancelled", { field: editField }); setEditField(null); setEditValue(""); setSaveError(""); }}
                       style={{ flex: 1, padding: "10px 0", borderRadius: 12, fontSize: 14, fontWeight: 600, background: C.surface, color: C.sub, border: "none", cursor: "pointer" }}
                     >
                       Cancel
@@ -951,121 +957,75 @@ export default function Profile() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: C.surface }}>
-      {/* Header — full bleed photo */}
-      <div
-        className="profile-hero-photo"
-        style={{ position: "relative", height: 380, flexShrink: 0, cursor: "pointer" }}
-        onClick={() => { setEditPhotos((v) => { if (!v) setTimeout(() => photosRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 50); return !v; }); }}
-      >
-        <img
-          src={currentUser.photos?.[0]}
-          alt="Me"
-          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
-          onError={(e) => {
-            e.target.src = `https://ui-avatars.com/api/?name=${currentUser.name}&size=600&background=random`;
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            background: "linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.1) 60%)",
-          }}
-        />
-        <div className="profile-hero-hover">
-          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 20px", borderRadius: 9999, background: "rgba(255,255,255,0.2)", backdropFilter: "blur(8px)" }}>
-            <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2}>
-              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-              <circle cx="8.5" cy="8.5" r="1.5" />
-              <polyline points="21 15 16 10 5 21" />
+      {/* Header — compact, centered avatar */}
+      <div style={{ flexShrink: 0, padding: "44px 20px 0", background: C.surface }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <span style={{ fontSize: 18, fontWeight: 800, letterSpacing: "-0.3px", color: C.text, fontFamily: FONT }}>My Profile</span>
+          <button onClick={() => setShowSettings(true)} aria-label="Settings" style={{ background: "none", border: "none", cursor: "pointer", padding: 4, display: "flex" }}>
+            <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={C.sub} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
             </svg>
-            <span style={{ color: "white", fontSize: 13, fontWeight: 700, fontFamily: FONT }}>Change Photos</span>
-          </div>
+          </button>
         </div>
 
-        {/* Top bar */}
-        <div style={{ position: "absolute", top: 0, left: 0, right: 0, display: "flex", alignItems: "center", padding: "40px 20px 0" }}>
-          <span style={{ fontSize: 18, fontWeight: 800, letterSpacing: "-0.3px", color: "white", fontFamily: FONT }}>
-            My Profile
-          </span>
-        </div>
-
-        {/* Identity overlay at bottom */}
-        <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "0 20px 40px", display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
-          <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
-              <span style={{ color: "white", fontFamily: SERIF, fontSize: 26, fontWeight: 700, lineHeight: 1 }}>
-                {currentUser.name}
-              </span>
-              <span style={{ color: "rgba(255,255,255,0.8)", fontFamily: FONT, fontSize: 20, fontWeight: 300 }}>
-                {currentUser.age}
-              </span>
-              <svg width={15} height={15} viewBox="0 0 24 24">
-                <circle cx="12" cy="12" r="10" fill={C.primary} />
-                <path d="M9 12l2 2 4-4" stroke="white" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 14 }}>
+          <button
+            onClick={() => { setEditPhotos((v) => { if (!v) setTimeout(() => photosRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 50); return !v; }); }}
+            aria-label="Change photos"
+            style={{ position: "relative", width: 96, height: 96, borderRadius: "50%", padding: 0, border: `3px solid ${C.primary}`, background: C.card, cursor: "pointer" }}
+          >
+            <img
+              src={currentUser.photos?.[0]}
+              alt="Me"
+              style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover", display: "block" }}
+              onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${currentUser.name}&size=200&background=F4F2EE&color=B8912A`; }}
+            />
+            <span style={{ position: "absolute", bottom: -2, right: -2, width: 28, height: 28, borderRadius: "50%", background: C.primary, border: `2px solid ${C.surface}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                <circle cx="12" cy="13" r="4" />
               </svg>
-            </div>
-            <p style={{ color: "rgba(255,255,255,0.65)", fontSize: 12, fontFamily: FONT }}>
-              {currentUser.denomination}{currentUser.location?.city ? ` · ${currentUser.location.city}` : ""}
-            </p>
+            </span>
+          </button>
+
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 12 }}>
+            <span style={{ color: C.text, fontFamily: SERIF, fontSize: 24, fontWeight: 700, lineHeight: 1 }}>{currentUser.name}</span>
+            <span style={{ color: C.sub, fontFamily: FONT, fontSize: 18, fontWeight: 300 }}>{currentUser.age}</span>
+            <svg width={15} height={15} viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="10" fill={C.primary} />
+              <path d="M9 12l2 2 4-4" stroke="white" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+            </svg>
           </div>
+          <p style={{ color: C.sub, fontSize: 12, fontFamily: FONT, marginTop: 4 }}>
+            {currentUser.denomination}{currentUser.location?.city ? ` · ${currentUser.location.city}` : ""}
+          </p>
+
           {editMode ? (
-            <div style={{ display: "flex", gap: 8 }}>
+            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
               <button
-                onClick={(e) => { e.stopPropagation(); cancelEdit(); }}
-                style={{
-                  padding: "8px 16px",
-                  borderRadius: 9999,
-                  fontSize: 12,
-                  fontWeight: 700,
-                  background: "rgba(255,255,255,0.2)",
-                  backdropFilter: "blur(10px)",
-                  color: "white",
-                  border: "none",
-                  cursor: "pointer",
-                }}
+                onClick={cancelEdit}
+                style={{ padding: "8px 18px", borderRadius: 9999, fontSize: 12, fontWeight: 700, background: C.card, color: C.sub, border: `1px solid ${C.border}`, cursor: "pointer" }}
               >
                 Cancel
               </button>
               <button
-                onClick={(e) => { e.stopPropagation(); saveEdit(); }}
+                onClick={saveEdit}
                 disabled={saving}
-                style={{
-                  padding: "8px 16px",
-                  borderRadius: 9999,
-                  fontSize: 12,
-                  fontWeight: 700,
-                  background: "white",
-                  color: C.primary,
-                  border: "none",
-                  cursor: "pointer",
-                  opacity: saving ? 0.6 : 1,
-                }}
+                style={{ padding: "8px 18px", borderRadius: 9999, fontSize: 12, fontWeight: 700, background: C.text, color: "white", border: "none", cursor: "pointer", opacity: saving ? 0.6 : 1 }}
               >
                 {saving ? "Saving..." : "Save"}
               </button>
             </div>
           ) : (
             <button
-              onClick={(e) => { e.stopPropagation(); startEdit(); }}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                padding: "8px 16px",
-                borderRadius: 9999,
-                fontSize: 12,
-                fontWeight: 700,
-                background: C.primary,
-                color: "white",
-                border: "none",
-                cursor: "pointer",
-              }}
+              onClick={startEdit}
+              style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 18px", borderRadius: 9999, fontSize: 12, fontWeight: 700, background: C.primary, color: "white", border: "none", cursor: "pointer", marginTop: 12 }}
             >
               <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2.5}>
                 <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
               </svg>
-              Edit
+              Edit profile
             </button>
           )}
         </div>
@@ -1078,8 +1038,6 @@ export default function Profile() {
           padding: "16px 16px 8px",
           gap: 8,
           background: C.surface,
-          borderRadius: "28px 28px 0 0",
-          marginTop: -28,
           position: "relative",
           zIndex: 2,
         }}
