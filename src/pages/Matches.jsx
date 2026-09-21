@@ -48,46 +48,90 @@ function groupByDay(times) {
     .map((d) => ({ ...d, times: [...d.times].sort((a, b) => order(a) - order(b) || String(a.time).localeCompare(String(b.time))) }));
 }
 
-function SlotBox({ t, on, onClick, readOnly }) {
+const timeKey = (t) => `${t.date}|${t.slot || t.time}`;
+const longDay = (date) => new Date(date + "T12:00:00").toLocaleDateString("en", { weekday: "long", day: "numeric", month: "short" });
+const GREEN = "#22C55E";
+
+function Avatar({ src, name, size = 34 }) {
+  return (
+    <img
+      src={src}
+      alt={name || ""}
+      style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover", border: `2px solid ${C.bg}`, boxShadow: "0 0 0 1.5px " + C.border, display: "block" }}
+      onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(name || "?")}&size=80&background=F4F2EE&color=B8912A`; }}
+    />
+  );
+}
+
+// yes = available, unknown = not answered yet, no = answered/not selected (tappable when onClick given)
+function AvailCell({ state, onClick }) {
+  const styles = {
+    yes: { background: GREEN, border: `2px solid ${GREEN}` },
+    unknown: { background: C.surface, border: `2px solid ${C.surface}` },
+    no: { background: "white", border: `2px solid ${C.border}` },
+  }[state];
   return (
     <button
       onClick={onClick}
-      disabled={readOnly}
-      style={{
-        width: "100%", padding: "16px 16px", borderRadius: 16, textAlign: "left", cursor: readOnly ? "default" : "pointer",
-        border: on ? `2px solid ${C.primary}` : `1.5px solid ${C.border}`,
-        background: on ? C.primary : "white",
-        display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
-      }}
+      disabled={!onClick}
+      style={{ width: 40, height: 40, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", cursor: onClick ? "pointer" : "default", padding: 0, ...styles }}
     >
-      <span style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-        <span style={{ fontSize: 17, fontWeight: 700, color: on ? "white" : C.text, fontFamily: FONT }}>{slotName(t)}</span>
-        {slotHint(t) && <span style={{ fontSize: 13, color: on ? "rgba(255,255,255,0.85)" : C.sub, fontFamily: FONT }}>{slotHint(t)} h</span>}
-      </span>
-      {!readOnly && (
-        <span style={{ width: 24, height: 24, borderRadius: "50%", flexShrink: 0, border: on ? "none" : `2px solid ${C.border}`, background: on ? "white" : "transparent", display: "flex", alignItems: "center", justifyContent: "center" }}>
-          {on && <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={C.primary} strokeWidth={3}><path d="M20 6L9 17l-5-5" /></svg>}
-        </span>
-      )}
+      {state === "yes" && <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>}
+      {state === "unknown" && <span style={{ fontSize: 16, fontWeight: 700, color: C.sub, fontFamily: FONT }}>?</span>}
     </button>
   );
 }
 
-function SlotGroups({ times, isOn, onToggle, readOnly }) {
+// Breeze-style availability table: times grouped by day, one column per person
+function AvailabilityTable({ rows, mine, theirs, onToggle, meAvatar, themAvatar, themName, highlightKey }) {
+  const cols = "1fr 56px 56px";
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16, maxHeight: "46vh", overflowY: "auto", paddingRight: 2, WebkitOverflowScrolling: "touch" }}>
-      {groupByDay(times).map((day) => (
+    <div>
+      <div style={{ display: "grid", gridTemplateColumns: cols, alignItems: "center", padding: "0 0 10px", borderBottom: `1px solid ${C.border}` }}>
+        <div />
+        <div style={{ display: "flex", justifyContent: "center" }}><Avatar src={themAvatar} name={themName} /></div>
+        <div style={{ display: "flex", justifyContent: "center" }}><Avatar src={meAvatar} name="Me" /></div>
+      </div>
+      {groupByDay(rows).map((day) => (
         <div key={day.date}>
-          <div style={{ display: "inline-block", padding: "6px 12px", borderRadius: 9999, background: C.surface, marginBottom: 8 }}>
-            <span style={{ fontSize: 13, fontWeight: 800, color: C.text, fontFamily: FONT, letterSpacing: "-0.1px" }}>{day.label}</span>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {day.times.map((t, i) => (
-              <SlotBox key={i} t={t} on={isOn(t)} onClick={() => onToggle?.(t)} readOnly={readOnly} />
-            ))}
-          </div>
+          <p style={{ fontSize: 15, fontWeight: 800, color: C.text, fontFamily: FONT, padding: "16px 0 6px", margin: 0 }}>{longDay(day.date)}</p>
+          {day.times.map((t) => {
+            const k = timeKey(t);
+            const mineState = mine.has(k) ? "yes" : "no";
+            const theirState = theirs === null ? "unknown" : theirs.has(k) ? "yes" : "no";
+            const hi = highlightKey === k;
+            return (
+              <div key={k} style={{ display: "grid", gridTemplateColumns: cols, alignItems: "center", padding: "6px 0", borderBottom: `1px solid ${C.border}`, background: hi ? C.primarySoft : "transparent", borderRadius: hi ? 10 : 0 }}>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 8, paddingLeft: hi ? 8 : 0 }}>
+                  <span style={{ fontSize: 17, fontWeight: 700, color: C.text, fontFamily: FONT }}>{t.time}</span>
+                  {t.slot && <span style={{ fontSize: 12, color: C.sub, fontFamily: FONT }}>{slotName(t)}</span>}
+                </div>
+                <div style={{ display: "flex", justifyContent: "center" }}><AvailCell state={theirState} /></div>
+                <div style={{ display: "flex", justifyContent: "center" }}><AvailCell state={mineState} onClick={onToggle ? () => onToggle(t) : undefined} /></div>
+              </div>
+            );
+          })}
         </div>
       ))}
+    </div>
+  );
+}
+
+function AvailabilitySheet({ title, subtitle, onClose, children, footer }) {
+  return (
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, maxWidth: 430, margin: "0 auto", zIndex: 600, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end" }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", borderRadius: "24px 24px 0 0", background: C.bg, maxHeight: "88vh", display: "flex", flexDirection: "column" }}>
+        <div style={{ padding: "14px 16px 0", flexShrink: 0 }}>
+          <div style={{ width: 36, height: 4, borderRadius: 2, background: C.border, margin: "0 auto 14px" }} />
+          <p style={{ fontSize: 12, fontWeight: 700, color: C.sub, textTransform: "uppercase", letterSpacing: "0.1em", fontFamily: FONT, margin: "0 0 4px", textAlign: "center" }}>Date picker</p>
+          <p style={{ fontSize: 18, fontWeight: 700, color: C.text, fontFamily: FONT, margin: "0 0 4px" }}>{title}</p>
+          {subtitle && <p style={{ fontSize: 13, color: C.sub, fontFamily: FONT, margin: "0 0 10px" }}>{subtitle}</p>}
+        </div>
+        <div style={{ flex: 1, overflowY: "auto", padding: "4px 16px 12px", WebkitOverflowScrolling: "touch" }}>
+          {children}
+        </div>
+        {footer && <div style={{ flexShrink: 0, padding: "12px 16px max(24px, env(safe-area-inset-bottom, 24px))", borderTop: `1px solid ${C.border}`, background: C.bg }}>{footer}</div>}
+      </div>
     </div>
   );
 }
@@ -165,7 +209,7 @@ function MiniMap({ center, onPick }) {
   return <div ref={mapRef} style={{ width: "100%", height: "100%" }} />;
 }
 
-function DateBuilder({ profileName, userLocation, onSend, onClose }) {
+function DateBuilder({ profileName, userLocation, onSend, onClose, meAvatar, themAvatar }) {
   const [step, setStep] = useState(1);
   const [dateType, setDateType] = useState(null);
   const [location, setLocation] = useState("");
@@ -173,16 +217,15 @@ function DateBuilder({ profileName, userLocation, onSend, onClose }) {
   const [wardrobe, setWardrobe] = useState(null);
   const [selections, setSelections] = useState([]);
   const days = useMemo(() => getNextDays(14), []);
-  const [activeDay, setActiveDay] = useState(days[0]);
-
-  const isSelected = (day, slot) => selections.some((s) => s.date === day.date && s.slot === slot.id);
   const toSelection = (day, slot) => ({ date: day.date, label: `${day.dayName} ${day.dayNum} ${day.month}`, slot: slot.id, time: slot.time });
+  const allRows = useMemo(() => days.flatMap((d) => DAY_SLOTS.map((s) => toSelection(d, s))), [days]);
+  const selectedKeys = new Set(selections.map(timeKey));
 
-  const toggleSlot = (day, slot) => {
-    if (isSelected(day, slot)) {
-      setSelections(selections.filter((s) => !(s.date === day.date && s.slot === slot.id)));
+  const toggleRow = (t) => {
+    if (selectedKeys.has(timeKey(t))) {
+      setSelections(selections.filter((s) => timeKey(s) !== timeKey(t)));
     } else if (selections.length < MAX_SLOTS) {
-      setSelections([...selections, toSelection(day, slot)]);
+      setSelections([...selections, t]);
     }
   };
 
@@ -321,67 +364,13 @@ function DateBuilder({ profileName, userLocation, onSend, onClose }) {
 
         {step === 4 && (
           <>
-            <p style={{ fontSize: 18, fontWeight: 700, color: C.text, fontFamily: FONT, marginBottom: 4 }}>When are you free?</p>
-            <p style={{ fontSize: 13, color: C.sub, marginBottom: 14 }}>Pick a day, then the times of day that suit you. At least 2 — she chooses from these.</p>
-
-            <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 6, marginBottom: 14, scrollbarWidth: "none" }}>
-              {days.map((d) => {
-                const n = selections.filter((s) => s.date === d.date).length;
-                const active = activeDay.date === d.date;
-                return (
-                  <button
-                    key={d.date}
-                    onClick={() => setActiveDay(d)}
-                    style={{
-                      flexShrink: 0, width: 64, padding: "10px 0 8px", borderRadius: 16, position: "relative", cursor: "pointer",
-                      border: active ? `2px solid ${C.primary}` : `1.5px solid ${n ? C.primary : C.border}`,
-                      background: active ? C.primarySoft : C.card,
-                    }}
-                  >
-                    <span style={{ display: "block", fontSize: 11, fontWeight: 700, color: d.isWeekend ? C.primary : C.sub, fontFamily: FONT }}>{d.dayName}</span>
-                    <span style={{ display: "block", fontSize: 20, fontWeight: 700, color: C.text, fontFamily: FONT, lineHeight: 1.2 }}>{d.dayNum}</span>
-                    <span style={{ display: "block", fontSize: 10, color: C.sub, fontFamily: FONT }}>{d.month}</span>
-                    {n > 0 && (
-                      <span style={{ position: "absolute", top: -6, right: -6, minWidth: 18, height: 18, padding: "0 5px", borderRadius: 9, background: C.primary, color: "white", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: FONT }}>{n}</span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-
-            <p style={{ fontSize: 13, fontWeight: 700, color: C.text, fontFamily: FONT, marginBottom: 10 }}>
-              {activeDay.dayName} {activeDay.dayNum} {activeDay.month}
+            <p style={{ fontSize: 12, fontWeight: 700, color: C.sub, textTransform: "uppercase", letterSpacing: "0.1em", fontFamily: FONT, margin: "0 0 4px", textAlign: "center" }}>Date picker</p>
+            <p style={{ fontSize: 18, fontWeight: 700, color: C.text, fontFamily: FONT, marginBottom: 4 }}>
+              When can you go for {DATE_TYPES.find((d) => d.id === dateType)?.label.toLowerCase() || "a date"} with {profileName}?
             </p>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              {DAY_SLOTS.map((s) => {
-                const on = isSelected(activeDay, s);
-                const full = !on && selections.length >= MAX_SLOTS;
-                return (
-                  <button
-                    key={s.id}
-                    onClick={() => toggleSlot(activeDay, s)}
-                    disabled={full}
-                    aria-label={`${activeDay.dayName} ${activeDay.dayNum} ${s.label}`}
-                    style={{
-                      padding: "18px 14px", borderRadius: 16, textAlign: "left", cursor: full ? "default" : "pointer", opacity: full ? 0.4 : 1,
-                      border: on ? `2px solid ${C.primary}` : `1.5px solid ${C.border}`,
-                      background: on ? C.primary : C.card,
-                      display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
-                    }}
-                  >
-                    <span>
-                      <span style={{ display: "block", fontSize: 15, fontWeight: 700, color: on ? "white" : C.text, fontFamily: FONT }}>{s.label}</span>
-                      <span style={{ display: "block", fontSize: 12, color: on ? "rgba(255,255,255,0.8)" : C.sub, fontFamily: FONT, marginTop: 2 }}>{s.hint}</span>
-                    </span>
-                    <span style={{ width: 22, height: 22, borderRadius: "50%", flexShrink: 0, border: on ? "none" : `1.5px solid ${C.border}`, background: on ? "white" : "transparent", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      {on && <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke={C.primary} strokeWidth={3}><path d="M20 6L9 17l-5-5" /></svg>}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+            <p style={{ fontSize: 13, color: C.sub, marginBottom: 12 }}>Tick the times you're free (at least 2). {profileName} then ticks the ones that work for her.</p>
 
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 14 }}>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
               {[
                 { label: "All evenings", pick: (d, s) => s.id === "evening" },
                 { label: "Weekends", pick: (d) => d.isWeekend },
@@ -397,13 +386,23 @@ function DateBuilder({ profileName, userLocation, onSend, onClose }) {
               )}
             </div>
 
+            <AvailabilityTable
+              rows={allRows}
+              mine={selectedKeys}
+              theirs={null}
+              onToggle={toggleRow}
+              meAvatar={meAvatar}
+              themAvatar={themAvatar}
+              themName={profileName}
+            />
+
             <p style={{ fontSize: 12, color: selections.length >= 2 ? C.primary : C.sub, fontWeight: 600, marginTop: 12, textAlign: "center", fontFamily: FONT }}>
-              {selections.length === 0 ? "Nothing selected yet" : `${selections.length} time${selections.length === 1 ? "" : "s"} selected${selections.length < 2 ? " — pick at least 2" : ""}`}
+              {selections.length === 0 ? "Nothing selected yet" : `${selections.length} of ${MAX_SLOTS} times selected${selections.length < 2 ? " — pick at least 2" : ""}`}
             </p>
           </>
         )}
 
-        <div style={{ display: "flex", gap: 8, marginTop: 24 }}>
+        <div style={{ display: "flex", gap: 8, marginTop: 24, position: "sticky", bottom: -32, background: C.bg, padding: "10px 0 32px", marginBottom: -32 }}>
           {step > 1 && (
             <button onClick={() => setStep(step - 1)} style={{ flex: 1, padding: "14px 0", borderRadius: 14, fontSize: 14, fontWeight: 700, background: C.surface, color: C.sub, border: "none", cursor: "pointer" }}>
               Back
@@ -440,13 +439,19 @@ const DECLINE_REASONS = [
   "Not interested anymore",
 ];
 
-function DateCard({ invitation, isMe, isMale, onRespond, onConfirm, onDecline }) {
+function DateCard({ invitation, isMe, isMale, onRespond, onConfirm, onDecline, meAvatar, themAvatar, themName }) {
   const [selectedTimes, setSelectedTimes] = useState([]);
   const [sending, setSending] = useState(false);
   const [showDecline, setShowDecline] = useState(false);
   const [declineReasons, setDeclineReasons] = useState([]);
   const [confirming, setConfirming] = useState(null);
   const [exactTime, setExactTime] = useState("");
+  const [showPicker, setShowPicker] = useState(false);
+  const proposed = invitation.proposed_times || [];
+  const responded = invitation.response_times || [];
+  const pickerTitle = `When can you go for ${(DATE_TYPES.find((d) => d.id === invitation.date_type)?.label || "a date").toLowerCase()} with ${themName}?`;
+  const primaryBtn = { width: "100%", padding: "14px 0", borderRadius: 14, fontSize: 15, fontWeight: 700, fontFamily: FONT, background: C.primary, color: "white", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 };
+  const secondaryBtn = { ...primaryBtn, background: C.surface, color: C.text, fontSize: 14 };
   const dt = DATE_TYPES.find((d) => d.id === invitation.date_type);
   const wb = WARDROBE_OPTIONS.find((w) => w.id === invitation.wardrobe);
 
@@ -464,6 +469,7 @@ function DateCard({ invitation, isMe, isMale, onRespond, onConfirm, onDecline })
     setSending(true);
     await onRespond(invitation.id, selectedTimes);
     setSending(false);
+    setShowPicker(false);
   };
 
   const handleConfirm = async () => {
@@ -524,30 +530,39 @@ function DateCard({ invitation, isMe, isMale, onRespond, onConfirm, onDecline })
 
         {invitation.status === "pending" && !isMale && (
           <>
-            <p style={{ fontSize: 14, fontWeight: 600, color: C.text, marginBottom: 12, fontFamily: FONT }}>Tap the times that work for you</p>
-            <SlotGroups
-              times={invitation.proposed_times}
-              isOn={(t) => selectedTimes.some((s) => s.date === t.date && s.time === t.time)}
-              onToggle={toggleTime}
-            />
-            <button
-              onClick={handleRespond}
-              disabled={selectedTimes.length === 0 || sending}
-              style={{
-                width: "100%",
-                marginTop: 12,
-                padding: "12px 0",
-                borderRadius: 14,
-                fontSize: 14,
-                fontWeight: 700,
-                background: selectedTimes.length > 0 ? C.primary : C.border,
-                color: "white",
-                border: "none",
-                cursor: selectedTimes.length > 0 ? "pointer" : "default",
-              }}
-            >
-              {sending ? "Sending..." : "Send availability"}
+            <p style={{ fontSize: 13, color: C.sub, fontFamily: FONT, margin: "0 0 10px", textAlign: "center" }}>
+              {themName} offered {proposed.length} time{proposed.length === 1 ? "" : "s"}. Tick the ones that work for you.
+            </p>
+            <button onClick={() => { track("date_picker_opened"); setShowPicker(true); }} style={primaryBtn}>
+              <Calendar size={16} color="white" />
+              {selectedTimes.length ? `Pick your times (${selectedTimes.length} chosen)` : "Pick your times"}
             </button>
+            {showPicker && (
+              <AvailabilitySheet
+                title={pickerTitle}
+                subtitle="Tap the times that work for you"
+                onClose={() => setShowPicker(false)}
+                footer={
+                  <button
+                    onClick={handleRespond}
+                    disabled={selectedTimes.length === 0 || sending}
+                    style={{ ...primaryBtn, background: selectedTimes.length > 0 ? C.primary : C.border, cursor: selectedTimes.length > 0 ? "pointer" : "default" }}
+                  >
+                    {sending ? "Sending..." : selectedTimes.length > 0 ? `Send ${selectedTimes.length} time${selectedTimes.length === 1 ? "" : "s"}` : "Select at least one time"}
+                  </button>
+                }
+              >
+                <AvailabilityTable
+                  rows={proposed}
+                  mine={new Set(selectedTimes.map(timeKey))}
+                  theirs={new Set(proposed.map(timeKey))}
+                  onToggle={toggleTime}
+                  meAvatar={meAvatar}
+                  themAvatar={themAvatar}
+                  themName={themName}
+                />
+              </AvailabilitySheet>
+            )}
 
             {!showDecline ? (
               <button
@@ -618,50 +633,86 @@ function DateCard({ invitation, isMe, isMale, onRespond, onConfirm, onDecline })
 
         {invitation.status === "pending" && isMale && (
           <>
-            <p style={{ fontSize: 14, fontWeight: 600, color: C.text, marginBottom: 12, fontFamily: FONT }}>Times you offered</p>
-            <SlotGroups times={invitation.proposed_times} isOn={() => false} readOnly />
-            <p style={{ fontSize: 12, color: C.sub, textAlign: "center", marginTop: 12 }}>Waiting for her to pick...</p>
+            <p style={{ fontSize: 13, color: C.sub, textAlign: "center", fontFamily: FONT, margin: "0 0 10px" }}>
+              Waiting for {themName} to pick from your {proposed.length} times...
+            </p>
+            <button onClick={() => setShowPicker(true)} style={secondaryBtn}>View the times you offered</button>
+            {showPicker && (
+              <AvailabilitySheet title={pickerTitle} subtitle={`${themName} hasn't answered yet`} onClose={() => setShowPicker(false)}>
+                <AvailabilityTable rows={proposed} mine={new Set(proposed.map(timeKey))} theirs={null} meAvatar={meAvatar} themAvatar={themAvatar} themName={themName} />
+              </AvailabilitySheet>
+            )}
           </>
         )}
 
         {invitation.status === "responded" && isMale && (
           <>
-            <p style={{ fontSize: 14, fontWeight: 600, color: C.text, marginBottom: 12, fontFamily: FONT }}>She's free at these times — pick one</p>
-            <SlotGroups
-              times={invitation.response_times}
-              isOn={(t) => !!confirming && confirming.date === t.date && confirming.slot === t.slot && confirming.time === t.time}
-              onToggle={(t) => {
-                const same = confirming && confirming.date === t.date && confirming.slot === t.slot && confirming.time === t.time;
-                setConfirming(same ? null : t);
-                setExactTime(t.time);
-              }}
-            />
-            {confirming && (
-              <div style={{ marginTop: 12, padding: "12px 14px", borderRadius: 12, background: C.surface }}>
-                <p style={{ fontSize: 12, fontWeight: 600, color: C.sub, marginBottom: 8, fontFamily: FONT }}>{confirming.label} · {slotName(confirming)} — what time exactly?</p>
-                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <input
-                    type="time"
-                    value={exactTime}
-                    onChange={(e) => setExactTime(e.target.value)}
-                    style={{ flex: 1, padding: "10px 12px", borderRadius: 10, fontSize: 16, fontWeight: 600, fontFamily: FONT, border: `1.5px solid ${C.border}`, background: "white", color: C.text, outline: "none" }}
-                  />
-                  <button
-                    onClick={handleConfirm}
-                    disabled={sending || !exactTime}
-                    style={{ padding: "10px 18px", borderRadius: 10, fontSize: 14, fontWeight: 700, fontFamily: FONT, background: exactTime ? C.primary : C.border, color: "white", border: "none", cursor: exactTime ? "pointer" : "default" }}
-                  >
-                    {sending ? "..." : "Confirm date"}
-                  </button>
-                </div>
-              </div>
+            <p style={{ fontSize: 13, color: C.sub, textAlign: "center", fontFamily: FONT, margin: "0 0 10px" }}>
+              {themName} is free at {responded.length} of your times. Choose the final one.
+            </p>
+            <button onClick={() => { track("date_confirm_picker_opened"); setShowPicker(true); }} style={primaryBtn}>
+              <Calendar size={16} color="white" /> Choose the final time
+            </button>
+            {showPicker && (
+              <AvailabilitySheet
+                title={pickerTitle}
+                subtitle="Tap the time you want, then set the exact time"
+                onClose={() => setShowPicker(false)}
+                footer={
+                  confirming ? (
+                    <div>
+                      <p style={{ fontSize: 12, fontWeight: 600, color: C.sub, margin: "0 0 8px", fontFamily: FONT }}>{longDay(confirming.date)} · {slotName(confirming)} — what time exactly?</p>
+                      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                        <input
+                          type="time"
+                          value={exactTime}
+                          onChange={(e) => setExactTime(e.target.value)}
+                          style={{ flex: 1, padding: "12px", borderRadius: 12, fontSize: 18, fontWeight: 700, fontFamily: FONT, border: `1.5px solid ${C.border}`, background: "white", color: C.text, outline: "none" }}
+                        />
+                        <button
+                          onClick={handleConfirm}
+                          disabled={sending || !exactTime}
+                          style={{ ...primaryBtn, width: "auto", padding: "14px 20px", background: exactTime ? GREEN : C.border, cursor: exactTime ? "pointer" : "default" }}
+                        >
+                          {sending ? "..." : "Confirm date"}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p style={{ fontSize: 13, color: C.sub, textAlign: "center", fontFamily: FONT, margin: 0 }}>Tap a time in your column to choose it</p>
+                  )
+                }
+              >
+                <AvailabilityTable
+                  rows={responded}
+                  mine={new Set(confirming ? [timeKey(confirming)] : [])}
+                  theirs={new Set(responded.map(timeKey))}
+                  onToggle={(t) => {
+                    const same = confirming && timeKey(confirming) === timeKey(t);
+                    setConfirming(same ? null : t);
+                    setExactTime(t.time);
+                  }}
+                  highlightKey={confirming ? timeKey(confirming) : null}
+                  meAvatar={meAvatar}
+                  themAvatar={themAvatar}
+                  themName={themName}
+                />
+              </AvailabilitySheet>
             )}
           </>
         )}
 
         {invitation.status === "responded" && !isMale && (
           <>
-            <p style={{ fontSize: 12, color: C.sub, textAlign: "center" }}>You responded — waiting for him to confirm</p>
+            <p style={{ fontSize: 13, color: C.sub, textAlign: "center", fontFamily: FONT, margin: "0 0 10px" }}>
+              You picked {responded.length} time{responded.length === 1 ? "" : "s"} — waiting for {themName} to confirm one.
+            </p>
+            <button onClick={() => setShowPicker(true)} style={secondaryBtn}>View your times</button>
+            {showPicker && (
+              <AvailabilitySheet title={pickerTitle} subtitle={`Waiting for ${themName} to confirm`} onClose={() => setShowPicker(false)}>
+                <AvailabilityTable rows={proposed} mine={new Set(responded.map(timeKey))} theirs={new Set(proposed.map(timeKey))} meAvatar={meAvatar} themAvatar={themAvatar} themName={themName} />
+              </AvailabilitySheet>
+            )}
           </>
         )}
 
@@ -851,6 +902,9 @@ function ChatThread({ match, onBack }) {
               onRespond={handleRespondDate}
               onConfirm={handleConfirmDate}
               onDecline={handleDeclineDate}
+              meAvatar={state.currentUser?.photos?.[0]}
+              themAvatar={profile.photos?.[0]}
+              themName={profile.name}
             />
           )}
 
@@ -892,6 +946,9 @@ function ChatThread({ match, onBack }) {
           onRespond={handleRespondDate}
           onConfirm={handleConfirmDate}
           onDecline={handleDeclineDate}
+          meAvatar={state.currentUser?.photos?.[0]}
+          themAvatar={profile.photos?.[0]}
+          themName={profile.name}
         />
 
         {messages.map((item) => {
@@ -970,6 +1027,8 @@ function ChatThread({ match, onBack }) {
           userLocation={state.currentUser?.location ? { lat: state.currentUser.location.lat, lng: state.currentUser.location.lng } : null}
           onSend={handleSendDate}
           onClose={() => setShowDateBuilder(false)}
+          meAvatar={state.currentUser?.photos?.[0]}
+          themAvatar={profile.photos?.[0]}
         />
       )}
 
