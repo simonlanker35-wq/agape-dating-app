@@ -34,6 +34,61 @@ const DAY_SLOTS = [
 const MAX_SLOTS = 12;
 
 const slotName = (t) => DAY_SLOTS.find((s) => s.id === t.slot)?.label || t.time;
+const slotHint = (t) => DAY_SLOTS.find((s) => s.id === t.slot)?.hint || "";
+
+function groupByDay(times) {
+  const map = new Map();
+  for (const t of times || []) {
+    if (!map.has(t.date)) map.set(t.date, { date: t.date, label: t.label, times: [] });
+    map.get(t.date).times.push(t);
+  }
+  const order = (t) => { const i = DAY_SLOTS.findIndex((s) => s.id === t.slot); return i === -1 ? 99 : i; };
+  return [...map.values()]
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .map((d) => ({ ...d, times: [...d.times].sort((a, b) => order(a) - order(b) || String(a.time).localeCompare(String(b.time))) }));
+}
+
+function SlotBox({ t, on, onClick, readOnly }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={readOnly}
+      style={{
+        padding: "14px 12px", borderRadius: 14, textAlign: "left", cursor: readOnly ? "default" : "pointer",
+        border: on ? `2px solid ${C.primary}` : `1.5px solid ${C.border}`,
+        background: on ? C.primary : "white",
+        display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8,
+      }}
+    >
+      <span>
+        <span style={{ display: "block", fontSize: 14, fontWeight: 700, color: on ? "white" : C.text, fontFamily: FONT }}>{slotName(t)}</span>
+        {slotHint(t) && <span style={{ display: "block", fontSize: 11, color: on ? "rgba(255,255,255,0.8)" : C.sub, fontFamily: FONT, marginTop: 2 }}>{slotHint(t)}</span>}
+      </span>
+      {!readOnly && (
+        <span style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, border: on ? "none" : `1.5px solid ${C.border}`, background: on ? "white" : "transparent", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          {on && <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke={C.primary} strokeWidth={3}><path d="M20 6L9 17l-5-5" /></svg>}
+        </span>
+      )}
+    </button>
+  );
+}
+
+function SlotGroups({ times, isOn, onToggle, readOnly }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      {groupByDay(times).map((day) => (
+        <div key={day.date}>
+          <p style={{ fontSize: 12, fontWeight: 700, color: C.text, fontFamily: FONT, marginBottom: 6 }}>{day.label}</p>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            {day.times.map((t, i) => (
+              <SlotBox key={i} t={t} on={isOn(t)} onClick={() => onToggle?.(t)} readOnly={readOnly} />
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 function getNextDays(count = 14) {
   const days = [];
@@ -467,34 +522,12 @@ function DateCard({ invitation, isMe, isMale, onRespond, onConfirm, onDecline })
 
         {invitation.status === "pending" && !isMale && (
           <>
-            <p style={{ fontSize: 12, fontWeight: 600, color: C.sub, marginBottom: 8 }}>Select times that work for you:</p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              {(invitation.proposed_times || []).map((t, i) => {
-                const isSelected = selectedTimes.some((s) => s.date === t.date && s.time === t.time);
-                return (
-                  <button
-                    key={i}
-                    onClick={() => toggleTime(t)}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 10,
-                      padding: "10px 14px",
-                      borderRadius: 12,
-                      border: isSelected ? `2px solid ${C.primary}` : `1.5px solid ${C.border}`,
-                      background: isSelected ? C.primarySoft : "white",
-                      cursor: "pointer",
-                      textAlign: "left",
-                    }}
-                  >
-                    <span style={{ width: 20, height: 20, borderRadius: 6, border: isSelected ? `2px solid ${C.primary}` : `2px solid ${C.border}`, background: isSelected ? C.primary : "white", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                      {isSelected && <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={3}><path d="M20 6L9 17l-5-5" /></svg>}
-                    </span>
-                    <span style={{ fontSize: 14, fontWeight: 600, color: C.text, fontFamily: FONT }}>{t.label} · {slotName(t)}</span>
-                  </button>
-                );
-              })}
-            </div>
+            <p style={{ fontSize: 12, fontWeight: 600, color: C.sub, marginBottom: 10 }}>Tap the times that work for you:</p>
+            <SlotGroups
+              times={invitation.proposed_times}
+              isOn={(t) => selectedTimes.some((s) => s.date === t.date && s.time === t.time)}
+              onToggle={toggleTime}
+            />
             <button
               onClick={handleRespond}
               disabled={selectedTimes.length === 0 || sending}
@@ -583,47 +616,24 @@ function DateCard({ invitation, isMe, isMale, onRespond, onConfirm, onDecline })
 
         {invitation.status === "pending" && isMale && (
           <>
-            <p style={{ fontSize: 12, fontWeight: 600, color: C.sub, marginBottom: 8 }}>Proposed times:</p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              {(invitation.proposed_times || []).map((t, i) => (
-                <div key={i} style={{ padding: "10px 14px", borderRadius: 12, background: C.surface }}>
-                  <span style={{ fontSize: 14, fontWeight: 600, color: C.text, fontFamily: FONT }}>{t.label} · {slotName(t)}</span>
-                </div>
-              ))}
-            </div>
-            <p style={{ fontSize: 12, color: C.sub, textAlign: "center", marginTop: 8 }}>Waiting for her response...</p>
+            <p style={{ fontSize: 12, fontWeight: 600, color: C.sub, marginBottom: 10 }}>Times you offered:</p>
+            <SlotGroups times={invitation.proposed_times} isOn={() => false} readOnly />
+            <p style={{ fontSize: 12, color: C.sub, textAlign: "center", marginTop: 12 }}>Waiting for her to pick...</p>
           </>
         )}
 
         {invitation.status === "responded" && isMale && (
           <>
-            <p style={{ fontSize: 12, fontWeight: 600, color: C.sub, marginBottom: 8 }}>She's available — pick one and set the exact time:</p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              {(invitation.response_times || []).map((t, i) => {
-                const active = confirming && confirming.date === t.date && confirming.slot === t.slot && confirming.time === t.time;
-                return (
-                  <button
-                    key={i}
-                    onClick={() => { setConfirming(active ? null : t); setExactTime(t.time); }}
-                    disabled={sending}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      padding: "10px 14px",
-                      borderRadius: 12,
-                      border: active ? `2px solid ${C.primary}` : `1.5px solid ${C.border}`,
-                      background: active ? C.primarySoft : "white",
-                      cursor: "pointer",
-                      textAlign: "left",
-                    }}
-                  >
-                    <span style={{ fontSize: 14, fontWeight: 600, color: C.text, fontFamily: FONT }}>{t.label} · {slotName(t)}</span>
-                    {active && <span style={{ fontSize: 12, fontWeight: 700, color: C.primary }}>Selected</span>}
-                  </button>
-                );
-              })}
-            </div>
+            <p style={{ fontSize: 12, fontWeight: 600, color: C.sub, marginBottom: 10 }}>She's free at these times — pick one:</p>
+            <SlotGroups
+              times={invitation.response_times}
+              isOn={(t) => !!confirming && confirming.date === t.date && confirming.slot === t.slot && confirming.time === t.time}
+              onToggle={(t) => {
+                const same = confirming && confirming.date === t.date && confirming.slot === t.slot && confirming.time === t.time;
+                setConfirming(same ? null : t);
+                setExactTime(t.time);
+              }}
+            />
             {confirming && (
               <div style={{ marginTop: 12, padding: "12px 14px", borderRadius: 12, background: C.surface }}>
                 <p style={{ fontSize: 12, fontWeight: 600, color: C.sub, marginBottom: 8, fontFamily: FONT }}>{confirming.label} · {slotName(confirming)} — what time exactly?</p>
