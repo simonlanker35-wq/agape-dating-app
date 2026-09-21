@@ -308,6 +308,10 @@ export function AppProvider({ children }) {
 
     loginWithPhone: async (phone, password) => {
       const user = await api.loginWithPhone(phone, password);
+      if (!user) {
+        track("login_needs_profile");
+        return { needsProfile: true };
+      }
       dispatch({ type: "SET_USER", payload: user });
       identify(user.id, { name: user.name, email: user.email, gender: user.gender, subscriptionStatus: user.subscriptionStatus });
       track("login", { method: "phone" });

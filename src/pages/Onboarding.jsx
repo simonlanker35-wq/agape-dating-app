@@ -474,7 +474,13 @@ export default function Onboarding() {
     setSubmitting(true);
     setLoginError("");
     try {
-      await actions.loginWithPhone(loginPhone, loginPassword);
+      const result = await actions.loginWithPhone(loginPhone.replace(/\s/g, ""), loginPassword);
+      if (result?.needsProfile) {
+        setMode("signup");
+        setStep(STEPS.indexOf("consent"));
+        setSubmitting(false);
+        return;
+      }
       track("login_success", { method: "phone" });
     } catch (err) {
       track("login_failed", { error: err.message });

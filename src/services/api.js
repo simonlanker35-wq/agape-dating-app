@@ -93,10 +93,13 @@ export async function loginWithPhone(phone, password) {
     .from("profiles")
     .select("*")
     .eq("id", data.user.id)
-    .single();
+    .maybeSingle();
   if (profileError) throw new Error(profileError.message);
 
-  return mapProfileToUser(profile);
+  // Auth account exists but onboarding never created the profile row
+  if (!profile) return null;
+
+  return mapProfileToUser(profile, data.user.phone);
 }
 
 export async function checkProfileExists() {
