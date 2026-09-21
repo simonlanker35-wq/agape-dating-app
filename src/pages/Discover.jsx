@@ -27,6 +27,7 @@ export default function Discover() {
   const [commentText, setCommentText] = useState("");
   const [showDove, setShowDove] = useState(false);
   const [likeFlash, setLikeFlash] = useState(null);
+  const [likeError, setLikeError] = useState("");
   const [matchCelebration, setMatchCelebration] = useState(null);
   const [cardEnter, setCardEnter] = useState(true);
   const [photoIdx, setPhotoIdx] = useState(0);
@@ -144,6 +145,9 @@ export default function Discover() {
       } catch (err) {
         console.error("Like failed:", err);
         setLikeFlash(null);
+        setLocalLikes((prev) => { const n = new Set(prev); n.delete(likedId); return n; });
+        setLikeError("Your like didn't go through — please try again");
+        setTimeout(() => setLikeError(""), 4000);
       }
     }, 500);
   };
@@ -207,6 +211,11 @@ export default function Discover() {
 
   return (
     <div className="discover">
+      {likeError && (
+        <div style={{ position: "fixed", top: "max(16px, env(safe-area-inset-top, 16px))", left: "50%", transform: "translateX(-50%)", zIndex: 300, background: "#1A1612", color: "#F5F0E8", padding: "10px 16px", borderRadius: 999, fontSize: 13, fontWeight: 600, fontFamily: "'Outfit', system-ui, sans-serif", boxShadow: "0 4px 16px rgba(0,0,0,0.25)", whiteSpace: "nowrap" }}>
+          {likeError}
+        </div>
+      )}
       {likeFlash && (
         <div className={`like-flash-overlay ${likeFlash}`}>
           <span className="flash-emoji">

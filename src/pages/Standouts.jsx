@@ -28,6 +28,7 @@ export default function Standouts() {
   const [idx, setIdx] = useState(0);
   const [photoIdx, setPhotoIdx] = useState(0);
   const [likeFlash, setLikeFlash] = useState(null);
+  const [likeError, setLikeError] = useState("");
   const [likeChoice, setLikeChoice] = useState(null);
   const [commentTarget, setCommentTarget] = useState(null);
   const [commentText, setCommentText] = useState("");
@@ -155,6 +156,10 @@ export default function Standouts() {
       } catch (err) {
         console.error("Like failed:", err);
         setLikeFlash(null);
+        setDoveSentData(null);
+        try { localStorage.removeItem("agape_dove_sent"); } catch {}
+        setLikeError("Your Dove didn't go through — please try again");
+        setTimeout(() => setLikeError(""), 4000);
       }
     }, 500);
   };
@@ -216,6 +221,11 @@ export default function Standouts() {
 
   return (
     <div className="discover">
+      {likeError && (
+        <div style={{ position: "fixed", top: "max(16px, env(safe-area-inset-top, 16px))", left: "50%", transform: "translateX(-50%)", zIndex: 300, background: "#1A1612", color: "#F5F0E8", padding: "10px 16px", borderRadius: 999, fontSize: 13, fontWeight: 600, fontFamily: FONT, boxShadow: "0 4px 16px rgba(0,0,0,0.25)", whiteSpace: "nowrap" }}>
+          {likeError}
+        </div>
+      )}
       {likeFlash && (
         <div className={`like-flash-overlay ${likeFlash}`}>
           <span className="flash-emoji">

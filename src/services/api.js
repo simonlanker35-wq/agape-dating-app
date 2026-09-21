@@ -283,14 +283,14 @@ export async function sendLike(to, targetType, targetIndex, comment = null, isDo
 
   if (existing) throw new Error("Already liked");
 
-  const { error } = await supabase.from("likes").insert({
+  const { error } = await withTimeout(supabase.from("likes").insert({
     from_user: user.id,
     to_user: to,
     target_type: targetType || "profile",
     target_index: targetIndex || 0,
     comment: comment || null,
     is_dove: isDove || false,
-  });
+  }), 20000);
   if (error) throw new Error(error.message);
 
   if (isDove) {
