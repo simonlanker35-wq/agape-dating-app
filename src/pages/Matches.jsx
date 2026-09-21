@@ -797,7 +797,7 @@ function ChatThread({ match, onBack }) {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", position: "fixed", top: 0, left: 0, right: 0, height: "100dvh", maxWidth: 430, margin: "0 auto", zIndex: 200, background: C.bg }}>
+    <div className="thread-panel" style={{ background: C.bg }}>
       {blockFlash && (
         <div className="like-flash-overlay block">
           <span className="flash-emoji"><Ban size={120} strokeWidth={1.4} color="#EF4444" /></span>
@@ -852,7 +852,7 @@ function ChatThread({ match, onBack }) {
       </div>
 
       {!chatOpen ? (
-        <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "20px 16px calc(48px + env(safe-area-inset-bottom, 0px))", display: "flex", flexDirection: "column", gap: 14 }}>
+        <div style={{ flex: 1, minHeight: 0, overflowY: "auto", WebkitOverflowScrolling: "touch", padding: "20px 16px calc(110px + env(safe-area-inset-bottom, 0px))", display: "flex", flexDirection: "column", gap: 14 }}>
           <div style={{ borderRadius: 20, padding: "18px 16px", background: C.primarySoft, border: `1.5px solid ${C.primary}` }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
               <Calendar size={18} color={C.primary} />

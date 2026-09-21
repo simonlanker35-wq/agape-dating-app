@@ -119,6 +119,21 @@ a {
   height: 100%;
 }
 
+/* Full-screen chat/date panel: use the dynamic viewport so Safari's toolbar never covers the bottom */
+.thread-panel {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100vh;
+  height: 100dvh;
+  max-width: 430px;
+  margin: 0 auto;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+}
+
 /* === BOTTOM NAV — Dark floating pill (Figma) === */
 .bottom-nav {
   position: fixed;
