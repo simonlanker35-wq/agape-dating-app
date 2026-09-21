@@ -580,6 +580,19 @@ export async function deletePushSubscription(endpoint) {
   await supabase.from("push_subscriptions").delete().eq("endpoint", endpoint);
 }
 
+export async function sendTestPush() {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error("Not signed in");
+  const resp = await fetch("https://ksscosugtbdzgekrszck.supabase.co/functions/v1/send-push", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+    body: JSON.stringify({ userId: session.user.id, title: "Agape test", body: "Notifications are working.", url: "/?tab=profile", tag: "test" }),
+  });
+  const data = await resp.json().catch(() => ({}));
+  if (!resp.ok) throw new Error(data.error || `Server error ${resp.status}`);
+  return data;
+}
+
 // Fire-and-forget: a failed push must never break the action that triggered it
 export function notifyUser(userId, { title, body, url, tag }) {
   supabase.auth.getSession().then(({ data: { session } }) => {

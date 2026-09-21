@@ -4,6 +4,7 @@ import { PROMPT_CATEGORIES, TRAITS_POOL, LOOKING_FOR_POOL, DENOMINATIONS } from 
 import { ChevronRight, ChevronLeft, Sparkles, Church, X, Check, Plus, Camera, ZoomIn, ZoomOut } from "lucide-react";
 import AgapeCross from "../components/AgapeCross";
 import LocationPicker from "../components/LocationPicker";
+import PasswordInput from "../components/PasswordInput";
 import { track } from "../services/posthog";
 
 const STEPS = [
@@ -598,12 +599,14 @@ export default function Onboarding() {
           style={{ width: "100%", padding: "16px", background: S.surface, border: `1.5px solid ${S.border}`, borderRadius: 12, fontSize: 18, color: S.text, outline: "none", fontFamily: "'Outfit', system-ui, sans-serif", marginBottom: 10 }}
           autoComplete="tel" autoFocus
         />
-        <input
-          type="password" value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)}
+        <PasswordInput
+          value={loginPassword} onChange={setLoginPassword}
           onKeyDown={(e) => e.key === "Enter" && handleLoginSubmit()}
           placeholder="Password"
           style={{ width: "100%", padding: "16px", background: S.surface, border: `1.5px solid ${S.border}`, borderRadius: 12, fontSize: 18, color: S.text, outline: "none", fontFamily: "'Outfit', system-ui, sans-serif" }}
           autoComplete="current-password"
+          peek={false}
+          iconColor={S.sub}
         />
         {loginError && <p style={{ color: "#e53e3e", fontSize: 14, marginTop: 8 }}>{loginError}</p>}
         <BigBtn onClick={handleLoginSubmit} disabled={submitting || loginPhone.length < 10 || loginPassword.length < 6} style={{ marginTop: 24 }}>
@@ -672,14 +675,14 @@ export default function Onboarding() {
 
           {resetStep === "password" && (
             <>
-              <input
-                type="password" value={password} onChange={(e) => { setPassword(e.target.value); setResetError(""); }}
-                placeholder="New password (min. 6 characters)" style={{ ...inputStyle, marginBottom: 10 }} autoComplete="new-password" autoFocus
+              <PasswordInput
+                value={password} onChange={(v) => { setPassword(v); setResetError(""); }}
+                placeholder="New password (min. 6 characters)" style={{ ...inputStyle, marginBottom: 10 }} autoFocus iconColor={S.sub}
               />
-              <input
-                type="password" value={passwordConfirm} onChange={(e) => { setPasswordConfirm(e.target.value); setResetError(""); }}
+              <PasswordInput
+                value={passwordConfirm} onChange={(v) => { setPasswordConfirm(v); setResetError(""); }}
                 onKeyDown={(e) => e.key === "Enter" && handleResetPassword()}
-                placeholder="Confirm new password" style={inputStyle} autoComplete="new-password"
+                placeholder="Confirm new password" style={inputStyle} iconColor={S.sub}
               />
             </>
           )}
@@ -855,21 +858,21 @@ export default function Onboarding() {
       <Wrap {...wrapProps}>
         <h2 style={{ color: S.text, fontSize: 30, fontWeight: 800, marginBottom: 8, fontFamily: "'Outfit', system-ui, sans-serif" }}>Create a password</h2>
         <p style={{ color: S.sub, fontSize: 14, marginBottom: 24 }}>You'll use this to sign in next time</p>
-        <input
+        <PasswordInput
           id="ob-pw1"
-          type="password" value={password}
-          onChange={(e) => { setPassword(e.target.value); setPasswordError(""); }}
+          value={password}
+          onChange={(v) => { setPassword(v); setPasswordError(""); }}
           placeholder="Password (min. 6 characters)"
           style={{ width: "100%", padding: "16px", background: S.surface, border: `1.5px solid ${S.border}`, borderRadius: 12, fontSize: 18, color: S.text, outline: "none", fontFamily: "'Outfit', system-ui, sans-serif", marginBottom: 10 }}
-          autoComplete="new-password"
+          iconColor={S.sub}
         />
-        <input
-          type="password" value={passwordConfirm}
-          onChange={(e) => { setPasswordConfirm(e.target.value); setPasswordError(""); }}
+        <PasswordInput
+          value={passwordConfirm}
+          onChange={(v) => { setPasswordConfirm(v); setPasswordError(""); }}
           onKeyDown={(e) => e.key === "Enter" && canProceed() && handleSetPassword()}
           placeholder="Confirm password"
           style={{ width: "100%", padding: "16px", background: S.surface, border: `1.5px solid ${S.border}`, borderRadius: 12, fontSize: 18, color: S.text, outline: "none", fontFamily: "'Outfit', system-ui, sans-serif" }}
-          autoComplete="new-password"
+          iconColor={S.sub}
         />
         {passwordError && <p style={{ color: "#e53e3e", fontSize: 14, marginTop: 8 }}>{passwordError}</p>}
         <BigBtn onClick={handleSetPassword} disabled={submitting || !canProceed()}>

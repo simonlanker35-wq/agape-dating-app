@@ -61,20 +61,22 @@ Deno.serve(async (req) => {
     const payload = JSON.stringify({ title, body: body || "", url: url || "/", tag: tag || "agape" });
     let sent = 0;
     const stale: string[] = [];
+    const errors: { host: string; status?: number; message: string }[] = [];
 
     for (const s of subs || []) {
       try {
         await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload, { TTL: 60 * 60 * 24 });
         sent++;
       } catch (err) {
-        const status = (err as { statusCode?: number }).statusCode;
-        if (status === 404 || status === 410) stale.push(s.id);
+        const e = err as { statusCode?: number; message?: string; body?: string };
+        errors.push({ host: new URL(s.endpoint).host, status: e.statusCode, message: (e.body || e.message || "unknown").slice(0, 200) });
+        if (e.statusCode === 404 || e.statusCode === 410) stale.push(s.id);
       }
     }
 
     if (stale.length) await supabase.from("push_subscriptions").delete().in("id", stale);
 
-    return json({ sent, removed: stale.length });
+    return json({ sent, removed: stale.length, devices: (subs || []).length, errors });
   } catch (err) {
     return json({ error: (err as Error).message }, 400);
   }

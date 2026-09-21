@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useApp } from "../context/AppContext";
-import { compressPhoto } from "../services/api";
+import { compressPhoto, sendTestPush } from "../services/api";
 import { PROMPT_CATEGORIES, TRAITS_POOL, LOOKING_FOR_POOL } from "../data/profiles";
 import AgapeCross from "../components/AgapeCross";
 import LocationPicker from "../components/LocationPicker";
@@ -281,6 +281,7 @@ function SettingsScreen({ onBack, initialSection = null }) {
   const { currentUser } = state;
   const [notifs, setNotifs] = useState({ matches: true, likes: true, messages: true, doves: true, prompts: false });
   const [pushOn, setPushOn] = useState(false);
+  const [pushMsg, setPushMsg] = useState("");
   const [pushStatus, setPushStatus] = useState(() => (!isPushSupported() ? "unsupported" : needsHomeScreenInstall() ? "install" : getPermission() === "denied" ? "denied" : "ok"));
   useEffect(() => { isPushEnabled().then(setPushOn).catch(() => {}); }, []);
   const [privacy, setPrivacy] = useState({ activeStatus: true, readReceipts: true, showDistance: true, incognito: false });
@@ -356,13 +357,36 @@ function SettingsScreen({ onBack, initialSection = null }) {
                     sub={pushStatus === "unsupported" ? "Not supported in this browser" : pushStatus === "install" ? "Add Agape to your Home Screen first (Share → Add to Home Screen)" : pushStatus === "denied" ? "Blocked — allow notifications in your browser settings" : pushOn ? "On — likes, matches, dates and messages" : "Off"}
                     toggle={{ on: pushOn, onToggle: async () => {
                       if (pushStatus === "unsupported" || pushStatus === "install" || pushStatus === "denied") return;
+                      setPushMsg("");
                       try {
                         if (pushOn) { await disablePush(); setPushOn(false); track("push_disabled"); }
                         else { await enablePush(); setPushOn(true); track("push_enabled", { source: "settings" }); }
-                      } catch (_) {}
+                      } catch (err) { setPushMsg(err.message); }
                       setPushStatus(getPermission() === "denied" ? "denied" : "ok");
                     } }}
                   />
+                  {pushOn && (
+                    <SettingsRow
+                      icon={I.bell}
+                      label="Send a test notification"
+                      sub={pushMsg || "Checks that this device receives pushes"}
+                      onPress={async () => {
+                        setPushMsg("Sending...");
+                        try {
+                          const r = await sendTestPush();
+                          const err = r.errors?.[0];
+                          setPushMsg(
+                            r.sent > 0
+                              ? `Sent to ${r.sent} device${r.sent === 1 ? "" : "s"} — check your notifications`
+                              : r.devices === 0
+                              ? "No device registered — turn notifications off and on again"
+                              : `Delivery failed (${err?.status || "?"}) ${err?.message || ""}`
+                          );
+                        } catch (err) { setPushMsg(`Error: ${err.message}`); }
+                      }}
+                    />
+                  )}
+                  {!pushOn && pushMsg && <p style={{ fontSize: 12, color: "#EF4444", padding: "8px 16px 12px", margin: 0 }}>{pushMsg}</p>}
                 </div>
               </div>
               <div>
