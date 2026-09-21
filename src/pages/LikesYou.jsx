@@ -1,7 +1,8 @@
 import { useApp } from "../context/AppContext";
 import { useState, useEffect } from "react";
-import { Heart, X } from "lucide-react";
+import { Heart, X, Lock } from "lucide-react";
 import AgapeCross from "../components/AgapeCross";
+import DoveIcon from "../components/DoveIcon";
 import { getRevealsRemaining, recordReveal, LIMITS } from "../services/limits";
 import { track } from "../services/posthog";
 
@@ -56,7 +57,7 @@ export default function LikesYou() {
   if (likesWithProfiles.length === 0) {
     return (
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", padding: "60px 20px", textAlign: "center" }}>
-        <div style={{ fontSize: 48, marginBottom: 16 }}>💛</div>
+        <Heart size={48} strokeWidth={1.4} color={C.primary} style={{ marginBottom: 16 }} />
         <h2 style={{ color: C.text, fontFamily: FONT, fontSize: 20, fontWeight: 700 }}>No likes yet</h2>
         <p style={{ color: C.sub, fontSize: 14, marginTop: 4 }}>Keep exploring! When someone likes you, they'll appear here.</p>
       </div>
@@ -119,20 +120,20 @@ export default function LikesYou() {
 
                 {isDoveLike && !isLocked && (
                   <div style={{ position: "absolute", top: 8, left: 8, background: C.primary, borderRadius: 20, padding: "4px 10px", display: "flex", alignItems: "center", gap: 4 }}>
-                    <span style={{ fontSize: 12 }}>🕊️</span>
+                    <DoveIcon size={12} color="white" strokeWidth={2} />
                     <span style={{ color: "white", fontSize: 10, fontWeight: 700, fontFamily: FONT }}>Dove</span>
                   </div>
                 )}
 
                 {heartFlash === like.id && (
                   <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10, pointerEvents: "none" }}>
-                    <span style={{ fontSize: 64, animation: "heartPop 0.8s ease-out forwards" }}>❤️</span>
+                    <span style={{ display: "flex", animation: "heartPop 0.8s ease-out forwards" }}><Heart size={64} fill={C.primary} color={C.primary} /></span>
                   </div>
                 )}
 
                 {isLocked ? (
                   <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8 }}>
-                    <div style={{ fontSize: 28 }}>🔒</div>
+                    <Lock size={28} strokeWidth={1.8} color="white" />
                     {revealsLeft > 0 ? (
                       <button
                         onClick={handleReveal}

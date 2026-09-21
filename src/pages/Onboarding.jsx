@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useApp } from "../context/AppContext";
 import { PROMPT_CATEGORIES, TRAITS_POOL, LOOKING_FOR_POOL, DENOMINATIONS } from "../data/profiles";
 import { ChevronRight, ChevronLeft, Sparkles, Church, X, Check, Plus, Camera, ZoomIn, ZoomOut } from "lucide-react";
@@ -81,6 +81,7 @@ const LIFESTYLE_CATEGORIES = [
 ];
 
 const DEV_TEST = false;
+const CROP_ASPECT = 3 / 4;
 
 const S = {
   bg: "#1A1612",
@@ -184,11 +185,15 @@ export default function Onboarding() {
   const [gpsLoading, setGpsLoading] = useState(false);
   const [gpsError, setGpsError] = useState("");
   const [cropImage, setCropImage] = useState(null);
+  const [cropNatural, setCropNatural] = useState({ w: 1, h: 1 });
   const [cropScale, setCropScale] = useState(1);
   const [cropOffset, setCropOffset] = useState({ x: 0, y: 0 });
   const [dragging, setDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  const cropCanvasRef = useRef(null);
+  const cropBoxRef = useRef(null);
+  const [resetStep, setResetStep] = useState("phone");
+  const [resetPhone, setResetPhone] = useState("+48");
+  const [resetError, setResetError] = useState("");
 
   const currentStep = STEPS[step];
   const phone = countryCode + phoneNum;
@@ -251,7 +256,7 @@ export default function Onboarding() {
     setSubmitting(false);
   };
 
-  const handleOtpDigitChange = (index, value) => {
+  const handleOtpDigitChange = (index, value, onComplete = handleVerifyOtp) => {
     if (value.length > 1) value = value.slice(-1);
     if (value && !/\d/.test(value)) return;
     const next = [...otpDigits];
@@ -260,7 +265,7 @@ export default function Onboarding() {
     if (value && index < 5) {
       setTimeout(() => otpRefs.current[index + 1]?.focus(), 0);
     }
-    if (next.every(d => d !== "")) handleVerifyOtp(next.join(""));
+    if (next.every(d => d !== "")) onComplete(next.join(""));
   };
 
   const handleOtpKeyDown = (index, e) => {
@@ -300,55 +305,125 @@ export default function Onboarding() {
     return () => ac.abort();
   }, [currentStep]);
 
+  const startCrop = (src) => {
+    const img = new Image();
+    img.onload = () => {
+      setCropNatural({ w: img.naturalWidth, h: img.naturalHeight });
+      setCropScale(1);
+      setCropOffset({ x: 0, y: 0 });
+      setCropImage(src);
+    };
+    img.src = src;
+  };
+
   const handlePhotoUpload = (e) => {
     const file = e.target.files?.[0];
     if (!file || photoSlotIndex === null) return;
     const reader = new FileReader();
-    reader.onload = (ev) => {
-      setCropImage(ev.target.result);
-      setCropScale(1);
-      setCropOffset({ x: 0, y: 0 });
-    };
+    reader.onload = (ev) => startCrop(ev.target.result);
     reader.readAsDataURL(file);
     e.target.value = "";
   };
 
   const openCropForExisting = (index) => {
     setPhotoSlotIndex(index);
-    setCropImage(form.photos[index]);
-    setCropScale(1);
-    setCropOffset({ x: 0, y: 0 });
+    startCrop(form.photos[index]);
+  };
+
+  // zoom 1 = image covers the 3:4 box; minZoom = whole image visible
+  const cropGeom = (zoom) => {
+    const aspect = cropNatural.w / cropNatural.h;
+    const wide = aspect > CROP_ASPECT;
+    return {
+      wPct: (wide ? aspect / CROP_ASPECT : 1) * 100 * zoom,
+      hPct: (wide ? 1 : CROP_ASPECT / aspect) * 100 * zoom,
+      minZoom: wide ? CROP_ASPECT / aspect : aspect / CROP_ASPECT,
+    };
+  };
+
+  const clampOffset = (off, zoom) => {
+    const box = cropBoxRef.current;
+    if (!box) return off;
+    const { wPct, hPct } = cropGeom(zoom);
+    const maxX = Math.max(0, (box.clientWidth * wPct / 100 - box.clientWidth) / 2);
+    const maxY = Math.max(0, (box.clientHeight * hPct / 100 - box.clientHeight) / 2);
+    return { x: Math.min(maxX, Math.max(-maxX, off.x)), y: Math.min(maxY, Math.max(-maxY, off.y)) };
+  };
+
+  const setZoom = (z) => {
+    const { minZoom } = cropGeom(1);
+    const zoom = Math.min(3, Math.max(minZoom, z));
+    setCropScale(zoom);
+    setCropOffset((o) => clampOffset(o, zoom));
   };
 
   const confirmCrop = () => {
+    const box = cropBoxRef.current;
+    const outW = 900, outH = 1200;
+    const k = outW / box.clientWidth;
+    const { wPct, hPct } = cropGeom(cropScale);
+    const iw = box.clientWidth * wPct / 100 * k;
+    const ih = box.clientHeight * hPct / 100 * k;
+    const dx = (outW - iw) / 2 + cropOffset.x * k;
+    const dy = (outH - ih) / 2 + cropOffset.y * k;
     const canvas = document.createElement("canvas");
-    const size = 600;
-    canvas.width = size;
-    canvas.height = size * (4 / 3);
+    canvas.width = outW;
+    canvas.height = outH;
     const ctx = canvas.getContext("2d");
     const img = new Image();
     img.onload = () => {
-      const aspect = img.width / img.height;
-      const targetAspect = 3 / 4;
-      let drawW, drawH;
-      if (aspect > targetAspect) {
-        drawH = canvas.height * cropScale;
-        drawW = drawH * aspect;
-      } else {
-        drawW = canvas.width * cropScale;
-        drawH = drawW / aspect;
-      }
-      const dx = (canvas.width - drawW) / 2 + cropOffset.x * (drawW / canvas.width);
-      const dy = (canvas.height - drawH) / 2 + cropOffset.y * (drawH / canvas.height);
-      ctx.fillStyle = "#000";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(img, dx, dy, drawW, drawH);
+      ctx.fillStyle = S.bg;
+      ctx.fillRect(0, 0, outW, outH);
+      ctx.drawImage(img, dx, dy, iw, ih);
       const next = [...form.photos];
       next[photoSlotIndex] = canvas.toDataURL("image/jpeg", 0.85);
       setForm({ ...form, photos: next });
       setCropImage(null);
     };
     img.src = cropImage;
+  };
+
+  const handleResetSendOtp = async () => {
+    setSubmitting(true);
+    setResetError("");
+    try {
+      await actions.sendOtp(resetPhone.replace(/\s/g, ""));
+      setOtpDigits(["", "", "", "", "", ""]);
+      setResetStep("code");
+    } catch (err) {
+      setResetError(err.message);
+    }
+    setSubmitting(false);
+  };
+
+  const handleResetVerify = async (code) => {
+    const codeToVerify = code || otpDigits.join("");
+    if (codeToVerify.length !== 6) return;
+    setSubmitting(true);
+    setResetError("");
+    try {
+      await actions.verifyOtpForReset(resetPhone.replace(/\s/g, ""), codeToVerify);
+      setPassword("");
+      setPasswordConfirm("");
+      setResetStep("password");
+    } catch (err) {
+      setResetError(err.message);
+    }
+    setSubmitting(false);
+  };
+
+  const handleResetPassword = async () => {
+    if (password.length < 6) { setResetError("Password must be at least 6 characters"); return; }
+    if (password !== passwordConfirm) { setResetError("Passwords don't match"); return; }
+    setSubmitting(true);
+    setResetError("");
+    try {
+      await actions.completePasswordReset(password);
+      track("password_reset_success");
+    } catch (err) {
+      setResetError(err.message);
+      setSubmitting(false);
+    }
   };
 
   const finishOnboarding = async () => {
@@ -530,9 +605,105 @@ export default function Onboarding() {
         <BigBtn onClick={handleLoginSubmit} disabled={submitting || loginPhone.length < 10 || loginPassword.length < 6} style={{ marginTop: 24 }}>
           {submitting ? "Signing in..." : "Sign in"}
         </BigBtn>
-        <button onClick={() => { track("login_switch_to_signup"); setMode("signup"); setLoginError(""); }} style={{ background: "none", border: "none", color: S.sub, fontSize: 15, fontWeight: 600, marginTop: 16, cursor: "pointer" }}>
+        <button onClick={() => { track("forgot_password_tapped"); setMode("reset"); setResetStep("phone"); setResetPhone(loginPhone || "+48"); setResetError(""); setLoginError(""); }} style={{ background: "none", border: "none", color: S.primary, fontSize: 14, fontWeight: 600, marginTop: 18, cursor: "pointer" }}>
+          Forgot password?
+        </button>
+        <button onClick={() => { track("login_switch_to_signup"); setMode("signup"); setLoginError(""); }} style={{ background: "none", border: "none", color: S.sub, fontSize: 15, fontWeight: 600, marginTop: 8, cursor: "pointer" }}>
           Create an account instead
         </button>
+      </div>
+    );
+  }
+
+  // ---- RESET PASSWORD ----
+  if (mode === "reset") {
+    const inputStyle = { width: "100%", padding: "16px", background: S.surface, border: `1.5px solid ${S.border}`, borderRadius: 12, fontSize: 18, color: S.text, outline: "none", fontFamily: "'Outfit', system-ui, sans-serif" };
+    return (
+      <div style={{ minHeight: "100vh", background: S.bg, display: "flex", flexDirection: "column", maxWidth: 430, margin: "0 auto" }}>
+        <div style={{ padding: "max(12px, env(safe-area-inset-top, 12px)) 20px 0" }}>
+          <button onClick={() => { if (resetStep === "phone") { setMode("login"); } else { setResetStep(resetStep === "code" ? "phone" : "code"); } setResetError(""); }} style={{ background: "none", border: "none", color: S.sub, padding: 4, cursor: "pointer" }}>
+            <ChevronLeft size={24} />
+          </button>
+        </div>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "24px 28px 32px" }}>
+          <h2 style={{ color: S.text, fontSize: 28, fontWeight: 800, marginBottom: 8, fontFamily: "'Outfit', system-ui, sans-serif" }}>
+            {resetStep === "phone" ? "Reset password" : resetStep === "code" ? "Enter your code" : "New password"}
+          </h2>
+          <p style={{ color: S.sub, fontSize: 14, marginBottom: 28 }}>
+            {resetStep === "phone" ? "We'll text a code to your phone number" : resetStep === "code" ? `Sent to ${resetPhone}` : "Choose a new password for your account"}
+          </p>
+
+          {resetStep === "phone" && (
+            <input
+              type="tel" value={resetPhone} onChange={(e) => { setResetPhone(e.target.value); setResetError(""); }}
+              onKeyDown={(e) => e.key === "Enter" && resetPhone.length >= 10 && handleResetSendOtp()}
+              placeholder="+48 123 456 789" style={inputStyle} autoComplete="tel" autoFocus
+            />
+          )}
+
+          {resetStep === "code" && (
+            <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+              {otpDigits.map((digit, i) => (
+                <input
+                  key={i}
+                  ref={(el) => (otpRefs.current[i] = el)}
+                  type="text" inputMode="numeric" maxLength={1} value={digit}
+                  onChange={(e) => handleOtpDigitChange(i, e.target.value, handleResetVerify)}
+                  onKeyDown={(e) => handleOtpKeyDown(i, e)}
+                  onPaste={(e) => {
+                    e.preventDefault();
+                    const paste = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+                    if (paste.length === 6) { setOtpDigits(paste.split("")); handleResetVerify(paste); }
+                  }}
+                  autoFocus={i === 0}
+                  style={{
+                    width: 48, height: 56, textAlign: "center", fontSize: 24, fontWeight: 700,
+                    background: S.surface, border: `2px solid ${digit ? S.primary : S.border}`, borderRadius: 12,
+                    color: S.text, outline: "none", fontFamily: "'Outfit', system-ui, sans-serif",
+                  }}
+                />
+              ))}
+            </div>
+          )}
+
+          {resetStep === "password" && (
+            <>
+              <input
+                type="password" value={password} onChange={(e) => { setPassword(e.target.value); setResetError(""); }}
+                placeholder="New password (min. 6 characters)" style={{ ...inputStyle, marginBottom: 10 }} autoComplete="new-password" autoFocus
+              />
+              <input
+                type="password" value={passwordConfirm} onChange={(e) => { setPasswordConfirm(e.target.value); setResetError(""); }}
+                onKeyDown={(e) => e.key === "Enter" && handleResetPassword()}
+                placeholder="Confirm new password" style={inputStyle} autoComplete="new-password"
+              />
+            </>
+          )}
+
+          {resetError && <p style={{ color: "#e53e3e", fontSize: 14, marginTop: 12, textAlign: "center" }}>{resetError}</p>}
+
+          {resetStep === "code" && (
+            <button onClick={handleResetSendOtp} style={{ background: "none", border: "none", color: S.primary, fontSize: 15, fontWeight: 600, cursor: "pointer", marginTop: 16 }}>
+              Resend code
+            </button>
+          )}
+
+          {resetStep === "phone" && (
+            <BigBtn onClick={handleResetSendOtp} disabled={submitting || resetPhone.replace(/\s/g, "").length < 10}>
+              {submitting ? "Sending..." : "Send code"}
+            </BigBtn>
+          )}
+          {resetStep === "code" && (
+            <BigBtn onClick={() => handleResetVerify()} disabled={submitting || otpDigits.some((d) => d === "")}>
+              {submitting ? "Verifying..." : "Verify"}
+            </BigBtn>
+          )}
+          {resetStep === "password" && (
+            <BigBtn onClick={handleResetPassword} disabled={submitting || password.length < 6 || password !== passwordConfirm}>
+              {submitting ? "Saving..." : "Save new password"}
+            </BigBtn>
+          )}
+        </div>
       </div>
     );
   }
@@ -1110,31 +1281,39 @@ export default function Onboarding() {
 
         {cropImage && (
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.92)", zIndex: 1000, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-            <div style={{ width: "min(85vw, 380px)", aspectRatio: "3/4", borderRadius: 16, overflow: "hidden", position: "relative", touchAction: "none", background: "#000" }}
+            <p style={{ color: S.sub, fontSize: 13, marginBottom: 12 }}>Drag to reposition, pinch or slide to zoom</p>
+            <div ref={cropBoxRef} style={{ width: "min(85vw, 380px)", aspectRatio: "3/4", borderRadius: 16, overflow: "hidden", position: "relative", touchAction: "none", background: S.bg }}
               onPointerDown={(e) => { setDragging(true); setDragStart({ x: e.clientX - cropOffset.x, y: e.clientY - cropOffset.y }); e.currentTarget.setPointerCapture(e.pointerId); }}
-              onPointerMove={(e) => { if (!dragging) return; setCropOffset({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y }); }}
+              onPointerMove={(e) => { if (!dragging) return; setCropOffset(clampOffset({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y }, cropScale)); }}
               onPointerUp={() => setDragging(false)}
+              onPointerCancel={() => setDragging(false)}
+              onWheel={(e) => setZoom(cropScale - e.deltaY * 0.002)}
             >
               <img
                 src={cropImage}
                 alt=""
                 draggable={false}
                 style={{
-                  position: "absolute", top: "50%", left: "50%",
-                  transform: `translate(calc(-50% + ${cropOffset.x}px), calc(-50% + ${cropOffset.y}px)) scale(${cropScale})`,
-                  minWidth: "100%", minHeight: "100%", objectFit: "cover", userSelect: "none", pointerEvents: "none",
+                  position: "absolute",
+                  left: `calc(50% + ${cropOffset.x}px)`, top: `calc(50% + ${cropOffset.y}px)`,
+                  width: `${cropGeom(cropScale).wPct}%`, height: `${cropGeom(cropScale).hPct}%`, maxWidth: "none",
+                  transform: "translate(-50%, -50%)", userSelect: "none", pointerEvents: "none",
                 }}
               />
             </div>
 
             <div style={{ display: "flex", alignItems: "center", gap: 16, marginTop: 20 }}>
-              <button onClick={() => setCropScale(Math.max(0.5, cropScale - 0.1))} style={{ background: "rgba(255,255,255,0.15)", border: "none", borderRadius: 999, width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+              <button onClick={() => setZoom(cropScale - 0.1)} style={{ background: "rgba(255,255,255,0.15)", border: "none", borderRadius: 999, width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
                 <ZoomOut size={22} color="#fff" />
               </button>
-              <input type="range" min={50} max={300} value={Math.round(cropScale * 100)} onChange={(e) => setCropScale(parseInt(e.target.value) / 100)}
+              <input
+                type="range"
+                min={Math.round(cropGeom(1).minZoom * 100)} max={300}
+                value={Math.round(cropScale * 100)}
+                onChange={(e) => setZoom(parseInt(e.target.value) / 100)}
                 style={{ width: 140, accentColor: S.primary }}
               />
-              <button onClick={() => setCropScale(Math.min(3, cropScale + 0.1))} style={{ background: "rgba(255,255,255,0.15)", border: "none", borderRadius: 999, width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+              <button onClick={() => setZoom(cropScale + 0.1)} style={{ background: "rgba(255,255,255,0.15)", border: "none", borderRadius: 999, width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
                 <ZoomIn size={22} color="#fff" />
               </button>
             </div>

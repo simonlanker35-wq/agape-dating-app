@@ -46,6 +46,12 @@ Deno.serve(async (req) => {
         });
 
         const sub = subscriptions.data[0];
+        if (sub) {
+          await supabase
+            .from("profiles")
+            .update({ subscription_status: "active", subscription_id: sub.id })
+            .eq("id", user.id);
+        }
         return new Response(
           JSON.stringify({
             status: sub ? "active" : "none",
@@ -73,21 +79,23 @@ Deno.serve(async (req) => {
       metadata: { supabase_user_id: user.id },
     };
 
-    if (customerId) {
-      sessionData.customer = customerId;
-    } else {
+    // Create the customer before checkout so the status lookup works even if the webhook never arrives
+    if (!customerId) {
       const email = user.email || (profile?.email?.includes("@") ? profile.email : null);
-      if (email) sessionData.customer_email = email;
-    }
-
-    const session = await stripe.checkout.sessions.create(sessionData);
-
-    if (!customerId && session.customer) {
+      const customer = await stripe.customers.create({
+        ...(email ? { email } : {}),
+        ...(profile?.name ? { name: profile.name } : {}),
+        metadata: { supabase_user_id: user.id },
+      });
+      customerId = customer.id;
       await supabase
         .from("profiles")
-        .update({ stripe_customer_id: session.customer })
+        .update({ stripe_customer_id: customerId })
         .eq("id", user.id);
     }
+    sessionData.customer = customerId;
+
+    const session = await stripe.checkout.sessions.create(sessionData);
 
     return new Response(
       JSON.stringify({ sessionId: session.id, url: session.url }),

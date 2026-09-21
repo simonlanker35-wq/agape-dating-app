@@ -151,10 +151,29 @@ function reducer(state, action) {
 export function AppProvider({ children }) {
   const [state, dispatch] = useReducer(reducer, initialState);
 
+  // The DB is updated by the Stripe webhook, which can lag — ask Stripe directly when the DB says not active
+  const withStripeFallback = async (user) => {
+    if (user.subscriptionStatus !== "active") {
+      const stripeStatus = await getSubscriptionStatus().catch(() => null);
+      if (stripeStatus?.status === "active") {
+        user.subscriptionStatus = "active";
+        track("subscription_activated");
+      }
+    }
+    return user;
+  };
+
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.has("subscription")) {
+      track("subscription_checkout_returned", { result: params.get("subscription") });
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         api.getMe()
+          .then(withStripeFallback)
           .then((user) => {
             dispatch({ type: "SET_USER", payload: user });
             identify(user.id, { name: user.name, email: user.email, gender: user.gender, denomination: user.denomination, location: user.location?.city, subscriptionStatus: user.subscriptionStatus });
@@ -185,15 +204,7 @@ export function AppProvider({ children }) {
       const refreshProfile = async () => {
         if (document.visibilityState === "visible") {
           try {
-            const user = await api.getMe();
-            // If DB doesn't show active yet (webhook may be slow), check Stripe directly
-            if (user.subscriptionStatus !== "active") {
-              const stripeStatus = await getSubscriptionStatus().catch(() => null);
-              if (stripeStatus?.status === "active") {
-                user.subscriptionStatus = "active";
-                track("subscription_activated");
-              }
-            }
+            const user = await withStripeFallback(await api.getMe());
             dispatch({ type: "SET_USER", payload: user });
           } catch (_) {}
         }
@@ -273,6 +284,18 @@ export function AppProvider({ children }) {
 
     setPassword: async (password) => {
       return api.setPassword(password);
+    },
+
+    verifyOtpForReset: async (phone, token) => {
+      return api.verifyOtp(phone, token);
+    },
+
+    completePasswordReset: async (password) => {
+      await api.setPassword(password);
+      const user = await withStripeFallback(await api.getMe());
+      dispatch({ type: "SET_USER", payload: user });
+      identify(user.id, { name: user.name, email: user.email, gender: user.gender, subscriptionStatus: user.subscriptionStatus });
+      return user;
     },
 
     register: async (data) => {

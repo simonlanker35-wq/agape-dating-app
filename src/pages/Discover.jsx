@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useApp } from "../context/AppContext";
-import { Heart, X, MessageCircle } from "lucide-react";
+import { Heart, X, MessageCircle, Ban, Flag } from "lucide-react";
 import DoveIcon from "../components/DoveIcon";
 import AgapeCross from "../components/AgapeCross";
 import WaveformBar from "../components/WaveformBar";
@@ -210,7 +210,7 @@ export default function Discover() {
       {likeFlash && (
         <div className={`like-flash-overlay ${likeFlash}`}>
           <span className="flash-emoji">
-            {likeFlash === "dove" ? "🕊️" : likeFlash === "comment" ? "💬" : likeFlash === "block" ? "🚫" : likeFlash === "report" ? "🚩" : "❤️"}
+            {likeFlash === "dove" ? <DoveIcon size={120} color="#B8912A" strokeWidth={1.2} /> : likeFlash === "comment" ? <MessageCircle size={120} strokeWidth={1.4} color="#B8912A" /> : likeFlash === "block" ? <Ban size={120} strokeWidth={1.4} color="#EF4444" /> : likeFlash === "report" ? <Flag size={120} strokeWidth={1.4} color="#EF4444" /> : <Heart size={120} strokeWidth={1.4} fill="#DC3232" color="#DC3232" />}
           </span>
         </div>
       )}

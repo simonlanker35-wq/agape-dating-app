@@ -245,7 +245,7 @@ function BillingSection({ onViewPlans, initialStatus }) {
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <div style={{ borderRadius: 16, padding: 16, background: "#E8F5E9" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-            <span style={{ fontSize: 20 }}>✨</span>
+            {I.sparkle}
             <p style={{ fontSize: 16, fontWeight: 700, color: "#2E7D32" }}>Agape+ Active</p>
           </div>
           <p style={{ fontSize: 13, color: "#4CAF50", lineHeight: 1.5 }}>
@@ -267,7 +267,7 @@ function BillingSection({ onViewPlans, initialStatus }) {
 
   return (
     <div style={{ textAlign: "center", padding: "40px 20px" }}>
-      <span style={{ fontSize: 48 }}>💳</span>
+      <svg width={48} height={48} viewBox="0 0 24 24" fill="none" stroke={C.sub} strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
       <p style={{ fontSize: 16, fontWeight: 700, color: C.text, marginTop: 16 }}>No active subscription</p>
       <p style={{ fontSize: 13, color: C.sub, marginTop: 4 }}>Upgrade to Agape+ to manage billing and payments.</p>
       <button onClick={() => { track("upgrade_tapped", { source: "billing" }); onViewPlans(); }} style={{ marginTop: 16, padding: "12px 24px", borderRadius: 12, fontSize: 14, fontWeight: 700, background: C.primary, color: "white", border: "none", cursor: "pointer" }}>View plans</button>
@@ -400,7 +400,7 @@ function SettingsScreen({ onBack, initialSection = null }) {
           {section === "safety" && (
             <>
               <div style={{ borderRadius: 16, padding: 16, display: "flex", gap: 12, background: "#F0FDF4" }}>
-                <span style={{ fontSize: 24 }}>🛡️</span>
+                <svg width={24} height={24} viewBox="0 0 24 24" fill="none" stroke="#166534" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
                 <div>
                   <p style={{ fontSize: 14, fontWeight: 700, color: "#166534", marginBottom: 4 }}>Your safety matters</p>
                   <p style={{ fontSize: 12, lineHeight: 1.5, color: "#15803D" }}>Agape is a faith-based community built on respect and trust. Use these tools if anything ever feels unsafe.</p>
@@ -726,7 +726,7 @@ function SettingsScreen({ onBack, initialSection = null }) {
         {showDeleteConfirm && (
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
             <div style={{ background: C.bg, borderRadius: 20, padding: 24, maxWidth: 320, width: "100%", textAlign: "center" }}>
-              <span style={{ fontSize: 40 }}>⚠️</span>
+              <svg width={40} height={40} viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
               <p style={{ fontSize: 18, fontWeight: 700, color: C.text, marginTop: 12 }}>Delete your account?</p>
               <p style={{ fontSize: 13, color: C.sub, marginTop: 8, lineHeight: 1.5 }}>This will permanently delete your profile, matches, and messages. This action cannot be undone.</p>
               <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 20 }}>

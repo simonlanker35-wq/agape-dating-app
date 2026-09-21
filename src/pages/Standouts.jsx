@@ -1,7 +1,8 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { useApp } from "../context/AppContext";
-import { Heart, X, MessageCircle } from "lucide-react";
+import { Heart, X, MessageCircle, Ban, Flag } from "lucide-react";
 import AgapeCross from "../components/AgapeCross";
+import DoveIcon from "../components/DoveIcon";
 import WaveformBar from "../components/WaveformBar";
 import ReportSheet from "../components/ReportSheet";
 import { getStandoutLikesRemaining, recordStandoutLike } from "../services/limits";
@@ -93,7 +94,7 @@ export default function Standouts() {
     const hoursLeft = Math.floor((diff % 86400000) / 3600000);
     return (
       <div className="discover-empty" style={{ background: C.surface }}>
-        <span style={{ fontSize: 64 }}>🕊️</span>
+        <DoveIcon size={64} color={C.primary} strokeWidth={1.2} />
         <h2 style={{ fontFamily: FONT, fontSize: 22, fontWeight: 700, color: C.text }}>Your Dove has been sent!</h2>
         <p style={{ color: C.sub, fontSize: 14, lineHeight: 1.5 }}>
           {doveSentData.name} will see your Dove. Good things take time.
@@ -218,7 +219,7 @@ export default function Standouts() {
       {likeFlash && (
         <div className={`like-flash-overlay ${likeFlash}`}>
           <span className="flash-emoji">
-            {likeFlash === "comment" ? "💬" : likeFlash === "block" ? "🚫" : likeFlash === "report" ? "🚩" : "🕊️"}
+            {likeFlash === "comment" ? <MessageCircle size={120} strokeWidth={1.4} color={C.primary} /> : likeFlash === "block" ? <Ban size={120} strokeWidth={1.4} color="#EF4444" /> : likeFlash === "report" ? <Flag size={120} strokeWidth={1.4} color="#EF4444" /> : <DoveIcon size={120} color={C.primary} strokeWidth={1.2} />}
           </span>
         </div>
       )}
@@ -308,7 +309,7 @@ export default function Standouts() {
                   <X size={17} />
                 </button>
                 <button className="id-btn id-heart" onClick={() => onDovePress("profile", 0)}>
-                  <span style={{ fontSize: 18, lineHeight: 1 }}>🕊️</span>
+                  <DoveIcon size={18} strokeWidth={2} />
                 </button>
               </div>
             </div>
@@ -347,7 +348,7 @@ export default function Standouts() {
                     <X size={13} />
                   </button>
                   <button className="mini-btn prompt-heart" onClick={() => onDovePress("prompt", i)}>
-                    <span style={{ fontSize: 14, lineHeight: 1 }}>🕊️</span>
+                    <DoveIcon size={14} strokeWidth={2} />
                   </button>
                 </div>
               </div>
@@ -372,7 +373,7 @@ export default function Standouts() {
         <div className="like-choice-overlay" onClick={() => setLikeChoice(null)}>
           <div className="like-choice-sheet" onClick={(e) => e.stopPropagation()}>
             <button className="like-choice-btn dove-choice" onClick={onSendDove}>
-              <span style={{ fontSize: 20 }}>🕊️</span>
+              <DoveIcon size={20} strokeWidth={2} />
               <span>Send Dove</span>
             </button>
             <button className="like-choice-btn comment-choice" onClick={onAddComment}>
@@ -388,7 +389,7 @@ export default function Standouts() {
         <div className="comment-modal-overlay" onClick={() => { setCommentTarget(null); setCommentText(""); }}>
           <div className="comment-modal" onClick={(e) => e.stopPropagation()}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, fontSize: 13, color: "#B8912A", fontWeight: 600 }}>
-              <span style={{ fontSize: 18 }}>🕊️</span>
+              <DoveIcon size={18} strokeWidth={2} />
               Sending with a Dove
             </div>
             <h3>

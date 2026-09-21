@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useApp } from "../context/AppContext";
 import * as api from "../services/api";
+import { MessageCircle, Ban, Flag, UserMinus, Calendar, Video, Heart, Lock, CheckCircle } from "lucide-react";
 import AgapeCross from "../components/AgapeCross";
 import LocationPicker from "../components/LocationPicker";
 import { track } from "../services/posthog";
@@ -789,7 +790,7 @@ function ChatThread({ match, onBack }) {
     <div style={{ display: "flex", flexDirection: "column", position: "fixed", inset: 0, maxWidth: 430, margin: "0 auto", zIndex: 200, background: C.bg }}>
       {blockFlash && (
         <div className="like-flash-overlay block">
-          <span className="flash-emoji">🚫</span>
+          <span className="flash-emoji"><Ban size={120} strokeWidth={1.4} color="#EF4444" /></span>
         </div>
       )}
       {/* Header */}
@@ -829,13 +830,13 @@ function ChatThread({ match, onBack }) {
         )}
         {hasPendingDate && !hasConfirmedDate && (
           <div style={{ marginTop: 8, borderRadius: 12, padding: "8px 16px", display: "flex", alignItems: "center", gap: 8, background: C.primarySoft }}>
-            <span style={{ fontSize: 14 }}>📅</span>
+            <Calendar size={14} color={C.primary} />
             <p style={{ fontSize: 12, fontWeight: 600, color: C.primary, margin: 0 }}>Date invite sent — timer paused</p>
           </div>
         )}
         {(deadlinePaused || hasVideoCall) && !hasConfirmedDate && !hasPendingDate && (
           <div style={{ marginTop: 8, borderRadius: 12, padding: "8px 16px", display: "flex", alignItems: "center", gap: 8, background: "#F0FDF4" }}>
-            <span style={{ fontSize: 14 }}>{hasVideoCall ? "📹" : "💛"}</span>
+            {hasVideoCall ? <Video size={14} color="#16A34A" /> : <Heart size={14} color="#16A34A" />}
             <p style={{ fontSize: 12, fontWeight: 600, color: "#16A34A", margin: 0 }}>
               {hasVideoCall ? "Video call done — take your time, no deadline" : "No time pressure — chat at your own pace"}
             </p>
@@ -843,13 +844,13 @@ function ChatThread({ match, onBack }) {
         )}
         {chatLocked && (
           <div style={{ marginTop: 8, borderRadius: 12, padding: "8px 16px", display: "flex", alignItems: "center", gap: 8, background: "#FEF2F2" }}>
-            <span style={{ fontSize: 14 }}>🔒</span>
+            <Lock size={14} color="#EF4444" />
             <p style={{ fontSize: 12, fontWeight: 600, color: "#EF4444", margin: 0 }}>Chat closed — no date was set in time</p>
           </div>
         )}
         {hasConfirmedDate && (
           <div style={{ marginTop: 8, borderRadius: 12, padding: "8px 16px", display: "flex", alignItems: "center", gap: 8, background: "#F0FDF4" }}>
-            <span style={{ fontSize: 14 }}>✅</span>
+            <CheckCircle size={14} color="#16A34A" />
             <p style={{ fontSize: 12, fontWeight: 600, color: "#16A34A", margin: 0 }}>Date confirmed! Have a wonderful time</p>
           </div>
         )}
@@ -1169,7 +1170,7 @@ function ChatThread({ match, onBack }) {
           <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", borderRadius: "24px 24px 0 0", background: C.bg, padding: "20px 16px 32px" }}>
             {reportDone ? (
               <div style={{ textAlign: "center", padding: "20px 0" }}>
-                <div style={{ fontSize: 36, marginBottom: 12 }}>{reportDone === "block" ? "🚫" : reportDone === "report" ? "🚩" : "👋"}</div>
+                <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>{reportDone === "block" ? <Ban size={36} strokeWidth={1.5} color="#EF4444" /> : reportDone === "report" ? <Flag size={36} strokeWidth={1.5} color="#EF4444" /> : <UserMinus size={36} strokeWidth={1.5} color={C.sub} />}</div>
                 <p style={{ fontSize: 16, fontWeight: 700, color: C.text, fontFamily: FONT, marginBottom: 4 }}>
                   {reportDone === "block" ? `${profile.name} has been blocked` : reportDone === "report" ? "Report submitted" : "Unmatched"}
                 </p>
@@ -1183,9 +1184,9 @@ function ChatThread({ match, onBack }) {
                 <div style={{ width: 36, height: 4, borderRadius: 2, background: C.border, margin: "0 auto 16px" }} />
                 <p style={{ fontSize: 16, fontWeight: 700, color: C.text, fontFamily: FONT, textAlign: "center", marginBottom: 16 }}>{profile.name}</p>
                 {[
-                  { icon: "🚩", label: "Report", desc: "Flag inappropriate behaviour", color: "#EF4444", action: async () => { track("profile_reported", { source: "chat" }); dispatch({ type: "ADD_REPORT", payload: { profileId: profile.id, name: profile.name, photo: profile.photos?.[0], reason: "Inappropriate behaviour", timestamp: Date.now() } }); setReportDone("report"); } },
-                  { icon: "🚫", label: "Block", desc: "They won't be able to see you", color: "#EF4444", action: async () => { track("profile_blocked", { source: "chat" }); dispatch({ type: "BLOCK_PROFILE", payload: { id: profile.id, name: profile.name, photo: profile.photos?.[0] } }); setShowReportMenu(false); setBlockFlash(true); try { await actions.unmatch(match.id); } catch (_) {} setTimeout(() => { setBlockFlash(false); setShowReportMenu(true); setReportDone("block"); }, 1500); } },
-                  { icon: "👋", label: "Unmatch", desc: "Remove this match", color: C.text, action: async () => { track("unmatch_from_chat"); try { await actions.unmatch(match.id); } catch (_) {} setReportDone("unmatch"); } },
+                  { icon: <Flag size={18} strokeWidth={1.8} color="#EF4444" />, label: "Report", desc: "Flag inappropriate behaviour", color: "#EF4444", action: async () => { track("profile_reported", { source: "chat" }); dispatch({ type: "ADD_REPORT", payload: { profileId: profile.id, name: profile.name, photo: profile.photos?.[0], reason: "Inappropriate behaviour", timestamp: Date.now() } }); setReportDone("report"); } },
+                  { icon: <Ban size={18} strokeWidth={1.8} color="#EF4444" />, label: "Block", desc: "They won't be able to see you", color: "#EF4444", action: async () => { track("profile_blocked", { source: "chat" }); dispatch({ type: "BLOCK_PROFILE", payload: { id: profile.id, name: profile.name, photo: profile.photos?.[0] } }); setShowReportMenu(false); setBlockFlash(true); try { await actions.unmatch(match.id); } catch (_) {} setTimeout(() => { setBlockFlash(false); setShowReportMenu(true); setReportDone("block"); }, 1500); } },
+                  { icon: <UserMinus size={18} strokeWidth={1.8} color={C.text} />, label: "Unmatch", desc: "Remove this match", color: C.text, action: async () => { track("unmatch_from_chat"); try { await actions.unmatch(match.id); } catch (_) {} setReportDone("unmatch"); } },
                 ].map((item) => (
                   <button key={item.label} onClick={item.action} style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "14px 12px", borderRadius: 12, background: "none", border: "none", cursor: "pointer", textAlign: "left", marginBottom: 4 }}>
                     <div style={{ width: 40, height: 40, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", background: C.surface, fontSize: 18 }}>{item.icon}</div>
@@ -1285,7 +1286,7 @@ export default function Matches() {
       <div style={{ flex: 1, overflowY: "auto", paddingBottom: 24 }}>
         {sortedMatches.length === 0 ? (
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "60px 20px", textAlign: "center" }}>
-            <div style={{ fontSize: 48, marginBottom: 16 }}>💬</div>
+            <MessageCircle size={48} strokeWidth={1.4} color={C.primary} style={{ marginBottom: 16 }} />
             <h3 style={{ color: C.text, fontFamily: FONT, fontSize: 18, fontWeight: 700 }}>No messages yet</h3>
             <p style={{ color: C.sub, fontSize: 14, marginTop: 4 }}>When you match with someone, you can chat here.</p>
           </div>
