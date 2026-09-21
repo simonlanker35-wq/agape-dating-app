@@ -10,8 +10,24 @@ const compatibilityReasons = [
 
 let standoutCounter = 0;
 
+// Some rows have a GeoJSON blob saved in location_city by an earlier onboarding build — unpack it
+function parseLocation(p) {
+  let city = p.location_city || "";
+  let lat = p.location_lat || null;
+  let lng = p.location_lng || null;
+  if (typeof city === "string" && city.startsWith("{")) {
+    try {
+      const g = JSON.parse(city);
+      city = g.city || "";
+      if (!lat && Array.isArray(g.coordinates)) { lng = g.coordinates[0]; lat = g.coordinates[1]; }
+    } catch { city = ""; }
+  }
+  return { city, lat, lng };
+}
+
 function mapProfile(p) {
   const isStandout = p.is_standout || standoutCounter++ % 3 === 0;
+  const loc = parseLocation(p);
   return {
     id: p.id,
     name: p.name,
@@ -20,9 +36,9 @@ function mapProfile(p) {
     height: p.height ? `${p.height} cm` : null,
     job: p.job || "",
     school: p.school || "",
-    location: p.location_city || "",
-    lat: p.location_lat || null,
-    lng: p.location_lng || null,
+    location: loc.city,
+    lat: loc.lat,
+    lng: loc.lng,
     denomination: p.denomination || "",
     distance: null,
     photos: p.photos || [],
@@ -143,6 +159,15 @@ export async function getMe() {
     20000
   );
   if (profileError) throw new Error(profileError.message);
+
+  if (typeof profile.location_city === "string" && profile.location_city.startsWith("{")) {
+    const loc = parseLocation(profile);
+    await supabase
+      .from("profiles")
+      .update({ location_city: loc.city, location_lat: loc.lat, location_lng: loc.lng })
+      .eq("id", user.id);
+    Object.assign(profile, { location_city: loc.city, location_lat: loc.lat, location_lng: loc.lng });
+  }
 
   return mapProfileToUser(profile, user.phone);
 }
@@ -584,7 +609,7 @@ function mapProfileToUser(p, authPhone) {
     denomination: p.denomination,
     job: p.job,
     school: p.school,
-    location: { city: p.location_city, lat: p.location_lat, lng: p.location_lng },
+    location: parseLocation(p),
     photos: p.photos || [],
     prompts: p.prompts || [],
     interests: p.interests || [],

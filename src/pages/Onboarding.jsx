@@ -446,11 +446,9 @@ export default function Onboarding() {
       await actions.updateProfile({
         job: form.job || undefined,
         school: form.school || undefined,
-        location: form.locationLat
-          ? { type: "Point", coordinates: [form.locationLng, form.locationLat], city: form.location }
-          : form.location
-          ? { type: "Point", coordinates: [8.65, 47.02], city: form.location }
-          : undefined,
+        location: form.location || undefined,
+        locationLat: form.locationLat ?? undefined,
+        locationLng: form.locationLng ?? undefined,
         photos: form.photos.filter(Boolean),
         prompts,
         interests: form.traits,
