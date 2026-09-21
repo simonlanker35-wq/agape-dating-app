@@ -3,6 +3,7 @@ import { useApp } from "../context/AppContext";
 import { Heart, X, MessageCircle, Ban, Flag, Star } from "lucide-react";
 import AgapeCross from "../components/AgapeCross";
 import DoveIcon from "../components/DoveIcon";
+import ReliabilityBadge from "../components/ReliabilityBadge";
 import WaveformBar from "../components/WaveformBar";
 import ReportSheet from "../components/ReportSheet";
 import { getStandoutLikesRemaining, recordStandoutLike } from "../services/limits";
@@ -312,6 +313,8 @@ export default function Standouts() {
                   {profile.denomination && (
                     <span className="id-detail">✝ {profile.denomination}</span>
                   )}
+                  {profile.reliability?.dates > 0 && <span className="id-dot">·</span>}
+                  {profile.reliability?.dates > 0 && <ReliabilityBadge reliability={profile.reliability} light />}
                 </div>
               </div>
               <div className="id-actions">

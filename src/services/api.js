@@ -262,6 +262,8 @@ export async function getDiscover() {
   if (error) throw new Error(error.message);
 
   let filtered = (profiles || []).map(mapProfile);
+  const reliability = await getReliability(filtered.map((p) => p.id));
+  filtered.forEach((p) => { p.reliability = reliability[p.id] || null; });
   if (myLat && myLng) {
     filtered = filtered.filter((p) => {
       if (!p.lat || !p.lng) return true;
@@ -436,6 +438,9 @@ export async function getMatches() {
     });
   }
 
+  const reliability = await getReliability(results.map((r) => r.profileId));
+  results.forEach((r) => { if (r.profile) r.profile.reliability = reliability[r.profileId] || null; });
+
   return results;
 }
 
@@ -558,6 +563,61 @@ export async function declineDate(invitationId, reasons) {
   if (error) throw new Error(error.message);
   return data;
 }
+
+// ─── DATE FEEDBACK (showed up / no-show) ───
+
+export async function getReliability(ids) {
+  if (!ids.length) return {};
+  const { data, error } = await supabase.from("date_feedback").select("to_user, showed_up").in("to_user", ids);
+  if (error) return {};
+  const out = {};
+  for (const r of data || []) {
+    const o = out[r.to_user] || (out[r.to_user] = { dates: 0, noShows: 0 });
+    o.dates += 1;
+    if (!r.showed_up) o.noShows += 1;
+  }
+  return out;
+}
+
+export async function rateDate(invitationId, matchId, toUser, showedUp) {
+  const user = await currentUser();
+  const { error } = await supabase.from("date_feedback").insert({
+    invitation_id: invitationId,
+    match_id: matchId,
+    from_user: user.id,
+    to_user: toUser,
+    showed_up: showedUp,
+  });
+  if (error) throw new Error(error.message);
+}
+
+export async function getMyDateRating(invitationId) {
+  const user = await currentUser();
+  const { data, error } = await supabase
+    .from("date_feedback")
+    .select("showed_up")
+    .eq("invitation_id", invitationId)
+    .eq("from_user", user.id)
+    .maybeSingle();
+  if (error) return null;
+  return data || null;
+}
+
+export const CANCELLED_BY_SENDER = "Cancelled by sender";
+
+// The status column only allows pending/responded/confirmed/declined, so a cancel is a self-decline with a marker
+export async function cancelDate(invitationId) {
+  const { data, error } = await supabase
+    .from("date_invitations")
+    .update({ status: "declined", decline_reasons: [CANCELLED_BY_SENDER] })
+    .eq("id", invitationId)
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+export const isCancelledInvite = (inv) => inv?.status === "declined" && (inv.decline_reasons || []).includes(CANCELLED_BY_SENDER);
 
 export async function confirmDate(invitationId, confirmedTime) {
   const { data, error } = await supabase

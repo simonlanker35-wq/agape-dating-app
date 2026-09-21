@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import { useApp } from "../context/AppContext";
 import { Heart, X, MessageCircle, Ban, Flag } from "lucide-react";
 import DoveIcon from "../components/DoveIcon";
+import ReliabilityBadge from "../components/ReliabilityBadge";
 import AgapeCross from "../components/AgapeCross";
 import WaveformBar from "../components/WaveformBar";
 import FilterSheet from "../components/FilterSheet";
@@ -305,6 +306,8 @@ export default function Discover() {
                   {profile.denomination && (
                     <span className="id-detail">✝ {profile.denomination}</span>
                   )}
+                  {profile.reliability?.dates > 0 && <span className="id-dot">·</span>}
+                  {profile.reliability?.dates > 0 && <ReliabilityBadge reliability={profile.reliability} light />}
                 </div>
               </div>
               <div style={{ background: "rgba(0,0,0,0.5)", borderRadius: 20, padding: "4px 10px", display: "flex", alignItems: "center", gap: 4 }}>

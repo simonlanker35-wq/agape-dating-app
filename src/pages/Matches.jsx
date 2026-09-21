@@ -4,6 +4,7 @@ import * as api from "../services/api";
 import { MessageCircle, Ban, Flag, UserMinus, Calendar, CheckCircle } from "lucide-react";
 import AgapeCross from "../components/AgapeCross";
 import LocationPicker from "../components/LocationPicker";
+import ReliabilityBadge from "../components/ReliabilityBadge";
 import { track } from "../services/posthog";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -63,33 +64,34 @@ function Avatar({ src, name, size = 34 }) {
   );
 }
 
-// yes = available, unknown = not answered yet, no = answered/not selected (tappable when onClick given)
-function AvailCell({ state, onClick }) {
-  const styles = {
-    yes: { background: GREEN, border: `2px solid ${GREEN}` },
-    unknown: { background: C.surface, border: `2px solid ${C.surface}` },
-    no: { background: "white", border: `2px solid ${C.border}` },
-  }[state];
+const buildAllRows = () =>
+  getNextDays(14).flatMap((d) => DAY_SLOTS.map((s) => ({ date: d.date, label: `${d.dayName} ${d.dayNum} ${d.month}`, slot: s.id, time: s.time, isWeekend: d.isWeekend })));
+
+function AvailCell({ on, onClick }) {
   return (
     <button
       onClick={onClick}
       disabled={!onClick}
-      style={{ width: 40, height: 40, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", cursor: onClick ? "pointer" : "default", padding: 0, ...styles }}
+      style={{
+        width: 40, height: 40, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", padding: 0,
+        cursor: onClick ? "pointer" : "default",
+        background: on ? GREEN : "white", border: on ? `2px solid ${GREEN}` : `2px solid ${C.border}`,
+      }}
     >
-      {state === "yes" && <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>}
-      {state === "unknown" && <span style={{ fontSize: 16, fontWeight: 700, color: C.sub, fontFamily: FONT }}>?</span>}
+      {on && <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>}
     </button>
   );
 }
 
-// Breeze-style availability table: times grouped by day, one column per person
+// Breeze-style availability table: times grouped by day, a column per person. `theirs` is optional — omit it for a single-column view.
 function AvailabilityTable({ rows, mine, theirs, onToggle, meAvatar, themAvatar, themName, highlightKey }) {
-  const cols = "1fr 56px 56px";
+  const two = !!theirs;
+  const cols = two ? "1fr 56px 56px" : "1fr 56px";
   return (
     <div>
       <div style={{ display: "grid", gridTemplateColumns: cols, alignItems: "center", padding: "0 0 10px", borderBottom: `1px solid ${C.border}` }}>
         <div />
-        <div style={{ display: "flex", justifyContent: "center" }}><Avatar src={themAvatar} name={themName} /></div>
+        {two && <div style={{ display: "flex", justifyContent: "center" }}><Avatar src={themAvatar} name={themName} /></div>}
         <div style={{ display: "flex", justifyContent: "center" }}><Avatar src={meAvatar} name="Me" /></div>
       </div>
       {groupByDay(rows).map((day) => (
@@ -97,8 +99,6 @@ function AvailabilityTable({ rows, mine, theirs, onToggle, meAvatar, themAvatar,
           <p style={{ fontSize: 15, fontWeight: 800, color: C.text, fontFamily: FONT, padding: "16px 0 6px", margin: 0 }}>{longDay(day.date)}</p>
           {day.times.map((t) => {
             const k = timeKey(t);
-            const mineState = mine.has(k) ? "yes" : "no";
-            const theirState = theirs === null ? "unknown" : theirs.has(k) ? "yes" : "no";
             const hi = highlightKey === k;
             return (
               <div key={k} style={{ display: "grid", gridTemplateColumns: cols, alignItems: "center", padding: "6px 0", borderBottom: `1px solid ${C.border}`, background: hi ? C.primarySoft : "transparent", borderRadius: hi ? 10 : 0 }}>
@@ -106,8 +106,8 @@ function AvailabilityTable({ rows, mine, theirs, onToggle, meAvatar, themAvatar,
                   <span style={{ fontSize: 17, fontWeight: 700, color: C.text, fontFamily: FONT }}>{t.time}</span>
                   {t.slot && <span style={{ fontSize: 12, color: C.sub, fontFamily: FONT }}>{slotName(t)}</span>}
                 </div>
-                <div style={{ display: "flex", justifyContent: "center" }}><AvailCell state={theirState} /></div>
-                <div style={{ display: "flex", justifyContent: "center" }}><AvailCell state={mineState} onClick={onToggle ? () => onToggle(t) : undefined} /></div>
+                {two && <div style={{ display: "flex", justifyContent: "center" }}><AvailCell on={theirs.has(k)} /></div>}
+                <div style={{ display: "flex", justifyContent: "center" }}><AvailCell on={mine.has(k)} onClick={onToggle ? () => onToggle(t) : undefined} /></div>
               </div>
             );
           })}
@@ -209,50 +209,24 @@ function MiniMap({ center, onPick }) {
   return <div ref={mapRef} style={{ width: "100%", height: "100%" }} />;
 }
 
-function DateBuilder({ profileName, userLocation, onSend, onClose, meAvatar, themAvatar }) {
+function DateBuilder({ profileName, userLocation, onSend, onClose }) {
   const [step, setStep] = useState(1);
   const [dateType, setDateType] = useState(null);
   const [location, setLocation] = useState("");
   const [mapCenter, setMapCenter] = useState(userLocation || { lat: 50.0647, lng: 19.9450 });
   const [wardrobe, setWardrobe] = useState(null);
-  const [selections, setSelections] = useState([]);
-  const days = useMemo(() => getNextDays(14), []);
-  const toSelection = (day, slot) => ({ date: day.date, label: `${day.dayName} ${day.dayNum} ${day.month}`, slot: slot.id, time: slot.time });
-  const allRows = useMemo(() => days.flatMap((d) => DAY_SLOTS.map((s) => toSelection(d, s))), [days]);
-  const selectedKeys = new Set(selections.map(timeKey));
-
-  const toggleRow = (t) => {
-    if (selectedKeys.has(timeKey(t))) {
-      setSelections(selections.filter((s) => timeKey(s) !== timeKey(t)));
-    } else if (selections.length < MAX_SLOTS) {
-      setSelections([...selections, t]);
-    }
-  };
-
-  const quickSelect = (pick) => {
-    const wanted = [];
-    for (const day of days) for (const slot of DAY_SLOTS) if (pick(day, slot)) wanted.push(toSelection(day, slot));
-    const merged = [...selections];
-    for (const w of wanted) {
-      if (merged.length >= MAX_SLOTS) break;
-      if (!merged.some((s) => s.date === w.date && s.slot === w.slot)) merged.push(w);
-    }
-    setSelections(merged);
-  };
-
   const canProceed =
     (step === 1 && dateType) ||
     (step === 2 && location.trim()) ||
-    (step === 3 && wardrobe) ||
-    (step === 4 && selections.length >= 2);
+    (step === 3 && wardrobe);
 
   const handleNext = () => {
-    if (step < 4) {
+    if (step < 3) {
       track("date_builder_step", { step, dateType, location, wardrobe });
       setStep(step + 1);
     } else {
-      track("date_invitation_sent", { dateType, wardrobe, timesCount: selections.length });
-      onSend({ dateType, location: location.trim(), wardrobe, proposedTimes: selections });
+      track("date_invitation_sent", { dateType, wardrobe });
+      onSend({ dateType, location: location.trim(), wardrobe, proposedTimes: [] });
     }
   };
 
@@ -262,7 +236,7 @@ function DateBuilder({ profileName, userLocation, onSend, onClose, meAvatar, the
         <div style={{ width: 36, height: 4, borderRadius: 2, background: C.border, margin: "0 auto 16px" }} />
 
         <div style={{ display: "flex", gap: 4, marginBottom: 20 }}>
-          {[1, 2, 3, 4].map((s) => (
+          {[1, 2, 3].map((s) => (
             <div key={s} style={{ flex: 1, height: 3, borderRadius: 2, background: s <= step ? C.primary : C.border }} />
           ))}
         </div>
@@ -362,46 +336,6 @@ function DateBuilder({ profileName, userLocation, onSend, onClose, meAvatar, the
           </>
         )}
 
-        {step === 4 && (
-          <>
-            <p style={{ fontSize: 12, fontWeight: 700, color: C.sub, textTransform: "uppercase", letterSpacing: "0.1em", fontFamily: FONT, margin: "0 0 4px", textAlign: "center" }}>Date picker</p>
-            <p style={{ fontSize: 18, fontWeight: 700, color: C.text, fontFamily: FONT, marginBottom: 4 }}>
-              When can you go for {DATE_TYPES.find((d) => d.id === dateType)?.label.toLowerCase() || "a date"} with {profileName}?
-            </p>
-            <p style={{ fontSize: 13, color: C.sub, marginBottom: 12 }}>Tick the times you're free (at least 2). {profileName} then ticks the ones that work for her.</p>
-
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
-              {[
-                { label: "All evenings", pick: (d, s) => s.id === "evening" },
-                { label: "Weekends", pick: (d) => d.isWeekend },
-              ].map((q) => (
-                <button key={q.label} onClick={() => quickSelect(q.pick)} style={{ padding: "7px 12px", borderRadius: 9999, fontSize: 12, fontWeight: 600, fontFamily: FONT, background: C.surface, color: C.text, border: `1px solid ${C.border}`, cursor: "pointer" }}>
-                  + {q.label}
-                </button>
-              ))}
-              {selections.length > 0 && (
-                <button onClick={() => setSelections([])} style={{ padding: "7px 12px", borderRadius: 9999, fontSize: 12, fontWeight: 600, fontFamily: FONT, background: "none", color: C.sub, border: `1px solid ${C.border}`, cursor: "pointer" }}>
-                  Clear all
-                </button>
-              )}
-            </div>
-
-            <AvailabilityTable
-              rows={allRows}
-              mine={selectedKeys}
-              theirs={null}
-              onToggle={toggleRow}
-              meAvatar={meAvatar}
-              themAvatar={themAvatar}
-              themName={profileName}
-            />
-
-            <p style={{ fontSize: 12, color: selections.length >= 2 ? C.primary : C.sub, fontWeight: 600, marginTop: 12, textAlign: "center", fontFamily: FONT }}>
-              {selections.length === 0 ? "Nothing selected yet" : `${selections.length} of ${MAX_SLOTS} times selected${selections.length < 2 ? " — pick at least 2" : ""}`}
-            </p>
-          </>
-        )}
-
         <div style={{ display: "flex", gap: 8, marginTop: 24, position: "sticky", bottom: -32, background: C.bg, padding: "10px 0 32px", marginBottom: -32 }}>
           {step > 1 && (
             <button onClick={() => setStep(step - 1)} style={{ flex: 1, padding: "14px 0", borderRadius: 14, fontSize: 14, fontWeight: 700, background: C.surface, color: C.sub, border: "none", cursor: "pointer" }}>
@@ -423,7 +357,7 @@ function DateBuilder({ profileName, userLocation, onSend, onClose, meAvatar, the
               cursor: canProceed ? "pointer" : "default",
             }}
           >
-            {step === 4 ? "Send Invitation" : "Next"}
+            {step === 3 ? `Send to ${profileName}` : "Next"}
           </button>
         </div>
       </div>
@@ -439,7 +373,7 @@ const DECLINE_REASONS = [
   "Not interested anymore",
 ];
 
-function DateCard({ invitation, isMe, isMale, onRespond, onConfirm, onDecline, meAvatar, themAvatar, themName }) {
+function DateCard({ invitation, isMe, isMale, onRespond, onConfirm, onDecline, onCancel, meAvatar, themAvatar, themName }) {
   const [selectedTimes, setSelectedTimes] = useState([]);
   const [sending, setSending] = useState(false);
   const [showDecline, setShowDecline] = useState(false);
@@ -447,8 +381,16 @@ function DateCard({ invitation, isMe, isMale, onRespond, onConfirm, onDecline, m
   const [confirming, setConfirming] = useState(null);
   const [exactTime, setExactTime] = useState("");
   const [showPicker, setShowPicker] = useState(false);
-  const proposed = invitation.proposed_times || [];
   const responded = invitation.response_times || [];
+  const allRows = useMemo(buildAllRows, []);
+  const quickPick = (pick) => {
+    const merged = [...selectedTimes];
+    for (const r of allRows) {
+      if (merged.length >= MAX_SLOTS) break;
+      if (pick(r) && !merged.some((s) => timeKey(s) === timeKey(r))) merged.push(r);
+    }
+    setSelectedTimes(merged);
+  };
   const pickerTitle = `When can you go for ${(DATE_TYPES.find((d) => d.id === invitation.date_type)?.label || "a date").toLowerCase()} with ${themName}?`;
   const primaryBtn = { width: "100%", padding: "14px 0", borderRadius: 14, fontSize: 15, fontWeight: 700, fontFamily: FONT, background: C.primary, color: "white", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 };
   const secondaryBtn = { ...primaryBtn, background: C.surface, color: C.text, fontSize: 14 };
@@ -456,11 +398,11 @@ function DateCard({ invitation, isMe, isMale, onRespond, onConfirm, onDecline, m
   const wb = WARDROBE_OPTIONS.find((w) => w.id === invitation.wardrobe);
 
   const toggleTime = (t) => {
-    setSelectedTimes((prev) =>
-      prev.some((s) => s.date === t.date && s.time === t.time)
-        ? prev.filter((s) => !(s.date === t.date && s.time === t.time))
-        : [...prev, t]
-    );
+    setSelectedTimes((prev) => {
+      const has = prev.some((s) => timeKey(s) === timeKey(t));
+      if (has) return prev.filter((s) => timeKey(s) !== timeKey(t));
+      return prev.length >= MAX_SLOTS ? prev : [...prev, t];
+    });
   };
 
   const handleRespond = async () => {
@@ -531,16 +473,16 @@ function DateCard({ invitation, isMe, isMale, onRespond, onConfirm, onDecline, m
         {invitation.status === "pending" && !isMale && (
           <>
             <p style={{ fontSize: 13, color: C.sub, fontFamily: FONT, margin: "0 0 10px", textAlign: "center" }}>
-              {themName} offered {proposed.length} time{proposed.length === 1 ? "" : "s"}. Tick the ones that work for you.
+              Tell {themName} when you're free — he'll pick one of your times.
             </p>
             <button onClick={() => { track("date_picker_opened"); setShowPicker(true); }} style={primaryBtn}>
               <Calendar size={16} color="white" />
-              {selectedTimes.length ? `Pick your times (${selectedTimes.length} chosen)` : "Pick your times"}
+              {selectedTimes.length ? `When I'm free (${selectedTimes.length} chosen)` : "When I'm free"}
             </button>
             {showPicker && (
               <AvailabilitySheet
                 title={pickerTitle}
-                subtitle="Tap the times that work for you"
+                subtitle={`Tick the times you're free (up to ${MAX_SLOTS}). ${themName} picks one of them.`}
                 onClose={() => setShowPicker(false)}
                 footer={
                   <button
@@ -552,14 +494,18 @@ function DateCard({ invitation, isMe, isMale, onRespond, onConfirm, onDecline, m
                   </button>
                 }
               >
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+                  <button onClick={() => quickPick((r) => r.slot === "evening")} style={{ padding: "7px 12px", borderRadius: 9999, fontSize: 12, fontWeight: 600, fontFamily: FONT, background: C.surface, color: C.text, border: `1px solid ${C.border}`, cursor: "pointer" }}>+ All evenings</button>
+                  <button onClick={() => quickPick((r) => r.isWeekend)} style={{ padding: "7px 12px", borderRadius: 9999, fontSize: 12, fontWeight: 600, fontFamily: FONT, background: C.surface, color: C.text, border: `1px solid ${C.border}`, cursor: "pointer" }}>+ Weekends</button>
+                  {selectedTimes.length > 0 && (
+                    <button onClick={() => setSelectedTimes([])} style={{ padding: "7px 12px", borderRadius: 9999, fontSize: 12, fontWeight: 600, fontFamily: FONT, background: "none", color: C.sub, border: `1px solid ${C.border}`, cursor: "pointer" }}>Clear all</button>
+                  )}
+                </div>
                 <AvailabilityTable
-                  rows={proposed}
+                  rows={allRows}
                   mine={new Set(selectedTimes.map(timeKey))}
-                  theirs={new Set(proposed.map(timeKey))}
                   onToggle={toggleTime}
                   meAvatar={meAvatar}
-                  themAvatar={themAvatar}
-                  themName={themName}
                 />
               </AvailabilitySheet>
             )}
@@ -633,30 +579,31 @@ function DateCard({ invitation, isMe, isMale, onRespond, onConfirm, onDecline, m
 
         {invitation.status === "pending" && isMale && (
           <>
-            <p style={{ fontSize: 13, color: C.sub, textAlign: "center", fontFamily: FONT, margin: "0 0 10px" }}>
-              Waiting for {themName} to pick from your {proposed.length} times...
+            <p style={{ fontSize: 13, color: C.sub, textAlign: "center", fontFamily: FONT, margin: 0 }}>
+              Sent to {themName} — waiting for her to say when she's free.
             </p>
-            <button onClick={() => setShowPicker(true)} style={secondaryBtn}>View the times you offered</button>
-            {showPicker && (
-              <AvailabilitySheet title={pickerTitle} subtitle={`${themName} hasn't answered yet`} onClose={() => setShowPicker(false)}>
-                <AvailabilityTable rows={proposed} mine={new Set(proposed.map(timeKey))} theirs={null} meAvatar={meAvatar} themAvatar={themAvatar} themName={themName} />
-              </AvailabilitySheet>
-            )}
+            <button
+              onClick={async () => { track("date_cancelled"); setSending(true); await onCancel(invitation.id); setSending(false); }}
+              disabled={sending}
+              style={{ width: "100%", marginTop: 10, padding: "10px 0", borderRadius: 14, fontSize: 13, fontWeight: 600, background: "none", color: C.sub, border: "none", cursor: "pointer", fontFamily: FONT }}
+            >
+              {sending ? "..." : "Cancel this plan"}
+            </button>
           </>
         )}
 
         {invitation.status === "responded" && isMale && (
           <>
             <p style={{ fontSize: 13, color: C.sub, textAlign: "center", fontFamily: FONT, margin: "0 0 10px" }}>
-              {themName} is free at {responded.length} of your times. Choose the final one.
+              {themName} is free at {responded.length} time{responded.length === 1 ? "" : "s"}. Pick the one that suits you.
             </p>
             <button onClick={() => { track("date_confirm_picker_opened"); setShowPicker(true); }} style={primaryBtn}>
-              <Calendar size={16} color="white" /> Choose the final time
+              <Calendar size={16} color="white" /> Pick a time
             </button>
             {showPicker && (
               <AvailabilitySheet
                 title={pickerTitle}
-                subtitle="Tap the time you want, then set the exact time"
+                subtitle={`These are the times ${themName} is free. Tap one, then set the exact time.`}
                 onClose={() => setShowPicker(false)}
                 footer={
                   confirming ? (
@@ -705,12 +652,12 @@ function DateCard({ invitation, isMe, isMale, onRespond, onConfirm, onDecline, m
         {invitation.status === "responded" && !isMale && (
           <>
             <p style={{ fontSize: 13, color: C.sub, textAlign: "center", fontFamily: FONT, margin: "0 0 10px" }}>
-              You picked {responded.length} time{responded.length === 1 ? "" : "s"} — waiting for {themName} to confirm one.
+              You sent {responded.length} time{responded.length === 1 ? "" : "s"} — waiting for {themName} to pick one.
             </p>
             <button onClick={() => setShowPicker(true)} style={secondaryBtn}>View your times</button>
             {showPicker && (
-              <AvailabilitySheet title={pickerTitle} subtitle={`Waiting for ${themName} to confirm`} onClose={() => setShowPicker(false)}>
-                <AvailabilityTable rows={proposed} mine={new Set(responded.map(timeKey))} theirs={new Set(proposed.map(timeKey))} meAvatar={meAvatar} themAvatar={themAvatar} themName={themName} />
+              <AvailabilitySheet title={pickerTitle} subtitle={`Waiting for ${themName} to pick one`} onClose={() => setShowPicker(false)}>
+                <AvailabilityTable rows={responded} mine={new Set(responded.map(timeKey))} meAvatar={meAvatar} />
               </AvailabilitySheet>
             )}
           </>
@@ -767,9 +714,33 @@ function ChatThread({ match, onBack }) {
   // The chat only opens once a date is confirmed; before that the thread is the date-planning stage
   const confirmedDate = dateInvitations.find((inv) => inv.status === "confirmed") || null;
   const openInvite = [...dateInvitations].reverse().find((inv) => inv.status === "pending" || inv.status === "responded") || null;
-  const lastInvite = dateInvitations[dateInvitations.length - 1] || null;
+  const lastInvite = [...dateInvitations].reverse().find((inv) => !api.isCancelledInvite(inv)) || null;
   const lastDeclined = !confirmedDate && !openInvite && lastInvite?.status === "declined" ? lastInvite : null;
   const chatOpen = !!confirmedDate;
+
+  const dateTimeMs = confirmedDate?.confirmed_time?.date
+    ? new Date(`${confirmedDate.confirmed_time.date}T${confirmedDate.confirmed_time.time || "12:00"}:00`).getTime()
+    : null;
+  const datePassed = dateTimeMs !== null && Date.now() > dateTimeMs;
+  const [myRating, setMyRating] = useState(undefined);
+  const [rating, setRating] = useState(false);
+
+  useEffect(() => {
+    if (!confirmedDate?.id || !datePassed) return;
+    api.getMyDateRating(confirmedDate.id).then(setMyRating).catch(() => setMyRating(null));
+  }, [confirmedDate?.id, datePassed]);
+
+  const handleRate = async (showedUp) => {
+    setRating(true);
+    try {
+      await api.rateDate(confirmedDate.id, match.id, profile.id, showedUp);
+      track("date_rated", { showedUp });
+      setMyRating({ showed_up: showedUp });
+    } catch (err) {
+      console.error("Rating failed:", err);
+    }
+    setRating(false);
+  };
 
   const send = async () => {
     if (!text.trim() || !chatOpen) return;
@@ -819,6 +790,15 @@ function ChatThread({ match, onBack }) {
     }
   };
 
+  const handleCancelDate = async (invId) => {
+    try {
+      const updated = await api.cancelDate(invId);
+      setDateInvitations((prev) => prev.map((inv) => (inv.id === invId ? updated : inv)));
+    } catch (err) {
+      console.error("Cancel failed:", err);
+    }
+  };
+
   const formatTime = (ts) => {
     const d = new Date(ts);
     return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -842,6 +822,7 @@ function ChatThread({ match, onBack }) {
           </div>
           <div style={{ flex: 1, minWidth: 0, cursor: "pointer" }} onClick={() => setViewProfile(true)}>
             <p style={{ fontWeight: 700, fontSize: 16, lineHeight: 1, color: C.text, fontFamily: FONT, margin: 0 }}>{profile.name}</p>
+            {profile.reliability?.dates > 0 && <div style={{ marginTop: 5 }}><ReliabilityBadge reliability={profile.reliability} /></div>}
           </div>
           <button onClick={() => setShowReportMenu(true)} style={{ width: 36, height: 36, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: "#FEF2F2", border: "none", cursor: "pointer" }}>
             <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth={2.5}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
@@ -866,8 +847,8 @@ function ChatThread({ match, onBack }) {
             <Calendar size={14} color={C.primary} />
             <p style={{ fontSize: 12, fontWeight: 600, color: C.sub, margin: 0 }}>
               {openInvite.status === "pending"
-                ? (isMale ? "Date plan sent — waiting for her to pick a time" : "He sent a date plan — pick a time below")
-                : (isMale ? "She picked her times — confirm one below" : "Times sent — waiting for him to confirm")}
+                ? (isMale ? "Plan sent — waiting for her to say when she's free" : "He planned a date — tell him when you're free")
+                : (isMale ? "She's free — pick one of her times" : "Times sent — waiting for him to pick one")}
             </p>
           </div>
         ) : (
@@ -889,8 +870,8 @@ function ChatThread({ match, onBack }) {
             </div>
             <p style={{ fontSize: 13, color: C.sub, fontFamily: FONT, lineHeight: 1.55, margin: 0 }}>
               {isMale
-                ? "No small talk on Agape. Propose a date — the type, the place, the dress code and a few times — and she picks the one that suits her. The chat opens once the date is set."
-                : "No small talk on Agape. He proposes a date and you pick the time that suits you. The chat opens once the date is set."}
+                ? "No small talk on Agape. You plan the date — what, where and the dress code. She tells you when she's free, you pick one of her times, and the chat opens."
+                : "No small talk on Agape. He plans the date — what, where and the dress code. You say when you're free, he picks one of your times, and the chat opens."}
             </p>
           </div>
 
@@ -902,6 +883,7 @@ function ChatThread({ match, onBack }) {
               onRespond={handleRespondDate}
               onConfirm={handleConfirmDate}
               onDecline={handleDeclineDate}
+              onCancel={handleCancelDate}
               meAvatar={state.currentUser?.photos?.[0]}
               themAvatar={profile.photos?.[0]}
               themName={profile.name}
@@ -950,6 +932,22 @@ function ChatThread({ match, onBack }) {
           themAvatar={profile.photos?.[0]}
           themName={profile.name}
         />
+
+        {datePassed && myRating === null && (
+          <div style={{ borderRadius: 20, padding: "16px", background: C.primarySoft, border: `1.5px solid ${C.primary}` }}>
+            <p style={{ fontSize: 15, fontWeight: 700, color: C.text, fontFamily: FONT, margin: "0 0 4px" }}>Did {profile.name} show up?</p>
+            <p style={{ fontSize: 12, color: C.sub, fontFamily: FONT, margin: "0 0 12px", lineHeight: 1.5 }}>Your answer is shown on {profile.name}'s profile as a reliability score — it keeps Agape honest.</p>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={() => handleRate(true)} disabled={rating} style={{ flex: 1, padding: "12px 0", borderRadius: 12, fontSize: 14, fontWeight: 700, fontFamily: FONT, background: GREEN, color: "white", border: "none", cursor: "pointer" }}>Yes, we met</button>
+              <button onClick={() => handleRate(false)} disabled={rating} style={{ flex: 1, padding: "12px 0", borderRadius: 12, fontSize: 14, fontWeight: 700, fontFamily: FONT, background: "#FEF2F2", color: "#EF4444", border: "1.5px solid #FCA5A5", cursor: "pointer" }}>No-show</button>
+            </div>
+          </div>
+        )}
+        {datePassed && myRating && (
+          <p style={{ fontSize: 12, color: C.sub, textAlign: "center", fontFamily: FONT, margin: 0 }}>
+            {myRating.showed_up ? `You confirmed you met ${profile.name}.` : `You reported ${profile.name} as a no-show.`}
+          </p>
+        )}
 
         {messages.map((item) => {
           const isMe = item.sender === currentUserId;
@@ -1027,8 +1025,6 @@ function ChatThread({ match, onBack }) {
           userLocation={state.currentUser?.location ? { lat: state.currentUser.location.lat, lng: state.currentUser.location.lng } : null}
           onSend={handleSendDate}
           onClose={() => setShowDateBuilder(false)}
-          meAvatar={state.currentUser?.photos?.[0]}
-          themAvatar={profile.photos?.[0]}
         />
       )}
 
