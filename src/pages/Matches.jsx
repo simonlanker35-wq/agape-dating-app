@@ -697,7 +697,7 @@ function ChatThread({ match, onBack }) {
   const messages = conversation?.messages || [];
 
   // The chat only opens once a date is confirmed; before that the thread is the date-planning stage
-  const confirmedDate = dateInvitations.find((inv) => inv.status === "confirmed") || null;
+  const confirmedDate = [...dateInvitations].reverse().find((inv) => inv.status === "confirmed") || null;
   const openInvite = [...dateInvitations].reverse().find((inv) => inv.status === "pending" || inv.status === "responded") || null;
   const lastInvite = [...dateInvitations].reverse().find((inv) => !api.isCancelledInvite(inv)) || null;
   const lastDeclined = !confirmedDate && !openInvite && lastInvite?.status === "declined" ? lastInvite : null;
@@ -925,7 +925,7 @@ function ChatThread({ match, onBack }) {
           themName={profile.name}
         />
 
-        {datePassed && myRating === null && (
+        {datePassed && myRating === null && !openInvite && (
           <div style={{ borderRadius: 20, padding: "16px", background: C.primarySoft, border: `1.5px solid ${C.primary}` }}>
             <p style={{ fontSize: 15, fontWeight: 700, color: C.text, fontFamily: FONT, margin: "0 0 4px" }}>Did {profile.name} show up?</p>
             <p style={{ fontSize: 12, color: C.sub, fontFamily: FONT, margin: "0 0 12px", lineHeight: 1.5 }}>Your answer is shown on {profile.name}'s profile as a reliability score — it keeps Agape honest.</p>
@@ -936,9 +936,44 @@ function ChatThread({ match, onBack }) {
           </div>
         )}
         {datePassed && myRating && (
-          <p style={{ fontSize: 12, color: C.sub, textAlign: "center", fontFamily: FONT, margin: 0 }}>
-            {myRating.showed_up ? `You confirmed you met ${profile.name}.` : `You reported ${profile.name} as a no-show.`}
-          </p>
+          <div style={{ borderRadius: 20, padding: 16, background: myRating.showed_up ? "#F0FDF4" : "#FEF2F2", border: `1.5px solid ${myRating.showed_up ? "#BBF7D0" : "#FECACA"}` }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+              {myRating.showed_up ? <CheckCircle size={18} color="#16A34A" /> : <Ban size={18} color="#EF4444" />}
+              <p style={{ fontSize: 15, fontWeight: 700, color: myRating.showed_up ? "#166534" : "#B91C1C", fontFamily: FONT, margin: 0 }}>
+                {myRating.showed_up ? `Great — you met ${profile.name}` : `You reported ${profile.name} as a no-show`}
+              </p>
+            </div>
+            <p style={{ fontSize: 12, color: C.sub, fontFamily: FONT, margin: "0 0 12px", lineHeight: 1.5 }}>
+              {myRating.showed_up
+                ? "It now counts towards their reliability score. Keep chatting here, or plan the next one."
+                : "Sorry that happened. It now shows on their profile so others know. You can unmatch below."}
+            </p>
+            <div style={{ display: "flex", gap: 8 }}>
+              {myRating.showed_up && isMale && !openInvite && (
+                <button onClick={() => { track("plan_date_tapped", { again: true }); setShowDateBuilder(true); }} style={{ flex: 1, padding: "11px 0", borderRadius: 12, fontSize: 13, fontWeight: 700, fontFamily: FONT, background: C.primary, color: "white", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                  <Calendar size={14} color="white" /> Plan another date
+                </button>
+              )}
+              <button onClick={() => setShowReportMenu(true)} style={{ flex: 1, padding: "11px 0", borderRadius: 12, fontSize: 13, fontWeight: 700, fontFamily: FONT, background: "white", color: myRating.showed_up ? C.sub : "#EF4444", border: `1.5px solid ${myRating.showed_up ? C.border : "#FECACA"}`, cursor: "pointer" }}>
+                {myRating.showed_up ? "Unmatch or report" : "Unmatch"}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {openInvite && (
+          <DateCard
+            invitation={openInvite}
+            isMe={openInvite.from_user === currentUserId}
+            isMale={isMale}
+            onRespond={handleRespondDate}
+            onConfirm={handleConfirmDate}
+            onDecline={handleDeclineDate}
+            onCancel={handleCancelDate}
+            meAvatar={state.currentUser?.photos?.[0]}
+            themAvatar={profile.photos?.[0]}
+            themName={profile.name}
+          />
         )}
 
         {messages.map((item) => {
