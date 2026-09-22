@@ -129,10 +129,16 @@ export async function createProfile(data) {
     interests: data.interests || [],
   };
 
-  const { error: profileError } = await supabase.from("profiles").insert(profile);
+  let { error: profileError } = await supabase.from("profiles").insert(profile);
+
+  // The same email may already sit on another account (e.g. typed into a phone sign-up earlier) — keep going without it
+  if (profileError && profileError.code === "23505" && profile.email) {
+    profile.email = null;
+    ({ error: profileError } = await supabase.from("profiles").insert(profile));
+  }
   if (profileError) throw new Error(profileError.message);
 
-  return mapProfileToUser(profile);
+  return mapProfileToUser(profile, user.phone);
 }
 
 export async function register(data) {
