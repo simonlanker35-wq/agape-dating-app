@@ -6,7 +6,7 @@ import DoveIcon from "../components/DoveIcon";
 import ReliabilityBadge from "../components/ReliabilityBadge";
 import WaveformBar from "../components/WaveformBar";
 import ReportSheet from "../components/ReportSheet";
-import { getStandoutLikesRemaining, recordStandoutLike } from "../services/limits";
+import { getDovesRemaining, recordDove } from "../services/limits";
 import { track } from "../services/posthog";
 
 function haversine(lat1, lon1, lat2, lon2) {
@@ -130,10 +130,10 @@ export default function Standouts() {
   const prompts = (profile.prompts || []).filter((p) => p.prompt && p.answer);
 
   const isPremium = state.currentUser?.subscriptionStatus === "active";
-  const [standoutLikesLeft, setStandoutLikesLeft] = useState(getStandoutLikesRemaining(isPremium));
+  const [standoutLikesLeft, setStandoutLikesLeft] = useState(getDovesRemaining(isPremium));
 
   useEffect(() => {
-    setStandoutLikesLeft(getStandoutLikesRemaining(isPremium));
+    setStandoutLikesLeft(getDovesRemaining(isPremium));
   }, [isPremium]);
 
   const handleLike = async (targetType, targetIndex, comment = null) => {
@@ -143,8 +143,8 @@ export default function Standouts() {
     setCommentTarget(null);
     setCommentText("");
     setLikeFlash(flashType);
-    recordStandoutLike();
-    setStandoutLikesLeft(getStandoutLikesRemaining(isPremium));
+    recordDove();
+    setStandoutLikesLeft(getDovesRemaining(isPremium));
 
     const doveData = { weekKey, photo: photos[0], name: profile.name, sentAt: Date.now() };
     try { localStorage.setItem("agape_dove_sent", JSON.stringify(doveData)); } catch {}
