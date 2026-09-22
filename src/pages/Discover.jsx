@@ -328,7 +328,7 @@ export default function Discover() {
                 </div>
               </div>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
-                <div style={{ display: "flex", gap: 8 }}>
+                <div style={{ display: "flex", gap: 20 }}>
                   <button
                     onClick={() => onHeartPress("profile", 0)}
                     aria-label="Like"
