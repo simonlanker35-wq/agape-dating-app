@@ -313,6 +313,7 @@ export async function sendLike(to, targetType, targetIndex, comment = null, isDo
     .select("id")
     .eq("from_user", user.id)
     .eq("to_user", to)
+    .limit(1)
     .maybeSingle();
 
   if (existing) throw new Error("Already liked");
@@ -332,11 +333,13 @@ export async function sendLike(to, targetType, targetIndex, comment = null, isDo
     await supabase.from("profiles").update({ doves: (me.doves || 3) - 1 }).eq("id", user.id);
   }
 
+  // Any like from them to me (heart, comment or dove) makes this a match
   const { data: mutual } = await supabase
     .from("likes")
     .select("id")
     .eq("from_user", to)
     .eq("to_user", user.id)
+    .limit(1)
     .maybeSingle();
 
   let matched = false;
@@ -347,6 +350,7 @@ export async function sendLike(to, targetType, targetIndex, comment = null, isDo
       .from("matches")
       .select("id")
       .or(`and(user1.eq.${user.id},user2.eq.${to}),and(user1.eq.${to},user2.eq.${user.id})`)
+      .limit(1)
       .maybeSingle();
 
     if (existingMatch) {
@@ -447,14 +451,15 @@ export async function getMatches() {
     if (!preview) {
       const { data: likeComment } = await supabase
         .from("likes")
-        .select("from_user, comment, is_dove")
+        .select("from_user, comment, is_dove, target_type")
         .or(`and(from_user.eq.${m.user1},to_user.eq.${m.user2}),and(from_user.eq.${m.user2},to_user.eq.${m.user1})`)
         .not("comment", "is", null)
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
       if (likeComment) {
-        preview = { text: (likeComment.is_dove ? "🕊️ " : "") + likeComment.comment, sender: likeComment.from_user };
+        // Comment text stays hidden until the date is confirmed; the list only hints that it exists
+        preview = { text: (likeComment.is_dove ? "🕊️ " : "") + likeComment.comment, sender: likeComment.from_user, isComment: true, targetType: likeComment.target_type, isDove: likeComment.is_dove };
       }
     }
 
@@ -495,7 +500,7 @@ export async function getMessages(matchId) {
     if (match) {
       const { data: likes } = await supabase
         .from("likes")
-        .select("from_user, comment, is_dove, created_at")
+        .select("from_user, comment, is_dove, target_type, created_at")
         .or(`and(from_user.eq.${match.user1},to_user.eq.${match.user2}),and(from_user.eq.${match.user2},to_user.eq.${match.user1})`)
         .not("comment", "is", null)
         .order("created_at", { ascending: true });
@@ -506,6 +511,9 @@ export async function getMessages(matchId) {
           sender: like.from_user,
           timestamp: new Date(like.created_at).getTime(),
           read: true,
+          isComment: true,
+          targetType: like.target_type,
+          isDove: like.is_dove,
         }));
         return [...likeMessages, ...mapped];
       }

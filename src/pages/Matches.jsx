@@ -867,6 +867,19 @@ function ChatThread({ match, onBack }) {
             </p>
           </div>
 
+          {match.lastMessage?.isComment && (
+            <div style={{ borderRadius: 16, padding: "12px 14px", background: C.card, border: `1px solid ${C.border}`, display: "flex", gap: 10, alignItems: "center" }}>
+              <MessageCircle size={18} color={C.primary} style={{ flexShrink: 0 }} />
+              <p style={{ fontSize: 13, color: C.text, fontFamily: FONT, margin: 0, lineHeight: 1.45 }}>
+                {match.lastMessage.sender === currentUserId ? (
+                  <>Your comment on {profile.name}'s {match.lastMessage.targetType === "photo" ? "photo" : match.lastMessage.targetType === "prompt" ? "prompt" : "profile"} will be shown once your date is confirmed.</>
+                ) : (
+                  <><span style={{ fontWeight: 700 }}>{profile.name} {match.lastMessage.isDove ? "sent a Dove with a comment" : "commented"} on your {match.lastMessage.targetType === "photo" ? "photo" : match.lastMessage.targetType === "prompt" ? "prompt" : "profile"}.</span> You'll read it once your date is confirmed.</>
+                )}
+              </p>
+            </div>
+          )}
+
           {openInvite && (
             <DateCard
               invitation={openInvite}
@@ -1209,7 +1222,11 @@ export default function Matches() {
                   </div>
                   {profile.denomination && <p style={{ fontSize: 12, color: C.primary, fontWeight: 600, fontFamily: FONT, margin: "0 0 6px 0" }}>{profile.denomination}</p>}
                   <p style={{ fontSize: 14, color: hasUnread ? C.text : C.sub, fontWeight: hasUnread ? 700 : 400, fontFamily: FONT, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis", margin: 0 }}>
-                    {lastMsg
+                    {lastMsg?.isComment
+                      ? (lastMsg.sender === currentUserId
+                          ? `You commented on their ${lastMsg.targetType === "photo" ? "photo" : lastMsg.targetType === "prompt" ? "prompt" : "profile"}`
+                          : `${profile.name} commented on your ${lastMsg.targetType === "photo" ? "photo" : lastMsg.targetType === "prompt" ? "prompt" : "profile"} · unlocks after your date`)
+                      : lastMsg
                       ? (lastMsg.sender === currentUserId ? "You: " : "") + lastMsg.text.slice(0, 35) + (lastMsg.text.length > 35 ? "..." : "")
                       : state.currentUser?.gender === "male" ? "New match · plan your date" : "New match · waiting for his plan"}
                   </p>
