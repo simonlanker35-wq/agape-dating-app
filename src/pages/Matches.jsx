@@ -374,13 +374,16 @@ const DECLINE_REASONS = [
   "Not interested anymore",
 ];
 
-function DateCard({ invitation, isMe, isMale, onRespond, onConfirm, onDecline, onCancel, meAvatar, themAvatar, themName }) {
+function DateCard({ invitation, isMe, isMale, onRespond, onConfirm, onDecline, onCancel, meAvatar, themAvatar, themName, pickerOpen, onPickerOpenChange }) {
   const [selectedTimes, setSelectedTimes] = useState([]);
   const [sending, setSending] = useState(false);
   const [showDecline, setShowDecline] = useState(false);
   const [declineReasons, setDeclineReasons] = useState([]);
   const [confirming, setConfirming] = useState(null);
-  const [showPicker, setShowPicker] = useState(false);
+  const [internalPickerOpen, setInternalPickerOpen] = useState(false);
+  // The thread owns the picker state so its footer button can open it
+  const showPicker = pickerOpen ?? internalPickerOpen;
+  const setShowPicker = onPickerOpenChange || setInternalPickerOpen;
   const responded = invitation.response_times || [];
   const allRows = useMemo(buildAllRows, []);
   const quickPick = (pick) => {
@@ -473,13 +476,9 @@ function DateCard({ invitation, isMe, isMale, onRespond, onConfirm, onDecline, o
 
         {invitation.status === "pending" && !isMale && (
           <>
-            <p style={{ fontSize: 13, color: C.sub, fontFamily: FONT, margin: "0 0 10px", textAlign: "center" }}>
-              Tell {themName} when you're free — he'll pick one of your times.
+            <p style={{ fontSize: 13, color: C.sub, fontFamily: FONT, margin: 0, textAlign: "center" }}>
+              Tell {themName} when you're free — he'll pick one of your times.{selectedTimes.length ? ` (${selectedTimes.length} chosen so far)` : ""}
             </p>
-            <button onClick={() => { track("date_picker_opened"); setShowPicker(true); }} style={primaryBtn}>
-              <Calendar size={16} color="white" />
-              {selectedTimes.length ? `When I'm free (${selectedTimes.length} chosen)` : "When I'm free"}
-            </button>
             {showPicker && (
               <AvailabilitySheet
                 title={pickerTitle}
@@ -595,12 +594,9 @@ function DateCard({ invitation, isMe, isMale, onRespond, onConfirm, onDecline, o
 
         {invitation.status === "responded" && isMale && (
           <>
-            <p style={{ fontSize: 13, color: C.sub, textAlign: "center", fontFamily: FONT, margin: "0 0 10px" }}>
+            <p style={{ fontSize: 13, color: C.sub, textAlign: "center", fontFamily: FONT, margin: 0 }}>
               {themName} is free at {responded.length} time{responded.length === 1 ? "" : "s"}. Pick the one that suits you.
             </p>
-            <button onClick={() => { track("date_confirm_picker_opened"); setShowPicker(true); }} style={primaryBtn}>
-              <Calendar size={16} color="white" /> Pick a time
-            </button>
             {showPicker && (
               <AvailabilitySheet
                 title={pickerTitle}
@@ -636,10 +632,9 @@ function DateCard({ invitation, isMe, isMale, onRespond, onConfirm, onDecline, o
 
         {invitation.status === "responded" && !isMale && (
           <>
-            <p style={{ fontSize: 13, color: C.sub, textAlign: "center", fontFamily: FONT, margin: "0 0 10px" }}>
+            <p style={{ fontSize: 13, color: C.sub, textAlign: "center", fontFamily: FONT, margin: 0 }}>
               You sent {responded.length} time{responded.length === 1 ? "" : "s"} — waiting for {themName} to pick one.
             </p>
-            <button onClick={() => setShowPicker(true)} style={secondaryBtn}>View your times</button>
             {showPicker && (
               <AvailabilitySheet title={pickerTitle} subtitle={`Waiting for ${themName} to pick one`} onClose={() => setShowPicker(false)}>
                 <AvailabilityTable rows={responded} mine={new Set(responded.map(timeKey))} meAvatar={meAvatar} />
@@ -670,6 +665,7 @@ function ChatThread({ match, onBack }) {
   const [reportDone, setReportDone] = useState(null);
   const [blockFlash, setBlockFlash] = useState(false);
   const [showDateBuilder, setShowDateBuilder] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [dateInvitations, setDateInvitations] = useState([]);
   const bottomRef = useRef(null);
 
@@ -852,7 +848,8 @@ function ChatThread({ match, onBack }) {
       </div>
 
       {!chatOpen ? (
-        <div style={{ flex: 1, minHeight: 0, overflowY: "auto", WebkitOverflowScrolling: "touch", padding: "20px 16px calc(110px + env(safe-area-inset-bottom, 0px))", display: "flex", flexDirection: "column", gap: 14 }}>
+      <>
+        <div style={{ flex: 1, minHeight: 0, overflowY: "auto", WebkitOverflowScrolling: "touch", padding: "20px 16px 32px", display: "flex", flexDirection: "column", gap: 14 }}>
           <div style={{ borderRadius: 20, padding: "18px 16px", background: C.primarySoft, border: `1.5px solid ${C.primary}` }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
               <Calendar size={18} color={C.primary} />
@@ -892,6 +889,8 @@ function ChatThread({ match, onBack }) {
               meAvatar={state.currentUser?.photos?.[0]}
               themAvatar={profile.photos?.[0]}
               themName={profile.name}
+              pickerOpen={pickerOpen}
+              onPickerOpenChange={setPickerOpen}
             />
           )}
 
@@ -908,21 +907,34 @@ function ChatThread({ match, onBack }) {
             </div>
           )}
 
-          {isMale && !openInvite && (
-            <button
-              onClick={() => { track("plan_date_tapped"); setShowDateBuilder(true); }}
-              style={{ width: "100%", padding: "16px 0", borderRadius: 16, fontSize: 16, fontWeight: 700, fontFamily: FONT, background: C.primary, color: "white", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}
-            >
-              <Calendar size={18} color="white" />
-              {lastDeclined ? "Plan another date" : "Plan a Date"}
-            </button>
-          )}
           {!isMale && !openInvite && (
             <p style={{ fontSize: 13, color: C.sub, textAlign: "center", fontFamily: FONT, margin: "4px 0 0" }}>
               His plan will show up right here.
             </p>
           )}
         </div>
+
+        {/* Primary action stays pinned at the bottom, like the compose bar */}
+        {(() => {
+          const cta = { width: "100%", padding: "16px 0", borderRadius: 16, fontSize: 16, fontWeight: 700, fontFamily: FONT, background: C.primary, color: "white", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10 };
+          let button = null;
+          if (isMale && !openInvite) {
+            button = <button onClick={() => { track("plan_date_tapped"); setShowDateBuilder(true); }} style={cta}><Calendar size={18} color="white" />{lastDeclined ? "Plan another date" : "Plan a Date"}</button>;
+          } else if (!isMale && openInvite?.status === "pending") {
+            button = <button onClick={() => { track("date_picker_opened"); setPickerOpen(true); }} style={cta}><Calendar size={18} color="white" />When I'm free</button>;
+          } else if (isMale && openInvite?.status === "responded") {
+            button = <button onClick={() => { track("date_confirm_picker_opened"); setPickerOpen(true); }} style={cta}><Calendar size={18} color="white" />Pick a time</button>;
+          } else if (!isMale && openInvite?.status === "responded") {
+            button = <button onClick={() => setPickerOpen(true)} style={{ ...cta, background: C.surface, color: C.text }}>View your times</button>;
+          }
+          if (!button) return null;
+          return (
+            <div style={{ flexShrink: 0, padding: "12px 16px calc(14px + env(safe-area-inset-bottom, 0px))", background: C.card, borderTop: `1px solid ${C.border}` }}>
+              {button}
+            </div>
+          );
+        })()}
+      </>
       ) : (
       <>
       <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "16px 16px 24px", display: "flex", flexDirection: "column", gap: 12 }}>
