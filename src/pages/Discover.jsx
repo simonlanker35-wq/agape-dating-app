@@ -193,13 +193,6 @@ export default function Discover() {
     setLikeChoice(null);
   };
 
-  const onDoveWithComment = () => {
-    if (dovesLeft <= 0) return;
-    track("dove_comment_modal_opened", { source: "discover" });
-    setShowDove(true);
-    setCommentTarget(likeChoice);
-    setLikeChoice(null);
-  };
 
   const handleBlock = () => {
     track("profile_blocked", { source: "discover" });
@@ -392,19 +385,11 @@ export default function Discover() {
                   <span>Add a Comment</span>
                 </button>
               )}
-              <button className="like-choice-btn dove-choice" onClick={onSendDove} disabled={dovesLeft <= 0} style={{ opacity: dovesLeft <= 0 ? 0.45 : 1, cursor: dovesLeft <= 0 ? "default" : "pointer" }}>
-                <DoveIcon size={20} strokeWidth={2} />
-                <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", lineHeight: 1.2 }}>
-                  <span>Send a Dove</span>
-                  <span style={{ fontSize: 11, fontWeight: 500, opacity: 0.85 }}>{dovesLeft > 0 ? `${dovesLeft} left this week · shows them you're serious, revealed instantly` : "No Doves left this week"}</span>
-                </span>
+              <button className="like-choice-btn comment-choice" onClick={onSendDove} disabled={dovesLeft <= 0} style={{ opacity: dovesLeft <= 0 ? 0.45 : 1, cursor: dovesLeft <= 0 ? "default" : "pointer" }}>
+                <DoveIcon size={18} strokeWidth={2} />
+                <span style={{ flex: 1, textAlign: "left" }}>Send a Dove</span>
+                <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 9999, background: "#B8912A", color: "white" }}>{dovesLeft} left</span>
               </button>
-              {!theyCommented && dovesLeft > 0 && (
-                <button className="like-choice-btn comment-choice" onClick={onDoveWithComment}>
-                  <DoveIcon size={18} strokeWidth={2} />
-                  <span>Dove with a Comment</span>
-                </button>
-              )}
             </div>
           </div>
         );
@@ -413,12 +398,14 @@ export default function Discover() {
       {commentTarget && (
         <div className="comment-modal-overlay" onClick={() => { setCommentTarget(null); setShowDove(false); }}>
           <div className="comment-modal" onClick={(e) => e.stopPropagation()}>
-            {showDove && (
-              <div className="dove-badge">
-                <DoveIcon size={20} />
-                Sending with a Dove
-              </div>
-            )}
+            <button
+              onClick={() => { if (dovesLeft > 0 || showDove) setShowDove((v) => !v); }}
+              disabled={dovesLeft <= 0 && !showDove}
+              style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 9999, fontSize: 12, fontWeight: 700, marginBottom: 10, cursor: "pointer", fontFamily: "'Outfit', system-ui, sans-serif", background: showDove ? "#B8912A" : "#F4F2EE", color: showDove ? "white" : "#8C857C", border: "none", opacity: dovesLeft <= 0 && !showDove ? 0.5 : 1 }}
+            >
+              <DoveIcon size={14} strokeWidth={2.2} />
+              {showDove ? "Sending as a Dove" : `Send as a Dove · ${dovesLeft} left`}
+            </button>
             <h3>
               {commentTarget.type === "prompt"
                 ? profile.prompts[commentTarget.index]?.prompt
