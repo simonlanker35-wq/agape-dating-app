@@ -332,9 +332,10 @@ export default function Discover() {
                   <button
                     onClick={() => onHeartPress("profile", 0)}
                     aria-label="Like"
-                    style={{ width: 56, height: 38, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", background: "#B8912A", border: "none", cursor: "pointer", boxShadow: "0 3px 12px rgba(184,145,42,0.45)" }}
+                    style={{ width: 56, height: 38, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", background: "#B8912A", border: "none", cursor: "pointer", boxShadow: "0 3px 12px rgba(184,145,42,0.45)", opacity: likesLeft > 0 ? 1 : 0.5, position: "relative" }}
                   >
                     <Heart size={18} fill="white" stroke="white" />
+                    <span style={{ position: "absolute", top: -6, right: -6, minWidth: 18, height: 18, padding: "0 5px", borderRadius: 9, background: "white", color: "#B8912A", fontSize: 11, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Outfit', system-ui, sans-serif", boxShadow: "0 1px 4px rgba(0,0,0,0.2)" }}>{likesLeft}</span>
                   </button>
                   <button
                     onClick={() => { track("dove_button_tapped", { source: "discover" }); setDoveSheet(true); }}
@@ -344,10 +345,6 @@ export default function Discover() {
                     <DoveIcon size={20} color="white" strokeWidth={2.2} />
                     <span style={{ position: "absolute", top: -6, right: -6, minWidth: 18, height: 18, padding: "0 5px", borderRadius: 9, background: "white", color: "#B8912A", fontSize: 11, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Outfit', system-ui, sans-serif", boxShadow: "0 1px 4px rgba(0,0,0,0.2)" }}>{dovesLeft}</span>
                   </button>
-                </div>
-                <div style={{ background: "rgba(0,0,0,0.5)", borderRadius: 20, padding: "4px 10px", display: "flex", alignItems: "center", gap: 4 }}>
-                  <Heart size={10} fill="white" stroke="white" />
-                  <span style={{ color: "white", fontSize: 11, fontWeight: 700, fontFamily: "'Outfit', system-ui, sans-serif" }}>{likesLeft}</span>
                 </div>
               </div>
             </div>
