@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { Heart, X, Lock } from "lucide-react";
 import AgapeCross from "../components/AgapeCross";
 import DoveIcon from "../components/DoveIcon";
+import ReliabilityBadge from "../components/ReliabilityBadge";
 import { getRevealsRemaining, recordReveal, LIMITS } from "../services/limits";
 import { track } from "../services/posthog";
 
@@ -219,6 +220,7 @@ export default function LikesYou() {
                 <span style={{ color: "rgba(255,255,255,0.8)", fontSize: 22, fontWeight: 300 }}>{viewProfile.age}</span>
               </div>
               <p style={{ color: "rgba(255,255,255,0.7)", fontSize: 12, marginTop: 4 }}>{viewProfile.denomination}{viewProfile.location ? ` · ${viewProfile.location}` : ""}</p>
+              {viewProfile.reliability?.dates > 0 && <div style={{ marginTop: 8 }}><ReliabilityBadge reliability={viewProfile.reliability} light /></div>}
             </div>
           </div>
           <div style={{ padding: "20px 16px", display: "flex", flexDirection: "column", gap: 12 }}>

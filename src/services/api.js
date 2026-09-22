@@ -397,10 +397,11 @@ export async function getLikesReceived() {
   const { data: likes, error } = await query;
   if (error) throw new Error(error.message);
 
+  const reliability = await getReliability((likes || []).map((l) => l.from_user));
   return (likes || []).map((like) => ({
     id: like.id,
     fromId: like.from_user,
-    profile: like.from_profile ? mapProfile(like.from_profile) : null,
+    profile: like.from_profile ? { ...mapProfile(like.from_profile), reliability: reliability[like.from_user] || null } : null,
     targetType: like.target_type,
     targetIndex: like.target_index,
     comment: like.comment,
