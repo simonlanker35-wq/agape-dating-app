@@ -328,23 +328,23 @@ export default function Discover() {
                 </div>
               </div>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
-                <button
-                  className="id-btn id-heart"
-                  onClick={() => onHeartPress("profile", 0)}
-                  aria-label="Like"
-                  style={{ width: 46, height: 46 }}
-                >
-                  <Heart size={22} fill="white" stroke="white" />
-                </button>
-                <button
-                  className="id-btn id-dove"
-                  onClick={() => { track("dove_button_tapped", { source: "discover" }); setDoveSheet(true); }}
-                  aria-label="Send a Dove"
-                  style={{ width: 46, height: 46, opacity: dovesLeft > 0 ? 1 : 0.5, position: "relative" }}
-                >
-                  <DoveIcon size={22} strokeWidth={2} />
-                  <span style={{ position: "absolute", top: -4, right: -4, minWidth: 18, height: 18, padding: "0 5px", borderRadius: 9, background: "white", color: "#B8912A", fontSize: 11, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Outfit', system-ui, sans-serif", boxShadow: "0 1px 4px rgba(0,0,0,0.2)" }}>{dovesLeft}</span>
-                </button>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    onClick={() => onHeartPress("profile", 0)}
+                    aria-label="Like"
+                    style={{ width: 56, height: 38, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", background: "#B8912A", border: "none", cursor: "pointer", boxShadow: "0 3px 12px rgba(184,145,42,0.45)" }}
+                  >
+                    <Heart size={18} fill="white" stroke="white" />
+                  </button>
+                  <button
+                    onClick={() => { track("dove_button_tapped", { source: "discover" }); setDoveSheet(true); }}
+                    aria-label="Send a Dove"
+                    style={{ width: 56, height: 38, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", background: "#B8912A", border: "none", cursor: "pointer", boxShadow: "0 3px 12px rgba(184,145,42,0.45)", opacity: dovesLeft > 0 ? 1 : 0.5, position: "relative" }}
+                  >
+                    <DoveIcon size={20} color="white" strokeWidth={2.2} />
+                    <span style={{ position: "absolute", top: -6, right: -6, minWidth: 18, height: 18, padding: "0 5px", borderRadius: 9, background: "white", color: "#B8912A", fontSize: 11, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Outfit', system-ui, sans-serif", boxShadow: "0 1px 4px rgba(0,0,0,0.2)" }}>{dovesLeft}</span>
+                  </button>
+                </div>
                 <div style={{ background: "rgba(0,0,0,0.5)", borderRadius: 20, padding: "4px 10px", display: "flex", alignItems: "center", gap: 4 }}>
                   <Heart size={10} fill="white" stroke="white" />
                   <span style={{ color: "white", fontSize: 11, fontWeight: 700, fontFamily: "'Outfit', system-ui, sans-serif" }}>{likesLeft}</span>
