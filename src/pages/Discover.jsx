@@ -27,6 +27,7 @@ export default function Discover() {
   const [commentTarget, setCommentTarget] = useState(null);
   const [commentText, setCommentText] = useState("");
   const [showDove, setShowDove] = useState(false);
+  const [doveSheet, setDoveSheet] = useState(false);
   const [likeFlash, setLikeFlash] = useState(null);
   const [likeError, setLikeError] = useState("");
   const [matchCelebration, setMatchCelebration] = useState(null);
@@ -188,9 +189,17 @@ export default function Discover() {
 
   const onSendDove = () => {
     if (dovesLeft <= 0) return;
-    track("dove_sent", { source: "discover", targetType: likeChoice.type });
-    handleLike(likeChoice.type, likeChoice.index, null, true);
-    setLikeChoice(null);
+    track("dove_sent", { source: "discover" });
+    setDoveSheet(false);
+    handleLike("profile", 0, null, true);
+  };
+
+  const onDoveWithComment = () => {
+    if (dovesLeft <= 0) return;
+    track("dove_comment_modal_opened", { source: "discover" });
+    setDoveSheet(false);
+    setShowDove(true);
+    setCommentTarget({ type: "profile", index: 0 });
   };
 
 
@@ -318,9 +327,20 @@ export default function Discover() {
                   {profile.reliability?.dates > 0 && <ReliabilityBadge reliability={profile.reliability} light />}
                 </div>
               </div>
-              <div style={{ background: "rgba(0,0,0,0.5)", borderRadius: 20, padding: "4px 10px", display: "flex", alignItems: "center", gap: 4 }}>
-                <Heart size={10} fill="white" stroke="white" />
-                <span style={{ color: "white", fontSize: 11, fontWeight: 700, fontFamily: "'Outfit', system-ui, sans-serif" }}>{likesLeft}</span>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
+                <button
+                  className="id-btn id-dove"
+                  onClick={() => { track("dove_button_tapped", { source: "discover" }); setDoveSheet(true); }}
+                  aria-label="Send a Dove"
+                  style={{ width: 46, height: 46, opacity: dovesLeft > 0 ? 1 : 0.5, position: "relative" }}
+                >
+                  <DoveIcon size={22} strokeWidth={2} />
+                  <span style={{ position: "absolute", top: -4, right: -4, minWidth: 18, height: 18, padding: "0 5px", borderRadius: 9, background: "white", color: "#B8912A", fontSize: 11, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Outfit', system-ui, sans-serif", boxShadow: "0 1px 4px rgba(0,0,0,0.2)" }}>{dovesLeft}</span>
+                </button>
+                <div style={{ background: "rgba(0,0,0,0.5)", borderRadius: 20, padding: "4px 10px", display: "flex", alignItems: "center", gap: 4 }}>
+                  <Heart size={10} fill="white" stroke="white" />
+                  <span style={{ color: "white", fontSize: 11, fontWeight: 700, fontFamily: "'Outfit', system-ui, sans-serif" }}>{likesLeft}</span>
+                </div>
               </div>
             </div>
           </div>
@@ -385,15 +405,34 @@ export default function Discover() {
                   <span>Add a Comment</span>
                 </button>
               )}
-              <button className="like-choice-btn comment-choice" onClick={onSendDove} disabled={dovesLeft <= 0} style={{ opacity: dovesLeft <= 0 ? 0.45 : 1, cursor: dovesLeft <= 0 ? "default" : "pointer" }}>
-                <DoveIcon size={18} strokeWidth={2} />
-                <span style={{ flex: 1, textAlign: "left" }}>Send a Dove</span>
-                <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 9999, background: "#B8912A", color: "white" }}>{dovesLeft} left</span>
-              </button>
             </div>
           </div>
         );
       })()}
+
+      {doveSheet && (
+        <div className="like-choice-overlay" onClick={() => setDoveSheet(false)}>
+          <div className="like-choice-sheet" onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+              <span style={{ width: 40, height: 40, borderRadius: "50%", background: "#B8912A", color: "white", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><DoveIcon size={20} strokeWidth={2} /></span>
+              <div>
+                <p style={{ fontSize: 16, fontWeight: 700, color: "#1A1612", margin: 0, fontFamily: "'Outfit', system-ui, sans-serif" }}>Send {profile.name} a Dove</p>
+                <p style={{ fontSize: 12, color: "#8C857C", margin: "2px 0 0", fontFamily: "'Outfit', system-ui, sans-serif" }}>
+                  {dovesLeft > 0 ? `${dovesLeft} left this week · you're shown to them instantly` : "No Doves left this week"}
+                </p>
+              </div>
+            </div>
+            <button className="like-choice-btn dove-choice" onClick={onSendDove} disabled={dovesLeft <= 0} style={{ opacity: dovesLeft <= 0 ? 0.45 : 1 }}>
+              <DoveIcon size={20} strokeWidth={2} />
+              <span>Send Dove</span>
+            </button>
+            <button className="like-choice-btn comment-choice" onClick={onDoveWithComment} disabled={dovesLeft <= 0} style={{ opacity: dovesLeft <= 0 ? 0.45 : 1 }}>
+              <MessageCircle size={18} />
+              <span>Dove with a Comment</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {commentTarget && (
         <div className="comment-modal-overlay" onClick={() => { setCommentTarget(null); setShowDove(false); }}>
