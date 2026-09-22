@@ -384,6 +384,11 @@ function DateCard({ invitation, isMe, isMale, onRespond, onConfirm, onDecline, o
   // The thread owns the picker state so its footer button can open it
   const showPicker = pickerOpen ?? internalPickerOpen;
   const setShowPicker = onPickerOpenChange || setInternalPickerOpen;
+
+  // Editing already-sent availability starts from what was sent
+  useEffect(() => {
+    if (showPicker && invitation.status === "responded" && !isMale) setSelectedTimes(invitation.response_times || []);
+  }, [showPicker]);
   const responded = invitation.response_times || [];
   const allRows = useMemo(buildAllRows, []);
   const quickPick = (pick) => {
@@ -633,11 +638,31 @@ function DateCard({ invitation, isMe, isMale, onRespond, onConfirm, onDecline, o
         {invitation.status === "responded" && !isMale && (
           <>
             <p style={{ fontSize: 13, color: C.sub, textAlign: "center", fontFamily: FONT, margin: 0 }}>
-              You sent {responded.length} time{responded.length === 1 ? "" : "s"} — waiting for {themName} to pick one.
+              You sent {responded.length} time{responded.length === 1 ? "" : "s"} — waiting for {themName} to pick one. You can still change them.
             </p>
             {showPicker && (
-              <AvailabilitySheet title={pickerTitle} subtitle={`Waiting for ${themName} to pick one`} onClose={() => setShowPicker(false)}>
-                <AvailabilityTable rows={responded} mine={new Set(responded.map(timeKey))} meAvatar={meAvatar} />
+              <AvailabilitySheet
+                title={pickerTitle}
+                subtitle={`Change your times until ${themName} picks one`}
+                onClose={() => setShowPicker(false)}
+                footer={
+                  <button
+                    onClick={handleRespond}
+                    disabled={selectedTimes.length === 0 || sending}
+                    style={{ ...primaryBtn, background: selectedTimes.length > 0 ? C.primary : C.border, cursor: selectedTimes.length > 0 ? "pointer" : "default" }}
+                  >
+                    {sending ? "Saving..." : selectedTimes.length > 0 ? `Update — ${selectedTimes.length} time${selectedTimes.length === 1 ? "" : "s"}` : "Select at least one time"}
+                  </button>
+                }
+              >
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+                  <button onClick={() => quickPick((r) => r.slot === "evening")} style={{ padding: "7px 12px", borderRadius: 9999, fontSize: 12, fontWeight: 600, fontFamily: FONT, background: C.surface, color: C.text, border: `1px solid ${C.border}`, cursor: "pointer" }}>+ All evenings</button>
+                  <button onClick={() => quickPick((r) => r.isWeekend)} style={{ padding: "7px 12px", borderRadius: 9999, fontSize: 12, fontWeight: 600, fontFamily: FONT, background: C.surface, color: C.text, border: `1px solid ${C.border}`, cursor: "pointer" }}>+ Weekends</button>
+                  {selectedTimes.length > 0 && (
+                    <button onClick={() => setSelectedTimes([])} style={{ padding: "7px 12px", borderRadius: 9999, fontSize: 12, fontWeight: 600, fontFamily: FONT, background: "none", color: C.sub, border: `1px solid ${C.border}`, cursor: "pointer" }}>Clear all</button>
+                  )}
+                </div>
+                <AvailabilityTable rows={allRows} mine={new Set(selectedTimes.map(timeKey))} onToggle={toggleTime} meAvatar={meAvatar} />
               </AvailabilitySheet>
             )}
           </>
@@ -750,9 +775,14 @@ function ChatThread({ match, onBack }) {
 
   const handleRespondDate = async (invId, selectedTimes) => {
     try {
+      const wasUpdate = dateInvitations.find((inv) => inv.id === invId)?.status === "responded";
       const updated = await api.respondToDate(invId, selectedTimes);
       setDateInvitations((prev) => prev.map((inv) => (inv.id === invId ? updated : inv)));
-      notifyThem(`${myName} is free`, `Pick one of her ${selectedTimes.length} time${selectedTimes.length === 1 ? "" : "s"} to set the date.`, "date");
+      notifyThem(
+        wasUpdate ? `${myName} changed her times` : `${myName} is free`,
+        `Pick one of her ${selectedTimes.length} time${selectedTimes.length === 1 ? "" : "s"} to set the date.`,
+        "date"
+      );
     } catch (err) {
       console.error("Respond failed:", err);
     }
@@ -925,7 +955,7 @@ function ChatThread({ match, onBack }) {
           } else if (isMale && openInvite?.status === "responded") {
             button = <button onClick={() => { track("date_confirm_picker_opened"); setPickerOpen(true); }} style={cta}><Calendar size={18} color="white" />Pick a time</button>;
           } else if (!isMale && openInvite?.status === "responded") {
-            button = <button onClick={() => setPickerOpen(true)} style={{ ...cta, background: C.surface, color: C.text }}>View your times</button>;
+            button = <button onClick={() => { track("date_times_edit_opened"); setPickerOpen(true); }} style={{ ...cta, background: C.surface, color: C.text }}><Calendar size={18} color={C.primary} />Change my times</button>;
           }
           if (!button) return null;
           return (
