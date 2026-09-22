@@ -847,20 +847,15 @@ function ChatThread({ match, onBack }) {
           </button>
         </div>
 
-        {/* Match banner */}
+        {/* Match + status banners only during planning — in the chat the confirmed date card says it all */}
+        {!chatOpen && (
         <div style={{ marginTop: 12, borderRadius: 12, padding: "8px 16px", display: "flex", alignItems: "center", gap: 8, background: C.primarySoft }}>
           <span style={{ color: C.primary }}><AgapeCross size={11} strokeWidth={1.5} /></span>
           <p style={{ fontSize: 12, fontWeight: 600, color: C.primary, margin: 0 }}>You matched with {profile.name}{profile.denomination ? ` · ${profile.denomination}` : ""}</p>
         </div>
+        )}
 
-        {confirmedDate ? (
-          <div style={{ marginTop: 8, borderRadius: 12, padding: "8px 16px", display: "flex", alignItems: "center", gap: 8, background: "#F0FDF4" }}>
-            <CheckCircle size={14} color="#16A34A" />
-            <p style={{ fontSize: 12, fontWeight: 600, color: "#16A34A", margin: 0 }}>
-              Date confirmed{confirmedDate.confirmed_time ? ` · ${confirmedDate.confirmed_time.label} · ${confirmedDate.confirmed_time.time}` : ""}
-            </p>
-          </div>
-        ) : openInvite ? (
+        {chatOpen ? null : openInvite ? (
           <div style={{ marginTop: 8, borderRadius: 12, padding: "8px 16px", display: "flex", alignItems: "center", gap: 8, background: C.surface }}>
             <Calendar size={14} color={C.primary} />
             <p style={{ fontSize: 12, fontWeight: 600, color: C.sub, margin: 0 }}>
