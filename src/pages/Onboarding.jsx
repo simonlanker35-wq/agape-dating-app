@@ -84,6 +84,15 @@ const LIFESTYLE_CATEGORIES = [
 const DEV_TEST = false;
 const CROP_ASPECT = 3 / 4;
 
+// "+46 070-123 45 67" -> "+46701234567": strip formatting and the trunk 0 many Europeans type after the country code
+const normalizePhone = (raw) => {
+  let s = String(raw || "").replace(/[^\d+]/g, "");
+  if (!s.startsWith("+")) s = "+" + s;
+  const cc = COUNTRY_CODES.map((c) => c.code).sort((a, b) => b.length - a.length).find((c) => s.startsWith(c));
+  if (cc) s = cc + s.slice(cc.length).replace(/^0+/, "");
+  return s;
+};
+
 const S = {
   bg: "#1A1612",
   card: "#252118",
@@ -197,7 +206,7 @@ export default function Onboarding() {
   const [resetError, setResetError] = useState("");
 
   const currentStep = STEPS[step];
-  const phone = countryCode + phoneNum;
+  const phone = normalizePhone(countryCode + phoneNum);
 
   const calcAge = () => {
     const { birthDay, birthMonth, birthYear } = form;
@@ -388,7 +397,7 @@ export default function Onboarding() {
     setSubmitting(true);
     setResetError("");
     try {
-      await actions.sendOtp(resetPhone.replace(/\s/g, ""));
+      await actions.sendOtp(normalizePhone(resetPhone));
       setOtpDigits(["", "", "", "", "", ""]);
       setResetStep("code");
     } catch (err) {
@@ -403,7 +412,7 @@ export default function Onboarding() {
     setSubmitting(true);
     setResetError("");
     try {
-      await actions.verifyOtpForReset(resetPhone.replace(/\s/g, ""), codeToVerify);
+      await actions.verifyOtpForReset(normalizePhone(resetPhone), codeToVerify);
       setPassword("");
       setPasswordConfirm("");
       setResetStep("password");
@@ -475,7 +484,7 @@ export default function Onboarding() {
     setSubmitting(true);
     setLoginError("");
     try {
-      const result = await actions.loginWithPhone(loginPhone.replace(/\s/g, ""), loginPassword);
+      const result = await actions.loginWithPhone(normalizePhone(loginPhone), loginPassword);
       if (result?.needsProfile) {
         setMode("signup");
         setStep(STEPS.indexOf("consent"));
