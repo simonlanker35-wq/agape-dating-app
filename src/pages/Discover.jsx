@@ -329,6 +329,14 @@ export default function Discover() {
               </div>
               <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
                 <button
+                  className="id-btn id-heart"
+                  onClick={() => onHeartPress("profile", 0)}
+                  aria-label="Like"
+                  style={{ width: 46, height: 46 }}
+                >
+                  <Heart size={22} fill="white" stroke="white" />
+                </button>
+                <button
                   className="id-btn id-dove"
                   onClick={() => { track("dove_button_tapped", { source: "discover" }); setDoveSheet(true); }}
                   aria-label="Send a Dove"

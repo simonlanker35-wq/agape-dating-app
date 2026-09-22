@@ -1,4 +1,5 @@
-export default function DoveIcon({ size = 24, color = "currentColor", strokeWidth = 1.5 }) {
+// Clean line-art bird (based on the Lucide "bird" glyph) used everywhere a Dove is shown
+export default function DoveIcon({ size = 24, color = "currentColor", strokeWidth = 1.8 }) {
   return (
     <svg
       width={size}
@@ -10,9 +11,12 @@ export default function DoveIcon({ size = 24, color = "currentColor", strokeWidt
       strokeLinecap="round"
       strokeLinejoin="round"
     >
-      <path d="M4 18c1-3 4-5 7-5 1 0 2 0 3 1 1-3 3-6 6-7 1 2 1 4 0 6-1 1-2 2-4 3-1 0-3 1-4 1-3 1-6 2-8 1z" />
-      <path d="M11 13c-1-3-1-6 1-9" />
-      <path d="M11 13c-4-2-7-3-9-2" />
+      <path d="M16 7h.01" />
+      <path d="M3.4 18H12a8 8 0 0 0 8-8V7a4 4 0 0 0-7.28-2.3L2 20" />
+      <path d="m20 7 2 .5-2 .5" />
+      <path d="M10 18v3" />
+      <path d="M14 17.75V21" />
+      <path d="M7 18a6 6 0 0 0 3.84-10.61" />
     </svg>
   );
 }
