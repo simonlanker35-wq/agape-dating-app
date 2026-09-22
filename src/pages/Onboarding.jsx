@@ -591,7 +591,7 @@ export default function Onboarding() {
 
   const progress = ((step) / (STEPS.length - 1)) * 100;
 
-  const selectedCountry = COUNTRY_CODES.find(c => c.code === countryCode) || COUNTRY_CODES[0];
+  const selectedCountry = COUNTRY_CODES.find(c => c.code === countryCode) || { code: countryCode, flag: "🌐", name: "Other" };
 
   const wrapProps = { step, goBack, progress };
 
@@ -760,12 +760,24 @@ export default function Onboarding() {
         </p>
 
         <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
-          <button
-            onClick={() => setShowCountryPicker(!showCountryPicker)}
-            style={{ display: "flex", alignItems: "center", gap: 6, padding: "14px 12px", background: S.surface, border: `1.5px solid ${S.border}`, borderRadius: 12, fontSize: 16, color: S.text, cursor: "pointer", whiteSpace: "nowrap", fontFamily: "'Outfit', system-ui, sans-serif" }}
-          >
-            {selectedCountry.flag} {selectedCountry.code} <ChevronRight size={14} style={{ transform: showCountryPicker ? "rotate(90deg)" : "none", transition: "transform 0.2s" }} />
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 4, padding: "0 6px 0 12px", background: S.surface, border: `1.5px solid ${S.border}`, borderRadius: 12, flexShrink: 0 }}>
+            <span style={{ fontSize: 18 }}>{selectedCountry.flag}</span>
+            <input
+              type="tel"
+              value={countryCode}
+              onChange={(e) => setCountryCode("+" + e.target.value.replace(/\D/g, "").slice(0, 4))}
+              onFocus={(e) => e.target.select()}
+              aria-label="Country code"
+              style={{ width: 58, padding: "14px 0", background: "transparent", border: "none", fontSize: 16, fontWeight: 600, color: S.text, outline: "none", fontFamily: "'Outfit', system-ui, sans-serif" }}
+            />
+            <button
+              onClick={() => setShowCountryPicker(!showCountryPicker)}
+              aria-label="Choose country"
+              style={{ background: "none", border: "none", color: S.sub, padding: 4, cursor: "pointer", display: "flex" }}
+            >
+              <ChevronRight size={16} style={{ transform: showCountryPicker ? "rotate(90deg)" : "none", transition: "transform 0.2s" }} />
+            </button>
+          </div>
           <input
             ref={inputRef}
             type="tel"
@@ -792,13 +804,14 @@ export default function Onboarding() {
                 <span style={{ color: S.sub }}>{c.code}</span>
               </button>
             ))}
+            <p style={{ padding: "12px 16px", margin: 0, fontSize: 13, color: S.sub, fontFamily: "'Outfit', system-ui, sans-serif" }}>Country not listed? Just type your country code above.</p>
           </div>
         )}
 
         {otpError && <p style={{ color: "#e53e3e", fontSize: 14, marginTop: 8 }}>{otpError}</p>}
 
         <div style={{ marginTop: "auto" }}>
-          <BigBtn onClick={handleSendOtp} disabled={submitting || phoneNum.length < 7}>
+          <BigBtn onClick={handleSendOtp} disabled={submitting || phoneNum.replace(/\D/g, "").length < 6 || countryCode.length < 2}>
             {submitting ? "Sending..." : "Continue"}
           </BigBtn>
           {DEV_TEST && <button onClick={goNext} style={{ background: "none", border: "none", color: "#e53e3e", fontSize: 12, marginTop: 8, cursor: "pointer", textAlign: "center", width: "100%" }}>Skip (dev test)</button>}
