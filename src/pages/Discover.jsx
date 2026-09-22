@@ -186,6 +186,21 @@ export default function Discover() {
     setLikeChoice(null);
   };
 
+  const onSendDove = () => {
+    if (dovesLeft <= 0) return;
+    track("dove_sent", { source: "discover", targetType: likeChoice.type });
+    handleLike(likeChoice.type, likeChoice.index, null, true);
+    setLikeChoice(null);
+  };
+
+  const onDoveWithComment = () => {
+    if (dovesLeft <= 0) return;
+    track("dove_comment_modal_opened", { source: "discover" });
+    setShowDove(true);
+    setCommentTarget(likeChoice);
+    setLikeChoice(null);
+  };
+
   const handleBlock = () => {
     track("profile_blocked", { source: "discover" });
     setLikeFlash("block");
@@ -375,6 +390,19 @@ export default function Discover() {
                 <button className="like-choice-btn comment-choice" onClick={onAddComment}>
                   <MessageCircle size={18} />
                   <span>Add a Comment</span>
+                </button>
+              )}
+              <button className="like-choice-btn dove-choice" onClick={onSendDove} disabled={dovesLeft <= 0} style={{ opacity: dovesLeft <= 0 ? 0.45 : 1, cursor: dovesLeft <= 0 ? "default" : "pointer" }}>
+                <DoveIcon size={20} strokeWidth={2} />
+                <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", lineHeight: 1.2 }}>
+                  <span>Send a Dove</span>
+                  <span style={{ fontSize: 11, fontWeight: 500, opacity: 0.85 }}>{dovesLeft > 0 ? `${dovesLeft} left this week · shows them you're serious, revealed instantly` : "No Doves left this week"}</span>
+                </span>
+              </button>
+              {!theyCommented && dovesLeft > 0 && (
+                <button className="like-choice-btn comment-choice" onClick={onDoveWithComment}>
+                  <DoveIcon size={18} strokeWidth={2} />
+                  <span>Dove with a Comment</span>
                 </button>
               )}
             </div>
