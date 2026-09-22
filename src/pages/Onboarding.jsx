@@ -141,8 +141,26 @@ const BigBtn = ({ onClick, disabled, children, style }) => (
   </button>
 );
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function ProviderButtons({ onGoogle, onApple, dark }) {
+  const base = { width: "100%", padding: 14, borderRadius: 999, fontSize: 15, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, fontFamily: "'Outfit', system-ui, sans-serif" };
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10, width: "100%" }}>
+      <button onClick={onGoogle} style={{ ...base, background: "#fff", color: "#1A1612", border: `1.5px solid ${dark ? "#3D362B" : "#D4C9B8"}` }}>
+        <svg width={18} height={18} viewBox="0 0 24 24"><path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.6v3h3.9c2.3-2.1 3.5-5.2 3.5-8.8z"/><path fill="#34A853" d="M12 24c3.2 0 6-1.1 8-2.9l-3.9-3c-1.1.7-2.5 1.2-4.1 1.2-3.1 0-5.8-2.1-6.7-5H1.2v3.1C3.2 21.3 7.3 24 12 24z"/><path fill="#FBBC05" d="M5.3 14.3c-.5-1.5-.5-3.1 0-4.6V6.6H1.2c-1.6 3.3-1.6 7.2 0 10.5l4.1-2.8z"/><path fill="#EA4335" d="M12 4.7c1.7 0 3.3.6 4.5 1.8l3.4-3.4C17.9 1.2 15.1 0 12 0 7.3 0 3.2 2.7 1.2 6.6l4.1 3.1c.9-2.9 3.6-5 6.7-5z"/></svg>
+        Continue with Google
+      </button>
+      <button onClick={onApple} style={{ ...base, background: "#000", color: "#fff", border: "1.5px solid #000" }}>
+        <svg width={18} height={18} viewBox="0 0 24 24" fill="#fff"><path d="M16.4 12.6c0-2.6 2.1-3.8 2.2-3.9-1.2-1.8-3.1-2-3.7-2-1.6-.2-3.1.9-3.9.9-.8 0-2-.9-3.4-.9-1.7 0-3.3 1-4.2 2.6-1.8 3.1-.5 7.8 1.3 10.3.9 1.2 1.9 2.6 3.2 2.6 1.3-.1 1.8-.8 3.4-.8 1.6 0 2 .8 3.4.8 1.4 0 2.3-1.3 3.1-2.5 1-1.4 1.4-2.8 1.4-2.9 0 0-2.8-1.1-2.8-4.2zM13.9 4.9c.7-.9 1.2-2.1 1.1-3.3-1 0-2.3.7-3 1.6-.7.8-1.3 2-1.1 3.2 1.1.1 2.3-.6 3-1.5z"/></svg>
+        Continue with Apple
+      </button>
+    </div>
+  );
+}
+
 export default function Onboarding() {
-  const { actions } = useApp();
+  const { state, actions } = useApp();
   const [step, setStep] = useState(0);
   const [mode, setMode] = useState("signup");
   const [countryCode, setCountryCode] = useState("+48");
@@ -204,6 +222,44 @@ export default function Onboarding() {
   const [resetStep, setResetStep] = useState("phone");
   const [resetPhone, setResetPhone] = useState("+48");
   const [resetError, setResetError] = useState("");
+  const [emailSignup, setEmailSignup] = useState({ email: "", password: "", confirm: "", error: "", checkInbox: false });
+
+  // Signed in via Google/Apple/email but no profile yet: continue from the consent step
+  useEffect(() => {
+    if (!state.needsProfile) return;
+    actions.getSessionUser().then((u) => {
+      if (u?.email) setForm((f) => ({ ...f, email: f.email || u.email }));
+      setMode("signup");
+      setStep(STEPS.indexOf("consent"));
+    });
+  }, [state.needsProfile]);
+
+  const startProvider = async (provider) => {
+    setLoginError("");
+    try { await actions.signInWithProvider(provider); }
+    catch (err) { setLoginError(err.message); }
+  };
+
+  const handleEmailSignup = async () => {
+    const { email, password, confirm } = emailSignup;
+    if (!EMAIL_RE.test(email)) { setEmailSignup((s) => ({ ...s, error: "Enter a valid email address" })); return; }
+    if (password.length < 6) { setEmailSignup((s) => ({ ...s, error: "Password must be at least 6 characters" })); return; }
+    if (password !== confirm) { setEmailSignup((s) => ({ ...s, error: "Passwords don't match" })); return; }
+    setSubmitting(true);
+    try {
+      const res = await actions.signUpWithEmail(email.trim(), password);
+      if (res.confirmed) {
+        setForm((f) => ({ ...f, email: email.trim() }));
+        setMode("signup");
+        setStep(STEPS.indexOf("consent"));
+      } else {
+        setEmailSignup((s) => ({ ...s, checkInbox: true, error: "" }));
+      }
+    } catch (err) {
+      setEmailSignup((s) => ({ ...s, error: err.message }));
+    }
+    setSubmitting(false);
+  };
 
   const currentStep = STEPS[step];
   const phone = normalizePhone(countryCode + phoneNum);
@@ -228,7 +284,10 @@ export default function Onboarding() {
   const goNext = () => {
     if (step < STEPS.length - 1) {
       track("onboarding_step_completed", { step: STEPS[step], stepNumber: step });
-      setStep(step + 1);
+      let next = step + 1;
+      // Email already known (email or Google/Apple sign-up) — don't ask again
+      if (STEPS[next] === "email" && EMAIL_RE.test(form.email)) next += 1;
+      setStep(next);
       setEditingAnswer(false);
     } else {
       finishOnboarding();
@@ -397,6 +456,12 @@ export default function Onboarding() {
     setSubmitting(true);
     setResetError("");
     try {
+      if (resetPhone.includes("@")) {
+        await actions.sendPasswordResetEmail(resetPhone.trim());
+        setResetStep("emailSent");
+        setSubmitting(false);
+        return;
+      }
       await actions.sendOtp(normalizePhone(resetPhone));
       setOtpDigits(["", "", "", "", "", ""]);
       setResetStep("code");
@@ -478,13 +543,17 @@ export default function Onboarding() {
     }
   };
 
+  const loginIsEmail = loginPhone.includes("@");
+
   const handleLoginSubmit = async () => {
-    if (loginPhone.length < 10 || loginPassword.length < 6) return;
-    track("login_attempted");
+    if (loginPhone.trim().length < 5 || loginPassword.length < 6) return;
+    track("login_attempted", { method: loginIsEmail ? "email" : "phone" });
     setSubmitting(true);
     setLoginError("");
     try {
-      const result = await actions.loginWithPhone(normalizePhone(loginPhone), loginPassword);
+      const result = loginIsEmail
+        ? await actions.loginWithEmail(loginPhone.trim(), loginPassword)
+        : await actions.loginWithPhone(normalizePhone(loginPhone), loginPassword);
       if (result?.needsProfile) {
         setMode("signup");
         setStep(STEPS.indexOf("consent"));
@@ -601,12 +670,18 @@ export default function Onboarding() {
       <div style={{ minHeight: "100vh", background: S.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "24px 28px", maxWidth: 430, margin: "0 auto" }}>
         <AgapeCross size={48} strokeWidth={1.2} style={{ color: S.primary }} />
         <h2 style={{ color: S.text, fontSize: 28, fontWeight: 800, marginTop: 20, marginBottom: 4, fontFamily: "'Outfit', system-ui, sans-serif" }}>Welcome back</h2>
-        <p style={{ color: S.sub, fontSize: 14, marginBottom: 28 }}>Sign in with your phone and password</p>
+        <p style={{ color: S.sub, fontSize: 14, marginBottom: 20 }}>Sign in with your phone number or email</p>
+        <ProviderButtons onGoogle={() => startProvider("google")} onApple={() => startProvider("apple")} dark />
+        <div style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", margin: "18px 0" }}>
+          <div style={{ flex: 1, height: 1, background: S.border }} />
+          <span style={{ fontSize: 12, color: S.sub, fontFamily: "'Outfit', system-ui, sans-serif" }}>or</span>
+          <div style={{ flex: 1, height: 1, background: S.border }} />
+        </div>
         <input
-          type="tel" value={loginPhone} onChange={(e) => setLoginPhone(e.target.value)}
-          placeholder="+48 123 456 789"
-          style={{ width: "100%", padding: "16px", background: S.surface, border: `1.5px solid ${S.border}`, borderRadius: 12, fontSize: 18, color: S.text, outline: "none", fontFamily: "'Outfit', system-ui, sans-serif", marginBottom: 10 }}
-          autoComplete="tel" autoFocus
+          type="text" inputMode="email" value={loginPhone} onChange={(e) => setLoginPhone(e.target.value)}
+          placeholder="Phone number or email"
+          style={{ width: "100%", padding: "16px", background: S.surface, border: `1.5px solid ${S.border}`, borderRadius: 12, fontSize: 18, color: S.text, outline: "none", fontFamily: "'Outfit', system-ui, sans-serif", marginBottom: 10, boxSizing: "border-box" }}
+          autoComplete="username" autoCapitalize="none" autoCorrect="off"
         />
         <PasswordInput
           value={loginPassword} onChange={setLoginPassword}
@@ -618,7 +693,7 @@ export default function Onboarding() {
           iconColor={S.sub}
         />
         {loginError && <p style={{ color: "#e53e3e", fontSize: 14, marginTop: 8 }}>{loginError}</p>}
-        <BigBtn onClick={handleLoginSubmit} disabled={submitting || loginPhone.length < 10 || loginPassword.length < 6} style={{ marginTop: 24 }}>
+        <BigBtn onClick={handleLoginSubmit} disabled={submitting || loginPhone.trim().length < 5 || loginPassword.length < 6} style={{ marginTop: 24 }}>
           {submitting ? "Signing in..." : "Sign in"}
         </BigBtn>
         <button onClick={() => { track("forgot_password_tapped"); setMode("reset"); setResetStep("phone"); setResetPhone(loginPhone || "+48"); setResetError(""); setLoginError(""); }} style={{ background: "none", border: "none", color: S.primary, fontSize: 14, fontWeight: 600, marginTop: 18, cursor: "pointer" }}>
@@ -627,6 +702,52 @@ export default function Onboarding() {
         <button onClick={() => { track("login_switch_to_signup"); setMode("signup"); setLoginError(""); }} style={{ background: "none", border: "none", color: S.sub, fontSize: 15, fontWeight: 600, marginTop: 8, cursor: "pointer" }}>
           Create an account instead
         </button>
+      </div>
+    );
+  }
+
+  // ---- EMAIL SIGN UP ----
+  if (mode === "emailSignup") {
+    const inputStyle = { width: "100%", padding: "16px", background: S.surface, border: `1.5px solid ${S.border}`, borderRadius: 12, fontSize: 18, color: S.text, outline: "none", fontFamily: "'Outfit', system-ui, sans-serif", boxSizing: "border-box" };
+    return (
+      <div style={{ minHeight: "100vh", background: S.bg, display: "flex", flexDirection: "column", maxWidth: 430, margin: "0 auto" }}>
+        <div style={{ padding: "max(12px, env(safe-area-inset-top, 12px)) 20px 0" }}>
+          <button onClick={() => { setMode("signup"); setStep(0); }} style={{ background: "none", border: "none", color: S.sub, padding: 4, cursor: "pointer" }}>
+            <ChevronLeft size={24} />
+          </button>
+        </div>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "24px 28px 32px" }}>
+          {emailSignup.checkInbox ? (
+            <>
+              <h2 style={{ color: S.text, fontSize: 28, fontWeight: 800, marginBottom: 8, fontFamily: "'Outfit', system-ui, sans-serif" }}>Check your inbox</h2>
+              <p style={{ color: S.sub, fontSize: 14, marginBottom: 28, lineHeight: 1.5 }}>We sent a confirmation link to <span style={{ color: S.text, fontWeight: 600 }}>{emailSignup.email}</span>. Open it, then come back and sign in.</p>
+              <BigBtn onClick={() => { setMode("login"); setLoginPhone(emailSignup.email); }} style={{ marginTop: 0 }}>Go to sign in</BigBtn>
+            </>
+          ) : (
+            <>
+              <h2 style={{ color: S.text, fontSize: 28, fontWeight: 800, marginBottom: 8, fontFamily: "'Outfit', system-ui, sans-serif" }}>Sign up with email</h2>
+              <p style={{ color: S.sub, fontSize: 14, marginBottom: 24 }}>You'll use this to sign in</p>
+              <input
+                type="email" value={emailSignup.email}
+                onChange={(e) => setEmailSignup((s) => ({ ...s, email: e.target.value, error: "" }))}
+                placeholder="Email address" style={{ ...inputStyle, marginBottom: 10 }} autoComplete="email" autoCapitalize="none" autoFocus
+              />
+              <PasswordInput
+                value={emailSignup.password} onChange={(v) => setEmailSignup((s) => ({ ...s, password: v, error: "" }))}
+                placeholder="Password (min. 6 characters)" style={{ ...inputStyle, marginBottom: 10 }} iconColor={S.sub}
+              />
+              <PasswordInput
+                value={emailSignup.confirm} onChange={(v) => setEmailSignup((s) => ({ ...s, confirm: v, error: "" }))}
+                onKeyDown={(e) => e.key === "Enter" && handleEmailSignup()}
+                placeholder="Confirm password" style={inputStyle} iconColor={S.sub}
+              />
+              {emailSignup.error && <p style={{ color: "#e53e3e", fontSize: 14, marginTop: 10 }}>{emailSignup.error}</p>}
+              <BigBtn onClick={handleEmailSignup} disabled={submitting || !emailSignup.email || emailSignup.password.length < 6 || emailSignup.password !== emailSignup.confirm}>
+                {submitting ? "Creating account..." : "Continue"}
+              </BigBtn>
+            </>
+          )}
+        </div>
       </div>
     );
   }
@@ -643,18 +764,24 @@ export default function Onboarding() {
         </div>
         <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "24px 28px 32px" }}>
           <h2 style={{ color: S.text, fontSize: 28, fontWeight: 800, marginBottom: 8, fontFamily: "'Outfit', system-ui, sans-serif" }}>
-            {resetStep === "phone" ? "Reset password" : resetStep === "code" ? "Enter your code" : "New password"}
+            {resetStep === "phone" ? "Reset password" : resetStep === "code" ? "Enter your code" : resetStep === "emailSent" ? "Check your email" : "New password"}
           </h2>
-          <p style={{ color: S.sub, fontSize: 14, marginBottom: 28 }}>
-            {resetStep === "phone" ? "We'll text a code to your phone number" : resetStep === "code" ? `Sent to ${resetPhone}` : "Choose a new password for your account"}
+          <p style={{ color: S.sub, fontSize: 14, marginBottom: 28, lineHeight: 1.5 }}>
+            {resetStep === "phone" ? "Enter your phone number to get a code by SMS, or your email to get a reset link"
+              : resetStep === "code" ? `Sent to ${resetPhone}`
+              : resetStep === "emailSent" ? `We sent a password reset link to ${resetPhone.trim()}. Open it on this device to choose a new password.`
+              : "Choose a new password for your account"}
           </p>
 
           {resetStep === "phone" && (
             <input
-              type="tel" value={resetPhone} onChange={(e) => { setResetPhone(e.target.value); setResetError(""); }}
-              onKeyDown={(e) => e.key === "Enter" && resetPhone.length >= 10 && handleResetSendOtp()}
-              placeholder="+48 123 456 789" style={inputStyle} autoComplete="tel" autoFocus
+              type="text" inputMode="email" value={resetPhone} onChange={(e) => { setResetPhone(e.target.value); setResetError(""); }}
+              onKeyDown={(e) => e.key === "Enter" && resetPhone.trim().length >= 5 && handleResetSendOtp()}
+              placeholder="Phone number or email" style={{ ...inputStyle, boxSizing: "border-box" }} autoComplete="username" autoCapitalize="none" autoFocus
             />
+          )}
+          {resetStep === "emailSent" && (
+            <BigBtn onClick={() => { setMode("login"); setLoginPhone(resetPhone.trim()); }} style={{ marginTop: 0 }}>Back to sign in</BigBtn>
           )}
 
           {resetStep === "code" && (
@@ -705,8 +832,8 @@ export default function Onboarding() {
           )}
 
           {resetStep === "phone" && (
-            <BigBtn onClick={handleResetSendOtp} disabled={submitting || resetPhone.replace(/\s/g, "").length < 10}>
-              {submitting ? "Sending..." : "Send code"}
+            <BigBtn onClick={handleResetSendOtp} disabled={submitting || resetPhone.trim().length < 5}>
+              {submitting ? "Sending..." : resetPhone.includes("@") ? "Send reset link" : "Send code"}
             </BigBtn>
           )}
           {resetStep === "code" && (
@@ -738,13 +865,18 @@ export default function Onboarding() {
         </div>
         <div style={{ padding: "0 28px 56px", width: "100%" }}>
           <div style={{ height: 1, background: "linear-gradient(to right, transparent, #B8912A, transparent)", marginBottom: 32 }} />
-          <button onClick={goNext} style={{ width: "100%", padding: 16, background: "#B8912A", color: "#fff", borderRadius: 999, fontSize: 16, fontWeight: 700, border: "none", cursor: "pointer", fontFamily: "'Outfit', system-ui, sans-serif" }}>
-            Create account
+          <button onClick={() => { track("welcome_phone_tapped"); goNext(); }} style={{ width: "100%", padding: 14, background: "#B8912A", color: "#fff", borderRadius: 999, fontSize: 15, fontWeight: 700, border: "none", cursor: "pointer", fontFamily: "'Outfit', system-ui, sans-serif", marginBottom: 10 }}>
+            Continue with phone
           </button>
-          <button onClick={() => { track("welcome_sign_in_tapped"); setMode("login"); }} style={{ width: "100%", marginTop: 12, padding: 16, background: "transparent", color: "#1A1612", border: "1.5px solid #D4C9B8", borderRadius: 999, fontSize: 16, fontWeight: 700, cursor: "pointer", fontFamily: "'Outfit', system-ui, sans-serif" }}>
-            Sign in
+          <ProviderButtons onGoogle={() => startProvider("google")} onApple={() => startProvider("apple")} />
+          <button onClick={() => { track("welcome_email_tapped"); setEmailSignup({ email: "", password: "", confirm: "", error: "", checkInbox: false }); setMode("emailSignup"); }} style={{ width: "100%", marginTop: 10, padding: 14, background: "transparent", color: "#1A1612", border: "1.5px solid #D4C9B8", borderRadius: 999, fontSize: 15, fontWeight: 700, cursor: "pointer", fontFamily: "'Outfit', system-ui, sans-serif" }}>
+            Continue with email
           </button>
-          <p style={{ fontSize: 11, color: "#8C857C", marginTop: 24, textAlign: "center" }}>By continuing you agree to our Terms & Privacy Policy</p>
+          {loginError && <p style={{ fontSize: 13, color: "#e53e3e", marginTop: 10, textAlign: "center" }}>{loginError}</p>}
+          <button onClick={() => { track("welcome_sign_in_tapped"); setMode("login"); }} style={{ width: "100%", marginTop: 14, padding: 8, background: "none", color: "#8C857C", border: "none", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "'Outfit', system-ui, sans-serif" }}>
+            Already have an account? <span style={{ color: "#B8912A" }}>Sign in</span>
+          </button>
+          <p style={{ fontSize: 11, color: "#8C857C", marginTop: 12, textAlign: "center" }}>By continuing you agree to our Terms & Privacy Policy</p>
         </div>
       </div>
     );

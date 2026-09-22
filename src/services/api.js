@@ -139,7 +139,7 @@ export async function register(data) {
   return createProfile(data);
 }
 
-export async function login(email, password) {
+export async function signInWithEmail(email, password) {
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) throw new Error(error.message);
 
@@ -147,10 +147,33 @@ export async function login(email, password) {
     .from("profiles")
     .select("*")
     .eq("id", data.user.id)
-    .single();
+    .maybeSingle();
   if (profileError) throw new Error(profileError.message);
+  if (!profile) return null;
 
-  return mapProfileToUser(profile);
+  return mapProfileToUser(profile, data.user.phone);
+}
+
+export const login = signInWithEmail;
+
+export async function signUpWithEmail(email, password) {
+  const { data, error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: window.location.origin } });
+  if (error) throw new Error(error.message);
+  return { confirmed: !!data.session, user: data.user };
+}
+
+export async function signInWithProvider(provider) {
+  const { error } = await supabase.auth.signInWithOAuth({ provider, options: { redirectTo: window.location.origin } });
+  if (error) throw new Error(error.message);
+}
+
+export async function sendPasswordResetEmail(email) {
+  const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin });
+  if (error) throw new Error(error.message);
+}
+
+export async function getSessionUser() {
+  return currentUser();
 }
 
 export async function getMe() {

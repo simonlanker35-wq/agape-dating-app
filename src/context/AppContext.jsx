@@ -25,6 +25,8 @@ const initialState = {
     denominations: [],
   },
   onboardingComplete: false,
+  needsProfile: false,
+  passwordRecovery: false,
   activeTab: "discover",
   loading: false,
   error: null,
@@ -37,7 +39,15 @@ function reducer(state, action) {
         ...state,
         currentUser: action.payload,
         onboardingComplete: !!action.payload,
+        needsProfile: false,
       };
+
+    // Signed in (e.g. via Google/Apple) but the profile row was never created — resume onboarding
+    case "NEEDS_PROFILE":
+      return { ...state, needsProfile: true, currentUser: null, onboardingComplete: false };
+
+    case "SET_RECOVERY":
+      return { ...state, passwordRecovery: action.payload };
 
     case "COMPLETE_ONBOARDING":
       return {
@@ -180,22 +190,31 @@ export function AppProvider({ children }) {
     };
     navigator.serviceWorker?.addEventListener("message", onSwMessage);
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        api.getMe()
-          .then(withStripeFallback)
-          .then((user) => {
-            dispatch({ type: "SET_USER", payload: user });
-            identify(user.id, { name: user.name, email: user.email, gender: user.gender, denomination: user.denomination, location: user.location?.city, subscriptionStatus: user.subscriptionStatus });
-          })
-          .catch(() => supabase.auth.signOut());
-      }
-    });
+    const oauthReturn = /access_token=|code=|type=recovery/.test(window.location.hash + window.location.search);
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const loadSessionUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      try {
+        const exists = await api.checkProfileExists();
+        if (!exists) { dispatch({ type: "NEEDS_PROFILE" }); return; }
+        const user = await withStripeFallback(await api.getMe());
+        dispatch({ type: "SET_USER", payload: user });
+        identify(user.id, { name: user.name, email: user.email, gender: user.gender, denomination: user.denomination, location: user.location?.city, subscriptionStatus: user.subscriptionStatus });
+      } catch (_) {}
+    };
+    loadSessionUser();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === "SIGNED_OUT") {
         dispatch({ type: "LOGOUT" });
         resetPosthog();
+      }
+      if (event === "PASSWORD_RECOVERY") dispatch({ type: "SET_RECOVERY", payload: true });
+      // Returning from Google/Apple: the session arrives after the first getSession()
+      if (event === "SIGNED_IN" && oauthReturn) {
+        window.history.replaceState({}, "", window.location.pathname);
+        setTimeout(loadSessionUser, 0);
       }
     });
 
@@ -303,6 +322,33 @@ export function AppProvider({ children }) {
     verifyOtpForReset: async (phone, token) => {
       return api.verifyOtp(phone, token);
     },
+
+    loginWithEmail: async (email, password) => {
+      const user = await api.signInWithEmail(email, password);
+      if (!user) {
+        track("login_needs_profile");
+        return { needsProfile: true };
+      }
+      dispatch({ type: "SET_USER", payload: user });
+      identify(user.id, { name: user.name, email: user.email, gender: user.gender, subscriptionStatus: user.subscriptionStatus });
+      track("login", { method: "email" });
+      return user;
+    },
+
+    signUpWithEmail: async (email, password) => {
+      const res = await api.signUpWithEmail(email, password);
+      track("signup_email_started", { confirmed: res.confirmed });
+      return res;
+    },
+
+    signInWithProvider: async (provider) => {
+      track("oauth_started", { provider });
+      await api.signInWithProvider(provider);
+    },
+
+    sendPasswordResetEmail: (email) => api.sendPasswordResetEmail(email),
+    getSessionUser: () => api.getSessionUser(),
+    clearRecovery: () => dispatch({ type: "SET_RECOVERY", payload: false }),
 
     completePasswordReset: async (password) => {
       await api.setPassword(password);
