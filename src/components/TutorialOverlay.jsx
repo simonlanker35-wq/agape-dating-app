@@ -8,7 +8,7 @@ const C = { primary: "#B8912A", text: "#1A1612", sub: "#8C857C", border: "#E8E4D
 const TOURS = {
   discover: [
     { selector: 'button[aria-label="Like"]', title: "Send a heart", text: "Like this person. You have 8 likes a day — 15 with Agape+. The number on the button is what's left today." },
-    { selector: 'button[aria-label="Send a Dove"]', title: "Send a Dove", text: "A Dove says you're serious: you're revealed to them instantly, ahead of everyone else. 1 per week, 3 with Agape+." },
+    { selector: 'button[aria-label="Send a Dove"]', title: "Send a Dove", text: "A Dove says you're serious: you're revealed to them instantly, ahead of everyone else. Send it on its own or with a comment. 1 per week, 3 with Agape+." },
     { selector: ".prompt-heart", title: "Like a prompt or photo", text: "Tap the heart on a prompt to like that exact thing and add a comment. Comments get about 3× more matches." },
     { selector: ".discover-skip-btn", title: "Not for you?", text: "Skip and move on — they won't know." },
     { selector: 'button[aria-label="Safety"]', title: "Safety", text: "Report or block anyone, at any time. Reports go to our team." },
