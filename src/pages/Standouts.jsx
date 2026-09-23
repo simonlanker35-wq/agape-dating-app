@@ -58,8 +58,7 @@ export default function Standouts() {
   });
 
   const weeklyPick = useMemo(() => {
-    const eligible = state.profiles.filter((p) => {
-      if (!p.isStandout) return false;
+    const matching = state.profiles.filter((p) => {
       if (state.likes.some((l) => l.profileId === p.id)) return false;
       if (localLikes.has(p.id)) return false;
       if (p.id === "current_user") return false;
@@ -72,11 +71,15 @@ export default function Standouts() {
       }
       return true;
     });
+    // Prefer standout profiles, but with a small pool fall back to anyone who fits the filters
+    const standouts = matching.filter((p) => p.isStandout);
+    const eligible = standouts.length ? standouts : matching;
     if (eligible.length === 0) return null;
+    const seed = weekKey + (state.currentUser?.id || "");
     let hash = 0;
-    for (let i = 0; i < weekKey.length; i++) hash = ((hash << 5) - hash + weekKey.charCodeAt(i)) | 0;
+    for (let i = 0; i < seed.length; i++) hash = ((hash << 5) - hash + seed.charCodeAt(i)) | 0;
     return eligible[Math.abs(hash) % eligible.length];
-  }, [state.profiles, state.likes, state.blocked, localLikes, filters, userLat, userLng, weekKey]);
+  }, [state.profiles, state.likes, state.blocked, localLikes, filters, userLat, userLng, weekKey, state.currentUser?.id]);
 
   const profile = isWednesday ? weeklyPick : null;
 
@@ -120,8 +123,12 @@ export default function Standouts() {
     return (
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", padding: "60px 20px", textAlign: "center" }}>
         <Star size={48} strokeWidth={1.4} color={C.primary} style={{ marginBottom: 16 }} />
-        <h2 style={{ color: C.text, fontFamily: FONT, fontSize: 20, fontWeight: 700 }}>Your next pick arrives Wednesday</h2>
-        <p style={{ color: C.sub, fontSize: 14, marginTop: 4 }}>Every Wednesday you get 1 handpicked profile chosen just for you. Come back {dayName}.</p>
+        <h2 style={{ color: C.text, fontFamily: FONT, fontSize: 20, fontWeight: 700 }}>{isWednesday ? "No pick this week" : "Your next pick arrives Wednesday"}</h2>
+        <p style={{ color: C.sub, fontSize: 14, marginTop: 4 }}>
+          {isWednesday
+            ? "Nobody new matches your filters right now. Widen your age range or distance in Seek and check back — the next pick comes next Wednesday."
+            : `Every Wednesday you get 1 handpicked profile chosen just for you. Come back ${dayName}.`}
+        </p>
       </div>
     );
   }
