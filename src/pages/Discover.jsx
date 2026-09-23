@@ -87,10 +87,10 @@ export default function Discover() {
   if (likesLeft <= 0) {
     const limit = isPremium ? LIMITS.PREMIUM.dailyLikes : LIMITS.FREE.dailyLikes;
     return (
-      <div className="discover-empty">
-        <Heart size={48} />
-        <h2>No likes left today</h2>
-        <p>You've used all {limit} {isPremium ? "" : "free "}likes for today. Come back tomorrow!</p>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", padding: "60px 20px", textAlign: "center" }}>
+        <Heart size={48} strokeWidth={1.4} color="#B8912A" style={{ marginBottom: 16 }} />
+        <h2 style={{ color: "#1A1612", fontFamily: "'Outfit', system-ui, sans-serif", fontSize: 20, fontWeight: 700, margin: 0 }}>No likes left today</h2>
+        <p style={{ color: "#8C857C", fontSize: 14, marginTop: 4 }}>You've used all {limit} {isPremium ? "" : "free "}likes for today. Come back tomorrow!</p>
         {!isPremium && (
           <button className="filter-apply-btn" style={{ marginTop: 16, flex: "none", background: "#B8912A" }} onClick={() => { track("upgrade_tapped", { source: "no_likes_left" }); dispatch({ type: "SET_TAB", payload: "profile" }); }}>
             Get Agape+ for {LIMITS.PREMIUM.dailyLikes} likes/day
@@ -102,10 +102,10 @@ export default function Discover() {
 
   if (!profile) {
     return (
-      <div className="discover-empty">
-        <Heart size={48} />
-        <h2>You've seen everyone!</h2>
-        <p>Check back later for new profiles or adjust your filters.</p>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", padding: "60px 20px", textAlign: "center" }}>
+        <Heart size={48} strokeWidth={1.4} color="#B8912A" style={{ marginBottom: 16 }} />
+        <h2 style={{ color: "#1A1612", fontFamily: "'Outfit', system-ui, sans-serif", fontSize: 20, fontWeight: 700, margin: 0 }}>You've seen everyone!</h2>
+        <p style={{ color: "#8C857C", fontSize: 14, marginTop: 4 }}>Check back later for new profiles or adjust your filters.</p>
         <button className="filter-apply-btn" style={{ marginTop: 16, flex: "none" }} onClick={() => setShowFilter(true)}>
           Adjust Filters
         </button>
