@@ -5,6 +5,7 @@ import { ChevronRight, ChevronLeft, Sparkles, Church, X, Check, Plus, Camera, Zo
 import AgapeCross from "../components/AgapeCross";
 import LocationPicker from "../components/LocationPicker";
 import PasswordInput from "../components/PasswordInput";
+import { downscaleDataUrl, savePhotoOriginals } from "../services/api";
 import { track } from "../services/posthog";
 
 const STEPS = [
@@ -202,6 +203,7 @@ export default function Onboarding() {
     whoAreYou: [],
     maxDistance: 30,
     photos: [null, null, null, null, null, null],
+    photoOriginals: [null, null, null, null, null, null],
     lifestyle: {},
   });
 
@@ -396,7 +398,7 @@ export default function Onboarding() {
 
   const openCropForExisting = (index) => {
     setPhotoSlotIndex(index);
-    startCrop(form.photos[index]);
+    startCrop(form.photoOriginals[index] || form.photos[index]);
   };
 
   // zoom 1 = image covers the 3:4 box; minZoom = whole image visible
@@ -446,7 +448,9 @@ export default function Onboarding() {
       ctx.drawImage(img, dx, dy, iw, ih);
       const next = [...form.photos];
       next[photoSlotIndex] = canvas.toDataURL("image/jpeg", 0.85);
-      setForm({ ...form, photos: next });
+      const nextOriginals = [...form.photoOriginals];
+      nextOriginals[photoSlotIndex] = cropImage;
+      setForm({ ...form, photos: next, photoOriginals: nextOriginals });
       setCropImage(null);
     };
     img.src = cropImage;
@@ -537,6 +541,15 @@ export default function Onboarding() {
         },
         lifestyle: form.lifestyle,
       });
+
+      // Keep the originals (aligned with the saved photos) so crops can be redone later — best effort
+      try {
+        const originals = [];
+        for (let i = 0; i < form.photos.length; i++) {
+          if (form.photos[i]) originals.push(await downscaleDataUrl(form.photoOriginals[i] || form.photos[i]));
+        }
+        await savePhotoOriginals(originals);
+      } catch (_) {}
     } catch (err) {
       setSignupError(err.message);
       setSubmitting(false);
@@ -1429,7 +1442,7 @@ export default function Onboarding() {
               </button>
               {photo && (
                 <button
-                  onClick={(e) => { e.stopPropagation(); const next = [...form.photos]; next[i] = null; setForm({ ...form, photos: next }); }}
+                  onClick={(e) => { e.stopPropagation(); const next = [...form.photos]; next[i] = null; const nextO = [...form.photoOriginals]; nextO[i] = null; setForm({ ...form, photos: next, photoOriginals: nextO }); }}
                   style={{ position: "absolute", top: 6, right: 6, width: 26, height: 26, borderRadius: 999, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", border: "none", cursor: "pointer", padding: 0 }}
                 >
                   <X size={14} color="#fff" />

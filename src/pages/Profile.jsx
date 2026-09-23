@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useApp } from "../context/AppContext";
-import { compressPhoto, sendTestPush } from "../services/api";
+import { compressPhoto, sendTestPush, getPhotoOriginals, savePhotoOriginals, downscaleDataUrl } from "../services/api";
 import { PROMPT_CATEGORIES, TRAITS_POOL, LOOKING_FOR_POOL } from "../data/profiles";
 import AgapeCross from "../components/AgapeCross";
 import LocationPicker from "../components/LocationPicker";
@@ -836,6 +836,14 @@ export default function Profile() {
   const answerRef = useRef(null);
   const cropCanvasRef = useRef(null);
   const cropBoxRef = useRef(null);
+  const [originals, setOriginals] = useState([]);
+  useEffect(() => {
+    if (currentUser?.id) getPhotoOriginals().then(setOriginals).catch(() => {});
+  }, [currentUser?.id]);
+  const persistOriginals = (next) => {
+    setOriginals(next);
+    savePhotoOriginals(next).catch(() => {});
+  };
 
   if (!currentUser) return null;
 
@@ -923,7 +931,8 @@ export default function Profile() {
   const photos = currentUser.photos || [];
 
   const openCropper = (src, idx = null) => {
-    setCropSrc(src);
+    // Re-cropping starts from the kept original when we have one, so you can zoom back out
+    setCropSrc(idx !== null && originals[idx] ? originals[idx] : src);
     setCropIdx(idx);
     setCropOffset({ x: 0, y: 0 });
     setCropScale(1);
@@ -977,11 +986,19 @@ export default function Profile() {
         const updated = [...photos];
         updated[cropIdx] = dataUrl;
         await actions.updateProfile({ photos: updated });
+        if (!originals[cropIdx]) {
+          const next = [...originals];
+          next[cropIdx] = await downscaleDataUrl(cropSrc);
+          persistOriginals(next);
+        }
       } else {
         const regularPhotos = photos.slice(0, 4);
         if (regularPhotos.length >= 4) return;
         const verifiedPhotos = photos.slice(4);
         await actions.updateProfile({ photos: [...regularPhotos, dataUrl, ...verifiedPhotos] });
+        const next = [...originals];
+        next.splice(regularPhotos.length, 0, await downscaleDataUrl(cropSrc));
+        persistOriginals(next);
       }
     } catch (err) {
       console.error("Save failed:", err);
@@ -1006,6 +1023,7 @@ export default function Profile() {
     track("photo_removed", { photoIndex: idx });
     const updated = photos.filter((_, i) => i !== idx);
     await actions.updateProfile({ photos: updated });
+    if (originals.length) persistOriginals(originals.filter((_, i) => i !== idx));
   };
 
   const handleMovePhoto = async (idx, dir) => {
@@ -1015,6 +1033,11 @@ export default function Profile() {
     const updated = [...photos];
     [updated[idx], updated[newIdx]] = [updated[newIdx], updated[idx]];
     await actions.updateProfile({ photos: updated });
+    if (originals.length) {
+      const next = [...originals];
+      [next[idx], next[newIdx]] = [next[newIdx], next[idx]];
+      persistOriginals(next);
+    }
   };
 
   return (

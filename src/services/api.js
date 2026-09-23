@@ -760,6 +760,41 @@ function mapProfileToUser(p, authPhone) {
 
 // ─── PHOTOS ───
 
+// Originals live in their own table (aligned by index with profiles.photos) so Seek never downloads them
+export async function getPhotoOriginals() {
+  const user = await currentUser();
+  if (!user) return [];
+  const { data } = await supabase.from("photo_originals").select("originals").eq("user_id", user.id).maybeSingle();
+  return Array.isArray(data?.originals) ? data.originals : [];
+}
+
+export async function savePhotoOriginals(originals) {
+  const user = await currentUser();
+  if (!user) return;
+  const { error } = await supabase
+    .from("photo_originals")
+    .upsert({ user_id: user.id, originals, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
+  if (error) throw new Error(error.message);
+}
+
+export function downscaleDataUrl(src, max = 1600, quality = 0.85) {
+  return new Promise((resolve) => {
+    if (!src) return resolve(null);
+    const img = new Image();
+    img.onload = () => {
+      const ratio = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+      if (ratio === 1 && src.startsWith("data:image/jpeg")) return resolve(src);
+      const c = document.createElement("canvas");
+      c.width = Math.round(img.naturalWidth * ratio);
+      c.height = Math.round(img.naturalHeight * ratio);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      resolve(c.toDataURL("image/jpeg", quality));
+    };
+    img.onerror = () => resolve(src);
+    img.src = src;
+  });
+}
+
 export function compressPhoto(file, maxWidth = 800, quality = 0.75) {
   return new Promise((resolve, reject) => {
     const img = new Image();
