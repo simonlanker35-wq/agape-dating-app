@@ -72,7 +72,7 @@ function Avatar({ src, name, size = 34 }) {
     <img
       src={src}
       alt={name || ""}
-      style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover", border: `2px solid ${C.bg}`, boxShadow: "0 0 0 1.5px " + C.border, display: "block" }}
+      style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover", objectPosition: "50% 20%", border: `2px solid ${C.bg}`, boxShadow: "0 0 0 1.5px " + C.border, display: "block" }}
       onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(name || "?")}&size=80&background=F4F2EE&color=B8912A`; }}
     />
   );
@@ -949,7 +949,7 @@ function ChatThread({ match, onBack }) {
             <BackIcon />
           </button>
           <div style={{ position: "relative", flexShrink: 0, cursor: "pointer" }} onClick={() => setViewProfile(true)}>
-            <img src={profile.photos[0]} alt={profile.name} style={{ width: 40, height: 40, borderRadius: "50%", objectFit: "cover", border: `2px solid ${C.primary}` }} onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${profile.name}&size=40&background=random`; }} />
+            <img src={profile.photos[0]} alt={profile.name} style={{ width: 40, height: 40, borderRadius: "50%", objectFit: "cover", objectPosition: "50% 20%", border: `2px solid ${C.primary}` }} onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${profile.name}&size=40&background=random`; }} />
           </div>
           <div style={{ flex: 1, minWidth: 0, cursor: "pointer" }} onClick={() => setViewProfile(true)}>
             <p style={{ fontWeight: 700, fontSize: 16, lineHeight: 1, color: C.text, fontFamily: FONT, margin: 0 }}>{profile.name}</p>
@@ -1052,7 +1052,7 @@ function ChatThread({ match, onBack }) {
               )}
               <div style={{ display: "flex", alignItems: "flex-end", gap: 8, maxWidth: "80%" }}>
                 {!isMe && (
-                  <img src={profile.photos[0]} alt={profile.name} style={{ width: 24, height: 24, borderRadius: "50%", objectFit: "cover", flexShrink: 0, marginBottom: 4 }} onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${profile.name}&size=24&background=random`; }} />
+                  <img src={profile.photos[0]} alt={profile.name} style={{ width: 24, height: 24, borderRadius: "50%", objectFit: "cover", objectPosition: "50% 20%", flexShrink: 0, marginBottom: 4 }} onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${profile.name}&size=24&background=random`; }} />
                 )}
                 <div
                   style={{
@@ -1388,7 +1388,7 @@ export default function Matches() {
                 style={{ display: "flex", alignItems: "center", gap: 16, width: "100%", padding: "20px 20px", background: hasUnread ? C.primarySoft : "none", border: "none", cursor: "pointer", borderBottom: `1px solid ${C.border}`, textAlign: "left" }}
               >
                 <div style={{ position: "relative", flexShrink: 0 }}>
-                  <img src={profile.photos[0]} alt={profile.name} style={{ width: 88, height: 88, borderRadius: "50%", objectFit: "cover", display: "block" }} onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${profile.name}&size=88&background=random`; }} />
+                  <img src={profile.photos[0]} alt={profile.name} style={{ width: 88, height: 88, borderRadius: "50%", objectFit: "cover", objectPosition: "50% 20%", display: "block" }} onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${profile.name}&size=88&background=random`; }} />
                   {hasUnread && <div style={{ position: "absolute", inset: -3, borderRadius: "50%", border: `3px solid ${C.primary}`, pointerEvents: "none" }} />}
                   <div style={{ position: "absolute", bottom: 4, right: 4, width: 14, height: 14, borderRadius: "50%", background: "#22C55E", border: `2.5px solid ${hasUnread ? C.primarySoft : C.bg}` }} />
                 </div>

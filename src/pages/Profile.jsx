@@ -482,7 +482,7 @@ function SettingsScreen({ onBack, initialSection = null }) {
                   return (
                     <div key={item.id || i} style={{ borderRadius: 16, background: C.card, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12 }}>
                       {item.photo ? (
-                        <img src={item.photo} alt="" style={{ width: 44, height: 44, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
+                        <img src={item.photo} alt="" style={{ width: 44, height: 44, borderRadius: "50%", objectFit: "cover", objectPosition: "50% 20%", flexShrink: 0 }} />
                       ) : (
                         <div style={{ width: 44, height: 44, borderRadius: "50%", background: C.surface, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                           <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={C.sub} strokeWidth={2}>
@@ -519,7 +519,7 @@ function SettingsScreen({ onBack, initialSection = null }) {
                 {state.reports.map((r, i) => (
                   <div key={i} style={{ borderRadius: 16, background: C.card, padding: "12px 14px", display: "flex", alignItems: "center", gap: 12 }}>
                     {r.photo ? (
-                      <img src={r.photo} alt="" style={{ width: 44, height: 44, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
+                      <img src={r.photo} alt="" style={{ width: 44, height: 44, borderRadius: "50%", objectFit: "cover", objectPosition: "50% 20%", flexShrink: 0 }} />
                     ) : (
                       <div style={{ width: 44, height: 44, borderRadius: "50%", background: "#FEF2F2", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                         <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth={2}>
@@ -1024,7 +1024,7 @@ export default function Profile() {
             <img
               src={currentUser.photos?.[0]}
               alt="Me"
-              style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover", display: "block" }}
+              style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover", objectPosition: "50% 20%", display: "block" }}
               onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${currentUser.name}&size=200&background=F4F2EE&color=B8912A`; }}
             />
             <span style={{ position: "absolute", bottom: -2, right: -2, width: 28, height: 28, borderRadius: "50%", background: C.primary, border: `2px solid ${C.surface}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
