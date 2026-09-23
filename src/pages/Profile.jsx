@@ -835,6 +835,7 @@ export default function Profile() {
   const photosRef = useRef(null);
   const answerRef = useRef(null);
   const cropCanvasRef = useRef(null);
+  const cropBoxRef = useRef(null);
 
   if (!currentUser) return null;
 
@@ -938,23 +939,38 @@ export default function Profile() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
+  // zoom 1 = the photo covers the 3:4 frame; the export uses exactly the preview's geometry
+  const cropGeom = (zoom) => {
+    const aspect = (cropImgSize.w || 3) / (cropImgSize.h || 4);
+    const wide = aspect > 0.75;
+    return {
+      wPct: (wide ? aspect / 0.75 : 1) * 100 * zoom,
+      hPct: (wide ? 1 : 0.75 / aspect) * 100 * zoom,
+      minZoom: wide ? 0.75 / aspect : aspect / 0.75,
+    };
+  };
+
   const saveCrop = async () => {
     track("photo_crop_saved", { isNew: cropIdx === null });
+    const box = cropBoxRef.current;
+    const outW = 900, outH = 1200;
+    const k = outW / box.clientWidth;
+    const { wPct, hPct } = cropGeom(cropScale);
+    const iw = box.clientWidth * wPct / 100 * k;
+    const ih = box.clientHeight * hPct / 100 * k;
+    const dx = (outW - iw) / 2 + cropOffset.x * k;
+    const dy = (outH - ih) / 2 + cropOffset.y * k;
     const canvas = document.createElement("canvas");
-    const size = 800;
-    canvas.width = size;
-    canvas.height = Math.round(size * (4 / 3));
+    canvas.width = outW;
+    canvas.height = outH;
     const ctx = canvas.getContext("2d");
     const img = new Image();
     img.crossOrigin = "anonymous";
     await new Promise((resolve, reject) => { img.onload = resolve; img.onerror = reject; img.src = cropSrc; });
-    const scale = cropScale;
-    const drawW = img.width * scale;
-    const drawH = img.height * scale;
-    const dx = (canvas.width - drawW) / 2 + cropOffset.x * scale;
-    const dy = (canvas.height - drawH) / 2 + cropOffset.y * scale;
-    ctx.drawImage(img, dx, dy, drawW, drawH);
-    const dataUrl = canvas.toDataURL("image/jpeg", 0.75);
+    ctx.fillStyle = "#1A1612";
+    ctx.fillRect(0, 0, outW, outH);
+    ctx.drawImage(img, dx, dy, iw, ih);
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
     setUploading(true);
     try {
       if (cropIdx !== null) {
@@ -1570,7 +1586,7 @@ export default function Profile() {
             onPointerUp={handleCropPointerUp}
             onPointerLeave={handleCropPointerUp}
           >
-            <div style={{ position: "relative", width: "80vw", maxWidth: 350, aspectRatio: "3/4", overflow: "hidden", borderRadius: 16, border: "2px solid rgba(255,255,255,0.3)" }}>
+            <div ref={cropBoxRef} style={{ position: "relative", width: "80vw", maxWidth: 350, aspectRatio: "3/4", overflow: "hidden", borderRadius: 16, border: "2px solid rgba(255,255,255,0.3)", background: "#1A1612" }}>
               <img
                 src={cropSrc}
                 alt="Crop"
@@ -1578,14 +1594,13 @@ export default function Profile() {
                 onLoad={(e) => setCropImgSize({ w: e.target.naturalWidth, h: e.target.naturalHeight })}
                 style={{
                   position: "absolute",
-                  left: "50%",
-                  top: "50%",
-                  transform: `translate(calc(-50% + ${cropOffset.x}px), calc(-50% + ${cropOffset.y}px)) scale(${cropScale})`,
+                  left: `calc(50% + ${cropOffset.x}px)`,
+                  top: `calc(50% + ${cropOffset.y}px)`,
+                  width: `${cropGeom(cropScale).wPct}%`,
+                  height: `${cropGeom(cropScale).hPct}%`,
                   maxWidth: "none",
                   maxHeight: "none",
-                  width: "100%",
-                  minHeight: "100%",
-                  objectFit: "cover",
+                  transform: "translate(-50%, -50%)",
                   pointerEvents: "none",
                   userSelect: "none",
                 }}
@@ -1596,7 +1611,7 @@ export default function Profile() {
             <span style={{ fontSize: 11, color: "rgba(255,255,255,0.6)" }}>−</span>
             <input
               type="range"
-              min={0.5}
+              min={Math.round(cropGeom(1).minZoom * 100) / 100}
               max={3}
               step={0.05}
               value={cropScale}
