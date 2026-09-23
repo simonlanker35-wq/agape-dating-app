@@ -470,6 +470,9 @@ export async function getMatches() {
       profile: otherProfile ? mapProfile(otherProfile) : null,
       timestamp: new Date(m.last_activity || m.created_at).getTime(),
       lastMessage: preview,
+      nudgeAt: m.nudge_at ? new Date(m.nudge_at).getTime() : null,
+      deadlinePaused: !!m.deadline_paused,
+      videoCallAt: m.video_call_at ? new Date(m.video_call_at).getTime() : null,
     });
   }
 
@@ -697,6 +700,22 @@ export async function cancelDate(invitationId) {
 }
 
 export const isCancelledInvite = (inv) => inv?.status === "declined" && (inv.decline_reasons || []).includes(CANCELLED_BY_SENDER);
+
+export async function startVideoCall(matchId) {
+  const { error } = await supabase
+    .from("matches")
+    .update({ video_call_at: new Date().toISOString() })
+    .eq("id", matchId);
+  if (error) throw new Error(error.message);
+}
+
+export async function sendNudge(matchId) {
+  const { error } = await supabase
+    .from("matches")
+    .update({ nudge_at: new Date().toISOString() })
+    .eq("id", matchId);
+  if (error) throw new Error(error.message);
+}
 
 export async function confirmDate(invitationId, confirmedTime) {
   const { data, error } = await supabase

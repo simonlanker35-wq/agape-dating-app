@@ -1,11 +1,13 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useApp } from "../context/AppContext";
 import * as api from "../services/api";
-import { MessageCircle, Ban, Flag, UserMinus, Calendar, CheckCircle } from "lucide-react";
+import { MessageCircle, Ban, Flag, UserMinus, Calendar, CheckCircle, Clock, Video, Heart, Lock, Flower2 } from "lucide-react";
 import AgapeCross from "../components/AgapeCross";
+import DoveIcon from "../components/DoveIcon";
 import LocationPicker from "../components/LocationPicker";
 import ReliabilityBadge from "../components/ReliabilityBadge";
 import NotificationPrompt from "../components/NotificationPrompt";
+import TutorialOverlay from "../components/TutorialOverlay";
 import { track } from "../services/posthog";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -34,6 +36,17 @@ const DAY_SLOTS = [
   { id: "evening", label: "Evening", hint: "17 – 22", time: "19:00" },
 ];
 const MAX_SLOTS = 12;
+const TIME_SLOTS = ["12:00", "14:00", "16:00", "18:00", "19:30", "21:00"];
+
+function formatTimeLeft(ms) {
+  if (ms <= 0) return "Expired";
+  const hours = Math.floor(ms / 3600000);
+  const days = Math.floor(hours / 24);
+  const h = hours % 24;
+  if (days > 0) return `${days}d ${h}h`;
+  if (h > 0) return `${h}h`;
+  return `${Math.floor(ms / 60000)}m`;
+}
 
 const slotName = (t) => DAY_SLOTS.find((s) => s.id === t.slot)?.label || t.time;
 const slotHint = (t) => DAY_SLOTS.find((s) => s.id === t.slot)?.hint || "";
@@ -481,9 +494,13 @@ function DateCard({ invitation, isMe, isMale, onRespond, onConfirm, onDecline, o
 
         {invitation.status === "pending" && !isMale && (
           <>
-            <p style={{ fontSize: 13, color: C.sub, fontFamily: FONT, margin: 0, textAlign: "center" }}>
-              Tell {themName} when you're free — he'll pick one of your times.{selectedTimes.length ? ` (${selectedTimes.length} chosen so far)` : ""}
+            <p style={{ fontSize: 13, color: C.sub, fontFamily: FONT, margin: "0 0 10px", textAlign: "center" }}>
+              Tell {themName} when you're free — he'll pick one of your times.
             </p>
+            <button onClick={() => { track("date_picker_opened"); setShowPicker(true); }} style={primaryBtn}>
+              <Calendar size={16} color="white" />
+              {selectedTimes.length ? `When I'm free (${selectedTimes.length} chosen)` : "When I'm free"}
+            </button>
             {showPicker && (
               <AvailabilitySheet
                 title={pickerTitle}
@@ -599,9 +616,12 @@ function DateCard({ invitation, isMe, isMale, onRespond, onConfirm, onDecline, o
 
         {invitation.status === "responded" && isMale && (
           <>
-            <p style={{ fontSize: 13, color: C.sub, textAlign: "center", fontFamily: FONT, margin: 0 }}>
+            <p style={{ fontSize: 13, color: C.sub, textAlign: "center", fontFamily: FONT, margin: "0 0 10px" }}>
               {themName} is free at {responded.length} time{responded.length === 1 ? "" : "s"}. Pick the one that suits you.
             </p>
+            <button onClick={() => { track("date_confirm_picker_opened"); setShowPicker(true); }} style={primaryBtn}>
+              <Calendar size={16} color="white" /> Pick a time
+            </button>
             {showPicker && (
               <AvailabilitySheet
                 title={pickerTitle}
@@ -637,9 +657,12 @@ function DateCard({ invitation, isMe, isMale, onRespond, onConfirm, onDecline, o
 
         {invitation.status === "responded" && !isMale && (
           <>
-            <p style={{ fontSize: 13, color: C.sub, textAlign: "center", fontFamily: FONT, margin: 0 }}>
-              You sent {responded.length} time{responded.length === 1 ? "" : "s"} — waiting for {themName} to pick one. You can still change them.
+            <p style={{ fontSize: 13, color: C.sub, textAlign: "center", fontFamily: FONT, margin: "0 0 10px" }}>
+              You sent {responded.length} time{responded.length === 1 ? "" : "s"} — waiting for {themName} to pick one.
             </p>
+            <button onClick={() => { track("date_times_edit_opened"); setShowPicker(true); }} style={secondaryBtn}>
+              <Calendar size={16} color={C.primary} /> Change my times
+            </button>
             {showPicker && (
               <AvailabilitySheet
                 title={pickerTitle}
@@ -690,7 +713,6 @@ function ChatThread({ match, onBack }) {
   const [reportDone, setReportDone] = useState(null);
   const [blockFlash, setBlockFlash] = useState(false);
   const [showDateBuilder, setShowDateBuilder] = useState(false);
-  const [pickerOpen, setPickerOpen] = useState(false);
   const [dateInvitations, setDateInvitations] = useState([]);
   const bottomRef = useRef(null);
 
@@ -717,12 +739,53 @@ function ChatThread({ match, onBack }) {
 
   const messages = conversation?.messages || [];
 
-  // The chat only opens once a date is confirmed; before that the thread is the date-planning stage
   const confirmedDate = [...dateInvitations].reverse().find((inv) => inv.status === "confirmed") || null;
   const openInvite = [...dateInvitations].reverse().find((inv) => inv.status === "pending" || inv.status === "responded") || null;
   const lastInvite = [...dateInvitations].reverse().find((inv) => !api.isCancelledInvite(inv)) || null;
   const lastDeclined = !confirmedDate && !openInvite && lastInvite?.status === "declined" ? lastInvite : null;
-  const chatOpen = !!confirmedDate;
+
+  // ── Deadline: after the first message he has 5 days to plan a date; a rose adds 36h; a plan, a video call or a set date stops the clock ──
+  const [nudgeSent, setNudgeSent] = useState(!!match.nudgeAt);
+  const [nudgeSending, setNudgeSending] = useState(false);
+  const [showNudgeExplainer, setShowNudgeExplainer] = useState(false);
+  const [videoCallStarted, setVideoCallStarted] = useState(false);
+  const [showVideoCallScheduler, setShowVideoCallScheduler] = useState(false);
+  const [vcDay, setVcDay] = useState(null);
+  const [vcTime, setVcTime] = useState(null);
+  const vcDays = useMemo(() => getNextDays(7), []);
+
+  useEffect(() => {
+    if (nudgeSent || !isMale) return;
+    const check = setInterval(async () => {
+      try {
+        const matches = await api.getMatches();
+        const m = matches.find((x) => x.id === match.id);
+        if (m?.nudgeAt) { setNudgeSent(true); clearInterval(check); }
+      } catch (_) {}
+    }, 10000);
+    return () => clearInterval(check);
+  }, [nudgeSent, isMale, match.id]);
+
+  const firstMessageTime = messages.length > 0 ? messages[0].timestamp : null;
+  const FIVE_DAYS = 5 * 24 * 60 * 60 * 1000;
+  const NUDGE_BONUS = 36 * 60 * 60 * 1000;
+  const COOLDOWN_48H = 48 * 60 * 60 * 1000;
+  const deadlinePaused = match.deadlinePaused;
+  const hasVideoCall = !!match.videoCallAt || videoCallStarted;
+  const timerStopped = deadlinePaused || hasVideoCall || !!confirmedDate || !!openInvite;
+
+  const lastDeclinedAt = (() => {
+    const d = dateInvitations.filter((inv) => inv.status === "declined" && !api.isCancelledInvite(inv)).sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+    return d ? new Date(d.created_at).getTime() : null;
+  })();
+
+  let deadlineMs = null;
+  if (!timerStopped && firstMessageTime) {
+    deadlineMs = lastDeclinedAt ? lastDeclinedAt + COOLDOWN_48H + FIVE_DAYS : firstMessageTime + FIVE_DAYS;
+    if (nudgeSent || match.nudgeAt) deadlineMs += NUDGE_BONUS;
+  }
+  const timeLeftMs = deadlineMs ? deadlineMs - Date.now() : null;
+  const chatLocked = !timerStopped && timeLeftMs !== null && timeLeftMs <= 0;
 
   const dateTimeMs = confirmedDate?.confirmed_time?.date
     ? new Date(`${confirmedDate.confirmed_time.date}T${confirmedDate.confirmed_time.time || "12:00"}:00`).getTime()
@@ -735,6 +798,9 @@ function ChatThread({ match, onBack }) {
     if (!confirmedDate?.id || !datePassed) return;
     api.getMyDateRating(confirmedDate.id).then(setMyRating).catch(() => setMyRating(null));
   }, [confirmedDate?.id, datePassed]);
+
+  const myName = state.currentUser?.name || "Your match";
+  const notifyThem = (title, body, tag) => api.notifyUser(profile.id, { title, body, url: "/?tab=matches", tag: `${tag}-${match.id}` });
 
   const handleRate = async (showedUp) => {
     setRating(true);
@@ -749,7 +815,7 @@ function ChatThread({ match, onBack }) {
   };
 
   const send = async () => {
-    if (!text.trim() || !chatOpen) return;
+    if (!text.trim() || chatLocked) return;
     const msg = text.trim();
     setText("");
     try {
@@ -759,8 +825,33 @@ function ChatThread({ match, onBack }) {
     }
   };
 
-  const myName = state.currentUser?.name || "Your match";
-  const notifyThem = (title, body, tag) => api.notifyUser(profile.id, { title, body, url: "/?tab=matches", tag: `${tag}-${match.id}` });
+  const handleNudge = async () => {
+    track("rose_sent");
+    setNudgeSending(true);
+    try {
+      await api.sendNudge(match.id);
+      await actions.sendMessage(match.id, "🌹");
+      setNudgeSent(true);
+      notifyThem(`${myName} sent you a rose`, "She'd love to go on a date — you have extra time to plan one.", "rose");
+    } catch (err) {
+      console.error("Nudge failed:", err);
+    }
+    setNudgeSending(false);
+  };
+
+  const handleVideoCall = async () => {
+    if (!vcDay || !vcTime) return;
+    track("video_call_scheduled");
+    setVideoCallStarted(true);
+    try {
+      await api.startVideoCall(match.id);
+      await actions.sendMessage(match.id, `📹 Video call scheduled: ${vcDay.dayName} ${vcDay.dayNum} ${vcDay.month} at ${vcTime}`);
+    } catch (err) {
+      console.error("Video call failed:", err);
+      setVideoCallStarted(false);
+    }
+    setShowVideoCallScheduler(false);
+  };
 
   const handleSendDate = async (data) => {
     setShowDateBuilder(false);
@@ -792,7 +883,7 @@ function ChatThread({ match, onBack }) {
     try {
       const updated = await api.confirmDate(invId, confirmedTime);
       setDateInvitations((prev) => prev.map((inv) => (inv.id === invId ? updated : inv)));
-      notifyThem("Date confirmed", `${myName} picked ${longDay(confirmedTime.date)} · ${confirmedTime.time}. The chat is open.`, "date");
+      notifyThem("Date confirmed", `${myName} picked ${longDay(confirmedTime.date)} · ${confirmedTime.time}.`, "date");
     } catch (err) {
       console.error("Confirm failed:", err);
     }
@@ -817,9 +908,31 @@ function ChatThread({ match, onBack }) {
     }
   };
 
-  const formatTime = (ts) => {
-    const d = new Date(ts);
-    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const formatTime = (ts) => new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+  // Messages and date cards interleaved by time
+  const timeline = useMemo(() => {
+    const items = messages.map((m) => ({ ...m, _type: "message" }));
+    for (const inv of [confirmedDate, openInvite]) {
+      if (inv) items.push({ ...inv, _type: "date", timestamp: new Date(inv.created_at).getTime() });
+    }
+    return items.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+  }, [messages, confirmedDate, openInvite]);
+
+  const chip = (extra = {}) => ({
+    display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 14px", borderRadius: 9999, fontSize: 13, fontWeight: 700, fontFamily: FONT,
+    background: C.primarySoft, color: C.primary, border: `1.5px solid ${C.primary}`, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0, ...extra,
+  });
+
+  const dateCardProps = {
+    isMale,
+    onRespond: handleRespondDate,
+    onConfirm: handleConfirmDate,
+    onDecline: handleDeclineDate,
+    onCancel: handleCancelDate,
+    meAvatar: state.currentUser?.photos?.[0],
+    themAvatar: profile.photos?.[0],
+    themName: profile.name,
   };
 
   return (
@@ -842,20 +955,27 @@ function ChatThread({ match, onBack }) {
             <p style={{ fontWeight: 700, fontSize: 16, lineHeight: 1, color: C.text, fontFamily: FONT, margin: 0 }}>{profile.name}</p>
             {profile.reliability?.dates > 0 && <div style={{ marginTop: 5 }}><ReliabilityBadge reliability={profile.reliability} /></div>}
           </div>
-          <button onClick={() => setShowReportMenu(true)} style={{ width: 36, height: 36, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: "#FEF2F2", border: "none", cursor: "pointer" }}>
+          <button onClick={() => setShowReportMenu(true)} aria-label="Safety options" style={{ width: 36, height: 36, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: "#FEF2F2", border: "none", cursor: "pointer" }}>
             <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth={2.5}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
           </button>
         </div>
 
-        {/* Match + status banners only during planning — in the chat the confirmed date card says it all */}
-        {!chatOpen && (
         <div style={{ marginTop: 12, borderRadius: 12, padding: "8px 16px", display: "flex", alignItems: "center", gap: 8, background: C.primarySoft }}>
           <span style={{ color: C.primary }}><AgapeCross size={11} strokeWidth={1.5} /></span>
           <p style={{ fontSize: 12, fontWeight: 600, color: C.primary, margin: 0 }}>You matched with {profile.name}{profile.denomination ? ` · ${profile.denomination}` : ""}</p>
         </div>
-        )}
 
-        {chatOpen ? null : openInvite ? (
+        {firstMessageTime && !timerStopped && !chatLocked && timeLeftMs !== null && (
+          <div style={{ marginTop: 8, borderRadius: 12, padding: "8px 16px", display: "flex", alignItems: "center", gap: 8, background: timeLeftMs < 86400000 ? "#FEF2F2" : C.surface }}>
+            <Clock size={14} color={timeLeftMs < 86400000 ? "#EF4444" : C.primary} style={{ flexShrink: 0 }} />
+            <p style={{ fontSize: 12, fontWeight: 600, color: timeLeftMs < 86400000 ? "#EF4444" : C.sub, margin: 0 }}>
+              {isMale
+                ? `${formatTimeLeft(timeLeftMs)} left to plan a date${nudgeSent || match.nudgeAt ? " — she sent a rose (+36h)" : ""}`
+                : `${formatTimeLeft(timeLeftMs)} left${nudgeSent ? " (+36h from your rose)" : " — waiting for him to plan a date"}`}
+            </p>
+          </div>
+        )}
+        {openInvite && (
           <div style={{ marginTop: 8, borderRadius: 12, padding: "8px 16px", display: "flex", alignItems: "center", gap: 8, background: C.surface }}>
             <Calendar size={14} color={C.primary} />
             <p style={{ fontSize: 12, fontWeight: 600, color: C.sub, margin: 0 }}>
@@ -864,177 +984,69 @@ function ChatThread({ match, onBack }) {
                 : (isMale ? "She's free — pick one of her times" : "Times sent — waiting for him to pick one")}
             </p>
           </div>
-        ) : (
-          <div style={{ marginTop: 8, borderRadius: 12, padding: "8px 16px", display: "flex", alignItems: "center", gap: 8, background: C.surface }}>
-            <Calendar size={14} color={C.primary} />
-            <p style={{ fontSize: 12, fontWeight: 600, color: C.sub, margin: 0 }}>The chat opens once your date is set</p>
+        )}
+        {(deadlinePaused || hasVideoCall) && !confirmedDate && !openInvite && (
+          <div style={{ marginTop: 8, borderRadius: 12, padding: "8px 16px", display: "flex", alignItems: "center", gap: 8, background: "#F0FDF4" }}>
+            {hasVideoCall ? <Video size={14} color="#16A34A" /> : <Heart size={14} color="#16A34A" />}
+            <p style={{ fontSize: 12, fontWeight: 600, color: "#16A34A", margin: 0 }}>
+              {hasVideoCall ? "Video call scheduled — no deadline, take your time" : "No time pressure — chat at your own pace"}
+            </p>
+          </div>
+        )}
+        {chatLocked && (
+          <div style={{ marginTop: 8, borderRadius: 12, padding: "8px 16px", display: "flex", alignItems: "center", gap: 8, background: "#FEF2F2" }}>
+            <Lock size={14} color="#EF4444" />
+            <p style={{ fontSize: 12, fontWeight: 600, color: "#EF4444", margin: 0 }}>Chat closed — no date was set in time</p>
+          </div>
+        )}
+        {confirmedDate && !datePassed && (
+          <div style={{ marginTop: 8, borderRadius: 12, padding: "8px 16px", display: "flex", alignItems: "center", gap: 8, background: "#F0FDF4" }}>
+            <CheckCircle size={14} color="#16A34A" />
+            <p style={{ fontSize: 12, fontWeight: 600, color: "#16A34A", margin: 0 }}>
+              Date confirmed{confirmedDate.confirmed_time ? ` · ${longDay(confirmedDate.confirmed_time.date)} · ${confirmedDate.confirmed_time.time}` : ""}
+            </p>
           </div>
         )}
       </div>
 
-      {!chatOpen ? (
-      <>
-        <div style={{ flex: 1, minHeight: 0, overflowY: "auto", WebkitOverflowScrolling: "touch", padding: "20px 16px 32px", display: "flex", flexDirection: "column", gap: 14 }}>
+      {/* Timeline */}
+      <div style={{ flex: 1, minHeight: 0, overflowY: "auto", WebkitOverflowScrolling: "touch", padding: "16px 16px 24px", display: "flex", flexDirection: "column", gap: 12 }}>
+        {timeline.length === 0 && !lastDeclined && (
           <div style={{ borderRadius: 20, padding: "18px 16px", background: C.primarySoft, border: `1.5px solid ${C.primary}` }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-              <Calendar size={18} color={C.primary} />
-              <p style={{ fontSize: 15, fontWeight: 700, color: C.text, fontFamily: FONT, margin: 0 }}>
-                {isMale ? "Plan your first date" : `${profile.name} is planning your date`}
-              </p>
-            </div>
+            <p style={{ fontSize: 15, fontWeight: 700, color: C.text, fontFamily: FONT, margin: "0 0 6px" }}>Say hello to {profile.name}</p>
             <p style={{ fontSize: 13, color: C.sub, fontFamily: FONT, lineHeight: 1.55, margin: 0 }}>
               {isMale
-                ? "No small talk on Agape. You plan the date — what, where and the dress code. She tells you when she's free, you pick one of her times, and the chat opens."
-                : "No small talk on Agape. He plans the date — what, where and the dress code. You say when you're free, he picks one of your times, and the chat opens."}
+                ? "Once the chat starts you have 5 days to plan a date. She says when she's free, you pick one of her times."
+                : "Once the chat starts he has 5 days to plan a date. Send him a rose if you'd love to go — it gives him extra time."}
             </p>
           </div>
+        )}
 
-          {match.lastMessage?.isComment && (
-            <div style={{ borderRadius: 16, padding: "12px 14px", background: C.card, border: `1px solid ${C.border}`, display: "flex", gap: 10, alignItems: "center" }}>
-              <MessageCircle size={18} color={C.primary} style={{ flexShrink: 0 }} />
-              <p style={{ fontSize: 13, color: C.text, fontFamily: FONT, margin: 0, lineHeight: 1.45 }}>
-                {match.lastMessage.sender === currentUserId ? (
-                  <>Your comment on {profile.name}'s {match.lastMessage.targetType === "photo" ? "photo" : match.lastMessage.targetType === "prompt" ? "prompt" : "profile"} will be shown once your date is confirmed.</>
-                ) : (
-                  <><span style={{ fontWeight: 700 }}>{profile.name} {match.lastMessage.isDove ? "sent a Dove with a comment" : "commented"} on your {match.lastMessage.targetType === "photo" ? "photo" : match.lastMessage.targetType === "prompt" ? "prompt" : "profile"}.</span> You'll read it once your date is confirmed.</>
-                )}
-              </p>
-            </div>
-          )}
-
-          {openInvite && (
-            <DateCard
-              invitation={openInvite}
-              isMe={openInvite.from_user === currentUserId}
-              isMale={isMale}
-              onRespond={handleRespondDate}
-              onConfirm={handleConfirmDate}
-              onDecline={handleDeclineDate}
-              onCancel={handleCancelDate}
-              meAvatar={state.currentUser?.photos?.[0]}
-              themAvatar={profile.photos?.[0]}
-              themName={profile.name}
-              pickerOpen={pickerOpen}
-              onPickerOpenChange={setPickerOpen}
-            />
-          )}
-
-          {lastDeclined && (
-            <div style={{ borderRadius: 16, padding: "14px 16px", background: "#FEF2F2" }}>
-              <p style={{ fontSize: 13, fontWeight: 700, color: "#EF4444", fontFamily: FONT, margin: "0 0 4px 0" }}>
-                {isMale ? "She passed on this plan" : "You passed on this plan"}
-              </p>
-              <p style={{ fontSize: 12, color: C.sub, fontFamily: FONT, margin: 0 }}>
-                {isMale
-                  ? (lastDeclined.decline_reasons?.length ? lastDeclined.decline_reasons.join(" · ") : "Try something different.")
-                  : "He can propose something new."}
-              </p>
-            </div>
-          )}
-
-          {!isMale && !openInvite && (
-            <p style={{ fontSize: 13, color: C.sub, textAlign: "center", fontFamily: FONT, margin: "4px 0 0" }}>
-              His plan will show up right here.
+        {lastDeclined && (
+          <div style={{ borderRadius: 16, padding: "14px 16px", background: "#FEF2F2" }}>
+            <p style={{ fontSize: 13, fontWeight: 700, color: "#EF4444", fontFamily: FONT, margin: "0 0 4px 0" }}>
+              {isMale ? "She passed on this plan" : "You passed on this plan"}
             </p>
-          )}
-        </div>
+            <p style={{ fontSize: 12, color: C.sub, fontFamily: FONT, margin: 0 }}>
+              {isMale
+                ? (lastDeclined.decline_reasons?.length ? lastDeclined.decline_reasons.join(" · ") : "Try something different.")
+                : "He can propose something new."}
+            </p>
+          </div>
+        )}
 
-        {/* Primary action stays pinned at the bottom, like the compose bar */}
-        {(() => {
-          const cta = { width: "100%", padding: "16px 0", borderRadius: 16, fontSize: 16, fontWeight: 700, fontFamily: FONT, background: C.primary, color: "white", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10 };
-          let button = null;
-          if (isMale && !openInvite) {
-            button = <button onClick={() => { track("plan_date_tapped"); setShowDateBuilder(true); }} style={cta}><Calendar size={18} color="white" />{lastDeclined ? "Plan another date" : "Plan a Date"}</button>;
-          } else if (!isMale && openInvite?.status === "pending") {
-            button = <button onClick={() => { track("date_picker_opened"); setPickerOpen(true); }} style={cta}><Calendar size={18} color="white" />When I'm free</button>;
-          } else if (isMale && openInvite?.status === "responded") {
-            button = <button onClick={() => { track("date_confirm_picker_opened"); setPickerOpen(true); }} style={cta}><Calendar size={18} color="white" />Pick a time</button>;
-          } else if (!isMale && openInvite?.status === "responded") {
-            button = <button onClick={() => { track("date_times_edit_opened"); setPickerOpen(true); }} style={{ ...cta, background: C.surface, color: C.text }}><Calendar size={18} color={C.primary} />Change my times</button>;
+        {timeline.map((item) => {
+          if (item._type === "date") {
+            return <DateCard key={`date-${item.id}`} invitation={item} isMe={item.from_user === currentUserId} {...dateCardProps} />;
           }
-          if (!button) return null;
-          return (
-            <div style={{ flexShrink: 0, padding: "12px 16px calc(14px + env(safe-area-inset-bottom, 0px))", background: C.card, borderTop: `1px solid ${C.border}` }}>
-              {button}
-            </div>
-          );
-        })()}
-      </>
-      ) : (
-      <>
-      <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "16px 16px 24px", display: "flex", flexDirection: "column", gap: 12 }}>
-        <DateCard
-          invitation={confirmedDate}
-          isMe={confirmedDate.from_user === currentUserId}
-          isMale={isMale}
-          onRespond={handleRespondDate}
-          onConfirm={handleConfirmDate}
-          onDecline={handleDeclineDate}
-          meAvatar={state.currentUser?.photos?.[0]}
-          themAvatar={profile.photos?.[0]}
-          themName={profile.name}
-        />
-
-        {datePassed && myRating === null && !openInvite && (
-          <div style={{ borderRadius: 20, padding: "16px", background: C.primarySoft, border: `1.5px solid ${C.primary}` }}>
-            <p style={{ fontSize: 15, fontWeight: 700, color: C.text, fontFamily: FONT, margin: "0 0 4px" }}>Did {profile.name} show up?</p>
-            <p style={{ fontSize: 12, color: C.sub, fontFamily: FONT, margin: "0 0 12px", lineHeight: 1.5 }}>Your answer is shown on {profile.name}'s profile as a reliability score — it keeps Agape honest.</p>
-            <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={() => handleRate(true)} disabled={rating} style={{ flex: 1, padding: "12px 0", borderRadius: 12, fontSize: 14, fontWeight: 700, fontFamily: FONT, background: GREEN, color: "white", border: "none", cursor: "pointer" }}>Yes, we met</button>
-              <button onClick={() => handleRate(false)} disabled={rating} style={{ flex: 1, padding: "12px 0", borderRadius: 12, fontSize: 14, fontWeight: 700, fontFamily: FONT, background: "#FEF2F2", color: "#EF4444", border: "1.5px solid #FCA5A5", cursor: "pointer" }}>No-show</button>
-            </div>
-          </div>
-        )}
-        {datePassed && myRating && (
-          <div style={{ borderRadius: 20, padding: 16, background: myRating.showed_up ? "#F0FDF4" : "#FEF2F2", border: `1.5px solid ${myRating.showed_up ? "#BBF7D0" : "#FECACA"}` }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-              {myRating.showed_up ? <CheckCircle size={18} color="#16A34A" /> : <Ban size={18} color="#EF4444" />}
-              <p style={{ fontSize: 15, fontWeight: 700, color: myRating.showed_up ? "#166534" : "#B91C1C", fontFamily: FONT, margin: 0 }}>
-                {myRating.showed_up ? `Great — you met ${profile.name}` : `You reported ${profile.name} as a no-show`}
-              </p>
-            </div>
-            <p style={{ fontSize: 12, color: C.sub, fontFamily: FONT, margin: "0 0 12px", lineHeight: 1.5 }}>
-              {myRating.showed_up
-                ? "It now counts towards their reliability score. Keep chatting here, or plan the next one."
-                : "Sorry that happened. It now shows on their profile so others know. You can unmatch below."}
-            </p>
-            <div style={{ display: "flex", gap: 8 }}>
-              {myRating.showed_up && isMale && !openInvite && (
-                <button onClick={() => { track("plan_date_tapped", { again: true }); setShowDateBuilder(true); }} style={{ flex: 1, padding: "11px 0", borderRadius: 12, fontSize: 13, fontWeight: 700, fontFamily: FONT, background: C.primary, color: "white", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-                  <Calendar size={14} color="white" /> Plan another date
-                </button>
-              )}
-              <button onClick={() => setShowReportMenu(true)} style={{ flex: 1, padding: "11px 0", borderRadius: 12, fontSize: 13, fontWeight: 700, fontFamily: FONT, background: "white", color: myRating.showed_up ? C.sub : "#EF4444", border: `1.5px solid ${myRating.showed_up ? C.border : "#FECACA"}`, cursor: "pointer" }}>
-                {myRating.showed_up ? "Unmatch or report" : "Unmatch"}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {openInvite && (
-          <DateCard
-            invitation={openInvite}
-            isMe={openInvite.from_user === currentUserId}
-            isMale={isMale}
-            onRespond={handleRespondDate}
-            onConfirm={handleConfirmDate}
-            onDecline={handleDeclineDate}
-            onCancel={handleCancelDate}
-            meAvatar={state.currentUser?.photos?.[0]}
-            themAvatar={profile.photos?.[0]}
-            themName={profile.name}
-          />
-        )}
-
-        {messages.map((item) => {
           const isMe = item.sender === currentUserId;
           const isDoveMsg = item.text?.startsWith("🕊️ ");
           const displayText = isDoveMsg ? item.text.slice(3) : item.text;
           return (
             <div key={item.id} style={{ display: "flex", flexDirection: "column", alignItems: isMe ? "flex-end" : "flex-start" }}>
               {isDoveMsg && (
-                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4, marginLeft: isMe ? 0 : 32, marginRight: isMe ? 0 : 0, padding: "4px 10px", background: C.primarySoft, borderRadius: 10, alignSelf: isMe ? "flex-end" : "flex-start" }}>
-                  <span style={{ fontSize: 12 }}>🕊️</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4, marginLeft: isMe ? 0 : 32, padding: "4px 10px", background: C.primarySoft, borderRadius: 10, alignSelf: isMe ? "flex-end" : "flex-start" }}>
+                  <DoveIcon size={12} color={C.primary} strokeWidth={2.2} />
                   <span style={{ fontSize: 11, fontWeight: 700, color: C.primary, fontFamily: FONT }}>Sent with a Dove</span>
                 </div>
               )}
@@ -1071,29 +1083,156 @@ function ChatThread({ match, onBack }) {
             </div>
           );
         })}
+
+        {datePassed && myRating === null && !openInvite && (
+          <div style={{ borderRadius: 20, padding: "16px", background: C.primarySoft, border: `1.5px solid ${C.primary}` }}>
+            <p style={{ fontSize: 15, fontWeight: 700, color: C.text, fontFamily: FONT, margin: "0 0 4px" }}>Did {profile.name} show up?</p>
+            <p style={{ fontSize: 12, color: C.sub, fontFamily: FONT, margin: "0 0 12px", lineHeight: 1.5 }}>Your answer is shown on {profile.name}'s profile as a reliability score — it keeps Agape honest.</p>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={() => handleRate(true)} disabled={rating} style={{ flex: 1, padding: "12px 0", borderRadius: 12, fontSize: 14, fontWeight: 700, fontFamily: FONT, background: GREEN, color: "white", border: "none", cursor: "pointer" }}>Yes, we met</button>
+              <button onClick={() => handleRate(false)} disabled={rating} style={{ flex: 1, padding: "12px 0", borderRadius: 12, fontSize: 14, fontWeight: 700, fontFamily: FONT, background: "#FEF2F2", color: "#EF4444", border: "1.5px solid #FCA5A5", cursor: "pointer" }}>No-show</button>
+            </div>
+          </div>
+        )}
+        {datePassed && myRating && (
+          <div style={{ borderRadius: 20, padding: 16, background: myRating.showed_up ? "#F0FDF4" : "#FEF2F2", border: `1.5px solid ${myRating.showed_up ? "#BBF7D0" : "#FECACA"}` }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+              {myRating.showed_up ? <CheckCircle size={18} color="#16A34A" /> : <Ban size={18} color="#EF4444" />}
+              <p style={{ fontSize: 15, fontWeight: 700, color: myRating.showed_up ? "#166534" : "#B91C1C", fontFamily: FONT, margin: 0 }}>
+                {myRating.showed_up ? `Great — you met ${profile.name}` : `You reported ${profile.name} as a no-show`}
+              </p>
+            </div>
+            <p style={{ fontSize: 12, color: C.sub, fontFamily: FONT, margin: "0 0 12px", lineHeight: 1.5 }}>
+              {myRating.showed_up
+                ? "It now counts towards their reliability score. Keep chatting here, or plan the next one."
+                : "Sorry that happened. It now shows on their profile so others know. You can unmatch below."}
+            </p>
+            <div style={{ display: "flex", gap: 8 }}>
+              {myRating.showed_up && isMale && !openInvite && (
+                <button onClick={() => { track("plan_date_tapped", { again: true }); setShowDateBuilder(true); }} style={{ flex: 1, padding: "11px 0", borderRadius: 12, fontSize: 13, fontWeight: 700, fontFamily: FONT, background: C.primary, color: "white", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                  <Calendar size={14} color="white" /> Plan another date
+                </button>
+              )}
+              <button onClick={() => setShowReportMenu(true)} style={{ flex: 1, padding: "11px 0", borderRadius: 12, fontSize: 13, fontWeight: 700, fontFamily: FONT, background: "white", color: myRating.showed_up ? C.sub : "#EF4444", border: `1.5px solid ${myRating.showed_up ? C.border : "#FECACA"}`, cursor: "pointer" }}>
+                {myRating.showed_up ? "Unmatch or report" : "Unmatch"}
+              </button>
+            </div>
+          </div>
+        )}
         <div ref={bottomRef} />
       </div>
 
       {/* Compose */}
-      <div style={{ flexShrink: 0, padding: "12px 16px calc(12px + env(safe-area-inset-bottom, 0px))", background: C.card, borderTop: `1px solid ${C.border}` }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12, borderRadius: 16, padding: "12px 16px", background: C.surface }}>
-          <input
-            style={{ flex: 1, fontSize: 14, background: "transparent", outline: "none", border: "none", color: C.text, fontFamily: FONT }}
-            placeholder={`Message ${profile.name}...`}
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && send()}
-          />
-          <button
-            onClick={send}
-            style={{ width: 32, height: 32, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: text.trim() ? C.primary : C.border, border: "none", cursor: "pointer" }}
-          >
-            <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2.5} strokeLinecap="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" /></svg>
-          </button>
-        </div>
+      <div style={{ flexShrink: 0, padding: "10px 16px calc(12px + env(safe-area-inset-bottom, 0px))", background: C.card, borderTop: `1px solid ${C.border}` }}>
+        {chatLocked ? (
+          <div style={{ textAlign: "center", padding: "12px 0", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+            <Lock size={14} color={C.sub} />
+            <p style={{ fontSize: 13, color: C.sub, fontFamily: FONT, margin: 0 }}>This chat has expired</p>
+          </div>
+        ) : (
+          <>
+            {isMale && (nudgeSent || match.nudgeAt) && !showNudgeExplainer && messages.length <= 5 && (
+              <button onClick={() => setShowNudgeExplainer(true)} style={{ width: "100%", padding: "10px 14px", marginBottom: 8, borderRadius: 14, background: C.primarySoft, border: `1.5px solid ${C.primary}`, cursor: "pointer", textAlign: "center", fontSize: 13, fontWeight: 700, color: C.primary, fontFamily: FONT }}>
+                She sent you a rose — tap to learn what it means
+              </button>
+            )}
+            {showNudgeExplainer && (
+              <div style={{ padding: "14px 16px", marginBottom: 8, borderRadius: 14, background: C.primarySoft, border: `1.5px solid ${C.primary}` }}>
+                <p style={{ fontSize: 13, fontWeight: 700, color: C.primary, fontFamily: FONT, margin: "0 0 6px 0" }}>What does the rose mean?</p>
+                <p style={{ fontSize: 12, color: C.text, fontFamily: FONT, lineHeight: 1.5, margin: "0 0 8px 0" }}>
+                  She's letting you know she'd love to go on a date with you — and you got an extra 36 hours to plan something special.
+                </p>
+                <button onClick={() => setShowNudgeExplainer(false)} style={{ fontSize: 12, fontWeight: 600, color: C.primary, background: "none", border: "none", cursor: "pointer", padding: 0 }}>Got it</button>
+              </div>
+            )}
+
+            {showVideoCallScheduler && (
+              <div style={{ padding: "14px 16px", marginBottom: 8, borderRadius: 14, background: "#F0FDF4", border: "1.5px solid #22C55E" }}>
+                <p style={{ fontSize: 13, fontWeight: 700, color: "#16A34A", fontFamily: FONT, margin: "0 0 4px 0" }}>Schedule a video call</p>
+                <p style={{ fontSize: 12, color: C.sub, fontFamily: FONT, margin: "0 0 12px 0" }}>Pick a day and time — the deadline timer stops.</p>
+                <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 8, marginBottom: 8 }}>
+                  {vcDays.map((d) => (
+                    <button
+                      key={d.date}
+                      onClick={() => setVcDay(vcDay?.date === d.date ? null : d)}
+                      style={{ flexShrink: 0, padding: "10px 14px", borderRadius: 14, cursor: "pointer", textAlign: "center", minWidth: 60, border: vcDay?.date === d.date ? "2px solid #22C55E" : `1.5px solid ${C.border}`, background: vcDay?.date === d.date ? "#DCFCE7" : "white" }}
+                    >
+                      <span style={{ fontSize: 11, color: C.sub, display: "block", fontWeight: 600 }}>{d.dayName}</span>
+                      <span style={{ fontSize: 18, fontWeight: 700, color: C.text, display: "block" }}>{d.dayNum}</span>
+                      <span style={{ fontSize: 10, color: C.sub }}>{d.month}</span>
+                    </button>
+                  ))}
+                </div>
+                {vcDay && (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12, alignItems: "center" }}>
+                    {TIME_SLOTS.map((t) => (
+                      <button key={t} onClick={() => setVcTime(vcTime === t ? null : t)} style={{ padding: "8px 16px", borderRadius: 10, cursor: "pointer", fontSize: 14, fontWeight: 600, color: vcTime === t ? "white" : C.text, fontFamily: FONT, border: vcTime === t ? "2px solid #22C55E" : `1.5px solid ${C.border}`, background: vcTime === t ? "#22C55E" : "white" }}>
+                        {t}
+                      </button>
+                    ))}
+                    <input
+                      type="time"
+                      onChange={(e) => { if (e.target.value) setVcTime(e.target.value); }}
+                      style={{ padding: "8px 12px", borderRadius: 10, fontSize: 14, fontWeight: 600, fontFamily: FONT, color: C.text, border: `1.5px solid ${C.border}`, background: "white", outline: "none", width: 100 }}
+                    />
+                  </div>
+                )}
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button onClick={() => { setShowVideoCallScheduler(false); setVcDay(null); setVcTime(null); }} style={{ flex: 1, padding: "10px 0", borderRadius: 12, fontSize: 13, fontWeight: 600, background: C.surface, color: C.sub, border: "none", cursor: "pointer" }}>Cancel</button>
+                  <button onClick={handleVideoCall} disabled={!vcDay || !vcTime} style={{ flex: 1, padding: "10px 0", borderRadius: 12, fontSize: 13, fontWeight: 700, background: vcDay && vcTime ? "#22C55E" : C.border, color: "white", border: "none", cursor: vcDay && vcTime ? "pointer" : "default" }}>Schedule</button>
+                </div>
+              </div>
+            )}
+
+            {/* Action chips */}
+            <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 8, marginBottom: 2, scrollbarWidth: "none" }}>
+              {isMale && !openInvite && !confirmedDate && (
+                <button aria-label="Plan a date" onClick={() => { track("plan_date_tapped"); setShowDateBuilder(true); }} style={chip({ background: C.primary, color: "white" })}>
+                  <Calendar size={14} color="white" /> {lastDeclined ? "Plan another date" : "Plan a Date"}
+                </button>
+              )}
+              {!isMale && !nudgeSent && !openInvite && !confirmedDate && (
+                <button aria-label="Send a rose" onClick={handleNudge} disabled={nudgeSending} style={chip()}>
+                  <Flower2 size={14} color={C.primary} /> {nudgeSending ? "Sending..." : "Send him a rose"}
+                </button>
+              )}
+              {!isMale && nudgeSent && !openInvite && !confirmedDate && (
+                <span style={chip({ background: C.surface, border: `1.5px solid ${C.border}`, color: C.sub, cursor: "default" })}>
+                  <Flower2 size={14} color={C.sub} /> Rose sent · he has extra time
+                </span>
+              )}
+              {!hasVideoCall && !showVideoCallScheduler && (firstMessageTime || nudgeSent || match.nudgeAt) && (
+                <button aria-label="Video call" onClick={() => { track("video_call_scheduler_opened"); setShowVideoCallScheduler(true); }} style={chip({ background: "#F0FDF4", color: "#16A34A", border: "1.5px solid #22C55E" })}>
+                  <Video size={14} color="#16A34A" /> Video call
+                </button>
+              )}
+              {hasVideoCall && (
+                <button onClick={() => { track("video_call_joined"); window.open(`https://meet.ffmuc.net/agape-${match.id.slice(0, 8)}`, "_blank"); }} style={chip({ background: "#22C55E", color: "white", border: "1.5px solid #22C55E" })}>
+                  <Video size={14} color="white" /> Join video call
+                </button>
+              )}
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: 12, borderRadius: 16, padding: "12px 16px", background: C.surface }}>
+              <input
+                style={{ flex: 1, fontSize: 14, background: "transparent", outline: "none", border: "none", color: C.text, fontFamily: FONT }}
+                placeholder={`Message ${profile.name}...`}
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && send()}
+              />
+              <button
+                onClick={send}
+                style={{ width: 32, height: 32, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: text.trim() ? C.primary : C.border, border: "none", cursor: "pointer" }}
+              >
+                <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2.5} strokeLinecap="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" /></svg>
+              </button>
+            </div>
+          </>
+        )}
       </div>
-      </>
-      )}
+
+      <TutorialOverlay screen="chat" />
 
       {/* Date Builder Sheet */}
       {showDateBuilder && (
