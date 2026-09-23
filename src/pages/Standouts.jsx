@@ -90,6 +90,13 @@ export default function Standouts() {
     return () => clearTimeout(t);
   }, [idx]);
 
+  // Hooks must come before any early return
+  const isPremium = state.currentUser?.subscriptionStatus === "active";
+  const [standoutLikesLeft, setStandoutLikesLeft] = useState(getDovesRemaining(isPremium));
+  useEffect(() => {
+    setStandoutLikesLeft(getDovesRemaining(isPremium));
+  }, [isPremium]);
+
   if (doveSentData) {
     const nextWed = new Date(now);
     nextWed.setDate(now.getDate() + ((3 - now.getDay() + 7) % 7 || 7));
@@ -135,13 +142,6 @@ export default function Standouts() {
 
   const photos = profile.photos || [];
   const prompts = (profile.prompts || []).filter((p) => p.prompt && p.answer);
-
-  const isPremium = state.currentUser?.subscriptionStatus === "active";
-  const [standoutLikesLeft, setStandoutLikesLeft] = useState(getDovesRemaining(isPremium));
-
-  useEffect(() => {
-    setStandoutLikesLeft(getDovesRemaining(isPremium));
-  }, [isPremium]);
 
   const handleLike = async (targetType, targetIndex, comment = null) => {
     if (standoutLikesLeft <= 0) return;
