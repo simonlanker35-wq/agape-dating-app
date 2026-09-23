@@ -1184,8 +1184,8 @@ function ChatThread({ match, onBack }) {
               </div>
             )}
 
-            {/* Action chips */}
-            <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 8, marginBottom: 2, scrollbarWidth: "none" }}>
+            {/* Action chips — Plan a Date and Video call side by side */}
+            <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 8, marginBottom: 2, scrollbarWidth: "none", alignItems: "center" }}>
               {isMale && !openInvite && !confirmedDate && (
                 <button aria-label="Plan a date" onClick={() => { track("plan_date_tapped"); setShowDateBuilder(true); }} style={chip({ background: C.primary, color: "white" })}>
                   <Calendar size={14} color="white" /> {lastDeclined ? "Plan another date" : "Plan a Date"}
@@ -1201,7 +1201,7 @@ function ChatThread({ match, onBack }) {
                   <Flower2 size={14} color={C.sub} /> Rose sent · he has extra time
                 </span>
               )}
-              {!hasVideoCall && !showVideoCallScheduler && (firstMessageTime || nudgeSent || match.nudgeAt) && (
+              {!hasVideoCall && !showVideoCallScheduler && (
                 <button aria-label="Video call" onClick={() => { track("video_call_scheduler_opened"); setShowVideoCallScheduler(true); }} style={chip({ background: "#F0FDF4", color: "#16A34A", border: "1.5px solid #22C55E" })}>
                   <Video size={14} color="#16A34A" /> Video call
                 </button>
