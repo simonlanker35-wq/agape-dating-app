@@ -7,6 +7,7 @@ import Matches from "./pages/Matches";
 import Standouts from "./pages/Standouts";
 import Profile from "./pages/Profile";
 import PasswordInput from "./components/PasswordInput";
+import TutorialOverlay from "./components/TutorialOverlay";
 import { useState } from "react";
 import "./App.css";
 
@@ -79,6 +80,7 @@ function AppContent() {
     <div className="app-container">
       <main className="app-main no-header">{renderPage()}</main>
       <Navigation />
+      <TutorialOverlay screen={state.activeTab} />
       <RecoveryModal />
     </div>
   );
