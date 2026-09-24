@@ -24,8 +24,8 @@ export default function FilterSheet({ filters, onApply, onClose }) {
   const [maxDistance, setMaxDistance] = useState(filters.maxDistance ?? 80);
   const [denominations, setDenominations] = useState(filters.denominations || []);
   const [details, setDetails] = useState(filters.details || {});
-  const [openGroup, setOpenGroup] = useState(null);
-  const [showMoreDenoms, setShowMoreDenoms] = useState(() => (filters.denominations || []).some((d) => MORE_DENOMINATIONS.includes(d)));
+  // Popup opened on top of the sheet: { kind: "denoms" } or { kind: "group", label }
+  const [popup, setPopup] = useState(null);
 
   const toggleDenom = (d) => {
     track("filter_denomination_toggled", { denomination: d });
@@ -93,24 +93,14 @@ export default function FilterSheet({ filters, onApply, onClose }) {
                 {d}
               </button>
             ))}
-            {!showMoreDenoms && (() => {
+            {(() => {
               const hidden = denominations.filter((d) => MORE_DENOMINATIONS.includes(d)).length;
               return (
-                <button className={`filter-chip ${hidden > 0 ? "active" : ""}`} onClick={() => setShowMoreDenoms(true)}>
+                <button className={`filter-chip ${hidden > 0 ? "active" : ""}`} onClick={() => setPopup({ kind: "denoms" })}>
                   More{hidden > 0 ? ` · ${hidden}` : ""}
                 </button>
               );
             })()}
-            {showMoreDenoms && MORE_DENOMINATIONS.map((d) => (
-              <button key={d} className={`filter-chip ${denominations.includes(d) ? "active" : ""}`} onClick={() => toggleDenom(d)}>
-                {d}
-              </button>
-            ))}
-            {showMoreDenoms && (
-              <button className="filter-chip" onClick={() => setShowMoreDenoms(false)} style={{ color: "#8C857C" }}>
-                Less
-              </button>
-            )}
           </div>
           {denominations.length === 0 && <p className="filter-hint">No selection = all denominations</p>}
         </div>
@@ -120,48 +110,84 @@ export default function FilterSheet({ filters, onApply, onClose }) {
           <div className="filter-chips">
             {FILTER_GROUPS.map((group) => {
               const count = group.keys.reduce((n, k) => n + (details[k] || []).length, 0);
-              const open = openGroup === group.label;
               return (
                 <button
                   key={group.label}
-                  className={`filter-chip ${open || count > 0 ? "active" : ""}`}
-                  onClick={() => setOpenGroup(open ? null : group.label)}
+                  className={`filter-chip ${count > 0 ? "active" : ""}`}
+                  onClick={() => setPopup({ kind: "group", label: group.label })}
                 >
                   {group.label}{count > 0 ? ` · ${count}` : ""}
                 </button>
               );
             })}
           </div>
-
-          {openGroup && (() => {
-            const group = FILTER_GROUPS.find((g) => g.label === openGroup);
-            return (
-              <div style={{ marginTop: 12, padding: "12px 12px 4px", borderRadius: 12, background: "#F4F2EE" }}>
-                {group.keys.map((key) => {
-                  const field = DETAIL_FIELDS.find((f) => f.key === key);
-                  const selected = details[key] || [];
-                  return (
-                    <div key={key} style={{ marginBottom: 10 }}>
-                      <p className="filter-hint" style={{ marginTop: 0, marginBottom: 6 }}>{field.label}</p>
-                      <div className="filter-chips">
-                        {field.options.map((opt) => (
-                          <button key={opt} className={`filter-chip ${selected.includes(opt) ? "active" : ""}`} onClick={() => toggleDetail(key, opt)} style={{ background: selected.includes(opt) ? undefined : "#fff" }}>
-                            {opt}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            );
-          })()}
         </div>
 
         <div className="filter-actions">
           <button className="filter-reset-btn" onClick={handleReset}>Reset</button>
           <button className="filter-apply-btn" onClick={handleApply}>Apply</button>
         </div>
+
+        {popup && (
+          <div className="filter-popup-backdrop" onClick={() => setPopup(null)}>
+            <div className="filter-popup" onClick={(e) => e.stopPropagation()}>
+              {popup.kind === "denoms" && (
+                <>
+                  <div className="filter-popup-title">More denominations</div>
+                  <div className="filter-chips">
+                    {MORE_DENOMINATIONS.map((d) => (
+                      <button
+                        key={d}
+                        className={`filter-chip ${denominations.includes(d) ? "active" : ""}`}
+                        onClick={() => { toggleDenom(d); setPopup(null); }}
+                      >
+                        {d}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+              {popup.kind === "group" && (() => {
+                const group = FILTER_GROUPS.find((g) => g.label === popup.label);
+                const single = group.keys.length === 1;
+                return (
+                  <>
+                    <div className="filter-popup-title">{group.label}</div>
+                    {group.keys.map((key) => {
+                      const field = DETAIL_FIELDS.find((f) => f.key === key);
+                      const selected = details[key] || [];
+                      return (
+                        <div key={key} style={{ marginBottom: single ? 0 : 12 }}>
+                          {!single && <p className="filter-hint" style={{ marginTop: 0, marginBottom: 6, textAlign: "left" }}>{field.label}</p>}
+                          <div className="filter-chips">
+                            {field.options.map((opt) => (
+                              <button
+                                key={opt}
+                                className={`filter-chip ${selected.includes(opt) ? "active" : ""}`}
+                                onClick={() => {
+                                  toggleDetail(key, opt);
+                                  // Single-question groups close on pick; multi-question groups close once every question has an answer
+                                  const willHave = selected.includes(opt) ? selected.length - 1 : selected.length + 1;
+                                  const othersAnswered = group.keys.filter((k) => k !== key).every((k) => (details[k] || []).length > 0);
+                                  if (single || (willHave > 0 && othersAnswered)) setPopup(null);
+                                }}
+                              >
+                                {opt}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {!single && (
+                      <button className="filter-popup-done" onClick={() => setPopup(null)}>Done</button>
+                    )}
+                  </>
+                );
+              })()}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

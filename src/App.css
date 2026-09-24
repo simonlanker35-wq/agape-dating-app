@@ -1735,6 +1735,46 @@ input[type="range"] {
   animation: sheetSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+.filter-popup-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 320;
+  background: rgba(0,0,0,0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  animation: overlayFadeIn 0.15s ease;
+}
+
+.filter-popup {
+  width: 100%;
+  max-width: 340px;
+  background: var(--bg);
+  border-radius: 18px;
+  padding: 18px 18px 16px;
+  box-shadow: 0 18px 50px rgba(0,0,0,0.22);
+}
+
+.filter-popup-title {
+  font-size: 15px;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.filter-popup-done {
+  margin-top: 4px;
+  width: 100%;
+  padding: 11px;
+  border: none;
+  border-radius: 12px;
+  background: #111111;
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+}
+
 .filter-header,
 .report-header {
   display: flex;
