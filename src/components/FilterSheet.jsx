@@ -14,6 +14,7 @@ const FILTER_GROUPS = [
   { label: "Children", keys: ["hasChildren", "wantsChildren"] },
   { label: "Looking for", keys: ["lookingFor"] },
   { label: "Church attendance", keys: ["churchAttendance"] },
+  { label: "Prayer", keys: ["prayer"] },
   { label: "Drinking", keys: ["drinking"] },
   { label: "Smoking", keys: ["smoking"] },
   { label: "Open to relocating", keys: ["relocate"] },

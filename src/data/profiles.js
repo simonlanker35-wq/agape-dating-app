@@ -386,6 +386,7 @@ const DETAIL_FIELDS = [
   { key: "hasChildren", label: "Has children", options: ["No", "Yes"] },
   { key: "lookingFor", label: "Looking for", options: ["Marriage", "A serious relationship", "Not sure yet"] },
   { key: "churchAttendance", label: "Church attendance", options: ["Every week", "A few times a month", "On special occasions", "Rarely"] },
+  { key: "prayer", label: "Prayer", options: ["Daily", "A few times a week", "Sometimes", "Rarely"] },
   { key: "exercise", label: "Exercise", options: ["Daily", "Almost daily", "Sometimes", "Never"] },
   { key: "drinking", label: "Drinking", options: ["Not for me", "Sober curious", "On special occasions", "Socially", "Most nights"] },
   { key: "smoking", label: "Smoking", options: ["Non-smoker", "Social smoker", "Smoker when drinking", "Smoker"] },

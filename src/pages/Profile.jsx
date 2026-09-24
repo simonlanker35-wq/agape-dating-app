@@ -8,10 +8,11 @@ const DETAIL_ROWS = [
   { label: "Children", keys: ["wantsChildren", "hasChildren"] },
   { label: "Looking for", keys: ["lookingFor"] },
   { label: "Church attendance", keys: ["churchAttendance"] },
+  { label: "Prayer", keys: ["prayer"] },
   { label: "Education", keys: ["education"] },
   { label: "Open to relocating", keys: ["relocate"] },
 ];
-const DETAIL_WEIGHTS = { wantsChildren: 4, hasChildren: 3, lookingFor: 4, churchAttendance: 4, education: 2, relocate: 3 };
+const DETAIL_WEIGHTS = { wantsChildren: 4, hasChildren: 3, lookingFor: 3, churchAttendance: 3, prayer: 3, education: 2, relocate: 2 };
 
 // Profile completeness: photos 30, prompts 30, interests 10, location 5, denomination 5, details 20 = 100
 function computeCompleteness(u) {
