@@ -23,6 +23,7 @@ export default function FilterSheet({ filters, onApply, onClose }) {
   const [maxDistance, setMaxDistance] = useState(filters.maxDistance ?? 80);
   const [denominations, setDenominations] = useState(filters.denominations || []);
   const [details, setDetails] = useState(filters.details || {});
+  const [openGroup, setOpenGroup] = useState(null);
 
   const toggleDenom = (d) => {
     track("filter_denomination_toggled", { denomination: d });
@@ -94,28 +95,48 @@ export default function FilterSheet({ filters, onApply, onClose }) {
           {denominations.length === 0 && <p className="filter-hint">No selection = all denominations</p>}
         </div>
 
-        {FILTER_GROUPS.map((group) => (
-          <div className="filter-section" key={group.label}>
-            <div className="filter-label">{group.label}</div>
-            {group.keys.map((key) => {
-              const field = DETAIL_FIELDS.find((f) => f.key === key);
-              const selected = details[key] || [];
+        <div className="filter-section">
+          <div className="filter-label">More</div>
+          <div className="filter-chips">
+            {FILTER_GROUPS.map((group) => {
+              const count = group.keys.reduce((n, k) => n + (details[k] || []).length, 0);
+              const open = openGroup === group.label;
               return (
-                <div key={key} style={{ marginBottom: group.keys.length > 1 ? 10 : 0 }}>
-                  {group.keys.length > 1 && <p className="filter-hint" style={{ marginTop: 0, marginBottom: 6 }}>{field.label}</p>}
-                  <div className="filter-chips">
-                    {field.options.map((opt) => (
-                      <button key={opt} className={`filter-chip ${selected.includes(opt) ? "active" : ""}`} onClick={() => toggleDetail(key, opt)}>
-                        {opt}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                <button
+                  key={group.label}
+                  className={`filter-chip ${open || count > 0 ? "active" : ""}`}
+                  onClick={() => setOpenGroup(open ? null : group.label)}
+                >
+                  {group.label}{count > 0 ? ` · ${count}` : ""}
+                </button>
               );
             })}
-            {group.keys.every((k) => !(details[k] || []).length) && <p className="filter-hint">No selection = show everyone</p>}
           </div>
-        ))}
+
+          {openGroup && (() => {
+            const group = FILTER_GROUPS.find((g) => g.label === openGroup);
+            return (
+              <div style={{ marginTop: 12, padding: "12px 12px 4px", borderRadius: 12, background: "#F4F2EE" }}>
+                {group.keys.map((key) => {
+                  const field = DETAIL_FIELDS.find((f) => f.key === key);
+                  const selected = details[key] || [];
+                  return (
+                    <div key={key} style={{ marginBottom: 10 }}>
+                      <p className="filter-hint" style={{ marginTop: 0, marginBottom: 6 }}>{field.label}</p>
+                      <div className="filter-chips">
+                        {field.options.map((opt) => (
+                          <button key={opt} className={`filter-chip ${selected.includes(opt) ? "active" : ""}`} onClick={() => toggleDetail(key, opt)} style={{ background: selected.includes(opt) ? undefined : "#fff" }}>
+                            {opt}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
+        </div>
 
         <div className="filter-actions">
           <button className="filter-reset-btn" onClick={handleReset}>Reset</button>
