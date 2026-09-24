@@ -5,6 +5,7 @@ import { ChevronRight, ChevronLeft, Sparkles, Church, X, Check, Plus, Camera, Zo
 import AgapeCross from "../components/AgapeCross";
 import LocationPicker from "../components/LocationPicker";
 import PasswordInput from "../components/PasswordInput";
+import NumberField from "../components/NumberField";
 import { downscaleDataUrl, savePhotoOriginals } from "../services/api";
 import { track } from "../services/posthog";
 
@@ -1337,17 +1338,10 @@ export default function Onboarding() {
       <Wrap {...wrapProps}>
         <h2 style={{ color: S.text, fontSize: 30, fontWeight: 800, marginBottom: 8, fontFamily: "'Outfit', system-ui, sans-serif" }}>Distance preference</h2>
         <p style={{ color: S.sub, fontSize: 14, marginBottom: 40 }}>How far away are you willing to search?</p>
-        <div style={{ textAlign: "center", marginBottom: 24 }}>
-          <span style={{ fontSize: 56, fontWeight: 800, color: S.text, fontFamily: "'Outfit', system-ui, sans-serif" }}>{form.maxDistance}</span>
-          <span style={{ fontSize: 20, fontWeight: 600, color: S.sub, marginLeft: 4 }}>km</span>
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
+          <NumberField dark size="lg" ariaLabel="Maximum distance" unit="km" value={form.maxDistance} min={1} max={1000} onChange={(n) => setForm({ ...form, maxDistance: n })} />
         </div>
-        <div style={{ padding: "0 4px", marginBottom: 32 }}>
-          <input
-            type="range" min={1} max={200} step={1} value={form.maxDistance}
-            onChange={(e) => setForm({ ...form, maxDistance: parseInt(e.target.value) })}
-            className="distance-slider-onboarding"
-          />
-        </div>
+        <p style={{ color: S.sub, fontSize: 13, textAlign: "center", marginBottom: 32 }}>Type how far you would travel. You can change this any time.</p>
         <BigBtn onClick={goNext}>Continue</BigBtn>
       </Wrap>
     );

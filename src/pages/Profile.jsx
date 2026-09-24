@@ -39,6 +39,7 @@ function computeCompleteness(u) {
 }
 import AgapeCross from "../components/AgapeCross";
 import LocationPicker from "../components/LocationPicker";
+import NumberField from "../components/NumberField";
 import { redirectToCheckout, getSubscriptionStatus } from "../services/stripe";
 import { getDovesRemaining } from "../services/limits";
 import { track } from "../services/posthog";
@@ -644,11 +645,10 @@ function SettingsScreen({ onBack, initialSection = null }) {
               <div>
                 <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: C.sub, padding: "0 4px", marginBottom: 8 }}>Distance</p>
                 <div style={{ borderRadius: 16, overflow: "hidden", background: C.card, padding: 16 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 12 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <span style={{ fontSize: 14, fontWeight: 500, color: C.text }}>Maximum distance</span>
-                    <span style={{ fontSize: 14, fontWeight: 700, color: C.primary }}>{distanceVal} km</span>
+                    <NumberField ariaLabel="Maximum distance" unit="km" value={distanceVal} min={1} max={1000} onChange={setDistanceVal} onCommit={(n) => actions.updateProfile({ filters: { ...currentUser?.filters, maxDistance: n } })} />
                   </div>
-                  <input type="range" min={5} max={200} value={distanceVal} onChange={(e) => setDistanceVal(Number(e.target.value))} onMouseUp={() => actions.updateProfile({ filters: { ...currentUser?.filters, maxDistance: distanceVal } })} onTouchEnd={() => actions.updateProfile({ filters: { ...currentUser?.filters, maxDistance: distanceVal } })} style={{ width: "100%", accentColor: C.primary }} />
                 </div>
               </div>
               <div>

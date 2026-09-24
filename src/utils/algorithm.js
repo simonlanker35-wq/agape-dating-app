@@ -56,6 +56,12 @@ function engagementScore(profileId, likes) {
 function activityScore(lastActive) {
   if (lastActive === "Just now") return WEIGHTS.recentlyActive;
   if (lastActive === "Today") return WEIGHTS.recentlyActive * 0.6;
+  const t = new Date(lastActive).getTime();
+  if (Number.isFinite(t)) {
+    const age = Date.now() - t;
+    if (age < 60 * 60 * 1000) return WEIGHTS.recentlyActive;
+    if (age < 24 * 60 * 60 * 1000) return WEIGHTS.recentlyActive * 0.6;
+  }
   return 0;
 }
 

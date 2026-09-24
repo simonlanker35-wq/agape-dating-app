@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { X } from "lucide-react";
 import { DETAIL_FIELDS } from "../data/profiles";
+import NumberField from "./NumberField";
 import { track } from "../services/posthog";
 
 const MAIN_DENOMINATIONS = ["Catholic", "Orthodox"];
@@ -21,6 +22,7 @@ const FILTER_GROUPS = [
 ];
 
 export default function FilterSheet({ filters, onApply, onClose }) {
+  const [minAge, setMinAge] = useState(filters.minAge ?? 18);
   const [maxAge, setMaxAge] = useState(filters.maxAge ?? 35);
   const [maxDistance, setMaxDistance] = useState(filters.maxDistance ?? 80);
   const [denominations, setDenominations] = useState(filters.denominations || []);
@@ -46,12 +48,14 @@ export default function FilterSheet({ filters, onApply, onClose }) {
 
   const handleApply = () => {
     track("filter_applied", { maxAge, maxDistance, denominations, details: Object.keys(details) });
-    onApply({ minAge: 18, maxAge, maxDistance, denominations, details });
+    const lo = Math.min(minAge, maxAge), hi = Math.max(minAge, maxAge);
+    onApply({ minAge: lo, maxAge: hi, maxDistance, denominations, details });
     onClose();
   };
 
   const handleReset = () => {
     track("filter_reset");
+    setMinAge(18);
     setMaxAge(35);
     setMaxDistance(80);
     setDenominations([]);
@@ -70,20 +74,19 @@ export default function FilterSheet({ filters, onApply, onClose }) {
           </button>
         </div>
 
-        <div className="filter-section">
-          <div className="filter-label">
-            Maximum age
-            <span className="filter-value">{maxAge}</span>
+        <div className="filter-section" style={{ display: "flex", gap: 12 }}>
+          <div style={{ flex: 3 }}>
+            <div className="filter-label">Age</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <NumberField ariaLabel="Minimum age" value={minAge} min={18} max={99} onChange={(n) => { setMinAge(n); if (n > maxAge) setMaxAge(n); }} style={{ flex: 1 }} />
+              <span style={{ color: "#8C857C", fontSize: 14 }}>to</span>
+              <NumberField ariaLabel="Maximum age" value={maxAge} min={18} max={99} onChange={(n) => { setMaxAge(n); if (n < minAge) setMinAge(n); }} style={{ flex: 1 }} />
+            </div>
           </div>
-          <input type="range" min={18} max={60} value={maxAge} onChange={(e) => setMaxAge(+e.target.value)} />
-        </div>
-
-        <div className="filter-section">
-          <div className="filter-label">
-            Maximum distance
-            <span className="filter-value">{maxDistance} km</span>
+          <div style={{ flex: 2 }}>
+            <div className="filter-label">Distance</div>
+            <NumberField ariaLabel="Maximum distance" value={maxDistance} min={1} max={1000} unit="km" onChange={setMaxDistance} />
           </div>
-          <input type="range" min={5} max={500} value={maxDistance} onChange={(e) => setMaxDistance(+e.target.value)} />
         </div>
 
         <div className="filter-section">

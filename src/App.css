@@ -4149,3 +4149,8 @@ input[type="range"] {
   cursor: pointer;
   z-index: 10;
 }
+
+/* Typed number fields: no spinner arrows */
+.number-field-input::-webkit-outer-spin-button,
+.number-field-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.number-field-input { -moz-appearance: textfield; }

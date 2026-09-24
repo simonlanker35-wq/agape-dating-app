@@ -230,12 +230,15 @@ export function AppProvider({ children }) {
       loadDiscover();
       loadLikesReceived();
       loadMatches();
+      api.touchActivity();
       const poll = setInterval(() => {
         loadLikesReceived();
         loadMatches();
       }, 10000);
+      const heartbeat = setInterval(() => { if (document.visibilityState === "visible") api.touchActivity(); }, 2 * 60 * 1000);
       const refreshProfile = async () => {
         if (document.visibilityState === "visible") {
+          api.touchActivity();
           try {
             const user = await withStripeFallback(await api.getMe());
             dispatch({ type: "SET_USER", payload: user });
@@ -243,7 +246,7 @@ export function AppProvider({ children }) {
         }
       };
       document.addEventListener("visibilitychange", refreshProfile);
-      return () => { clearInterval(poll); document.removeEventListener("visibilitychange", refreshProfile); };
+      return () => { clearInterval(poll); clearInterval(heartbeat); document.removeEventListener("visibilitychange", refreshProfile); };
     }
   }, [state.onboardingComplete, state.currentUser?.id]);
 

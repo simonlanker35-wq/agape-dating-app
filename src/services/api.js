@@ -49,8 +49,24 @@ function mapProfile(p) {
     details: p.details || {},
     isStandout: isStandout,
     compatibilityReason: isStandout ? compatibilityReasons[standoutCounter % compatibilityReasons.length] : null,
-    lastActive: "Recently",
+    lastActive: p.last_active || null,
   };
+}
+
+// Considered online when active in the last 5 minutes
+export function isOnline(lastActive) {
+  if (!lastActive) return false;
+  const t = new Date(lastActive).getTime();
+  return Number.isFinite(t) && Date.now() - t < 5 * 60 * 1000;
+}
+
+// Heartbeat: mark the current user as active now. Fire-and-forget.
+export async function touchActivity() {
+  try {
+    const user = await currentUser();
+    if (!user) return;
+    await supabase.from("profiles").update({ last_active: new Date().toISOString() }).eq("id", user.id);
+  } catch (_) {}
 }
 
 // ─── AUTH ───
