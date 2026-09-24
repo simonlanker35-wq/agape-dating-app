@@ -6,6 +6,7 @@ import ReliabilityBadge from "../components/ReliabilityBadge";
 import AgapeCross from "../components/AgapeCross";
 import { DETAIL_FIELDS } from "../data/profiles";
 import WaveformBar from "../components/WaveformBar";
+import AudioPlayer from "../components/AudioPlayer";
 import FilterSheet from "../components/FilterSheet";
 import ReportSheet from "../components/ReportSheet";
 import { getLikesRemaining, getDovesRemaining, recordLike, recordDove, LIMITS } from "../services/limits";
@@ -229,7 +230,7 @@ export default function Discover() {
   };
 
   const photos = profile.photos || [];
-  const prompts = (profile.prompts || []).filter((p) => p.prompt && p.answer);
+  const prompts = (profile.prompts || []).filter((p) => p.prompt && (p.answer || p.voice?.url));
 
   return (
     <div className="discover">
@@ -363,11 +364,12 @@ export default function Discover() {
                 <div className="hinge-prompt-accent" />
                 <div className="hinge-prompt-content">
                   <div className="hinge-prompt-label">{p.prompt}</div>
-                  {p.voice ? (
+                  {p.answer && <div className="hinge-prompt-answer" style={{ marginBottom: p.voice?.url ? 10 : 0 }}>{p.answer}</div>}
+                  {p.voice?.url ? (
+                    <AudioPlayer src={p.voice.url} duration={p.voice.duration} />
+                  ) : p.voice && !p.answer ? (
                     <WaveformBar duration={p.voice.duration} color="#8C857C" />
-                  ) : (
-                    <div className="hinge-prompt-answer">{p.answer}</div>
-                  )}
+                  ) : null}
                 </div>
                 <div className="prompt-side-actions">
                   <button className="mini-btn prompt-heart" onClick={() => onHeartPress("prompt", i)}>

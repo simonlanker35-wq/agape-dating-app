@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useApp } from "../context/AppContext";
-import { compressPhoto, sendTestPush, getPhotoOriginals, savePhotoOriginals, downscaleDataUrl } from "../services/api";
+import { compressPhoto, sendTestPush, getPhotoOriginals, savePhotoOriginals, downscaleDataUrl, uploadMedia } from "../services/api";
 import { PROMPT_CATEGORIES, TRAITS_POOL, LOOKING_FOR_POOL, DETAIL_FIELDS } from "../data/profiles";
 
 // Details editable on the profile page (lifestyle ones are answered in onboarding and required there)
@@ -17,7 +17,7 @@ const DETAIL_WEIGHTS = { wantsChildren: 4, hasChildren: 3, lookingFor: 3, church
 // Profile completeness: photos 30, prompts 30, interests 10, location 5, denomination 5, details 20 = 100
 function computeCompleteness(u) {
   const photos = (u.photos || []).filter(Boolean).length;
-  const prompts = (u.prompts || []).filter((p) => p.prompt && p.answer).length;
+  const prompts = (u.prompts || []).filter((p) => p.prompt && (p.answer || p.voice?.url)).length;
   const interests = (u.interests || []).length;
   const details = u.details || {};
   const missing = [];
@@ -40,6 +40,9 @@ function computeCompleteness(u) {
 import AgapeCross from "../components/AgapeCross";
 import LocationPicker from "../components/LocationPicker";
 import NumberField from "../components/NumberField";
+import AudioPlayer from "../components/AudioPlayer";
+import VoiceRecorder from "../components/VoiceRecorder";
+import { extForMime } from "../services/media";
 import { redirectToCheckout, getSubscriptionStatus } from "../services/stripe";
 import { getDovesRemaining } from "../services/limits";
 import { track } from "../services/posthog";
@@ -893,7 +896,7 @@ export default function Profile() {
     return <SettingsScreen onBack={() => { setShowSettings(false); setSettingsSection(null); }} initialSection={settingsSection} />;
   }
 
-  const prompts = (currentUser.prompts || []).filter(p => p.prompt && p.answer);
+  const prompts = (currentUser.prompts || []).filter(p => p.prompt && (p.answer || p.voice?.url));
   const interests = currentUser.interests || [];
 
   const startEdit = () => {
@@ -937,27 +940,46 @@ export default function Profile() {
     const p = prompts[idx];
     const cat = findCategory(p.prompt);
     setEditingPromptIdx(idx);
-    setEditingPromptData({ prompt: p.prompt, answer: p.answer, category: cat || "Faith" });
+    setEditingPromptData({ prompt: p.prompt, answer: p.answer || "", voice: p.voice?.url ? p.voice : null, category: cat || "Faith" });
   };
 
   const openNewPromptEditor = () => {
     track("prompt_add_opened");
     setEditingPromptIdx(prompts.length);
-    setEditingPromptData({ prompt: "", answer: "", category: Object.keys(PROMPT_CATEGORIES)[0] });
+    setEditingPromptData({ prompt: "", answer: "", voice: null, category: Object.keys(PROMPT_CATEGORIES)[0] });
   };
 
   const selectPromptQuestion = (promptText) => {
     track("prompt_question_selected", { prompt: promptText });
-    setEditingPromptData((d) => ({ ...d, prompt: promptText, answer: d.prompt === promptText ? d.answer : "" }));
+    setEditingPromptData((d) => ({ ...d, prompt: promptText, answer: d.prompt === promptText ? d.answer : "", voice: d.prompt === promptText ? d.voice : null }));
     setTimeout(() => answerRef.current?.focus(), 100);
   };
 
+  const [voiceUploading, setVoiceUploading] = useState(false);
+  const [voiceError, setVoiceError] = useState("");
+  const attachVoice = async ({ blob, mime, duration }) => {
+    setVoiceUploading(true);
+    setVoiceError("");
+    try {
+      const url = await uploadMedia(blob, "prompt", extForMime(mime), mime.split(";")[0]);
+      setEditingPromptData((d) => ({ ...d, voice: { url, duration } }));
+      track("prompt_voice_recorded", { duration });
+    } catch (err) {
+      console.error("Voice upload failed:", err);
+      setVoiceError(/bucket|not found|storage/i.test(err.message || "") ? "Voice answers aren't set up yet on the server." : "Couldn't save the recording. Try again.");
+    }
+    setVoiceUploading(false);
+  };
+
+  const promptCanSave = !!editingPromptData?.prompt && (!!editingPromptData.answer?.trim() || !!editingPromptData.voice?.url);
+
   const savePromptEdit = async () => {
-    if (!editingPromptData?.prompt || !editingPromptData.answer.trim()) return;
-    track("prompt_edit_saved", { prompt: editingPromptData.prompt });
+    if (!promptCanSave) return;
+    track("prompt_edit_saved", { prompt: editingPromptData.prompt, voice: !!editingPromptData.voice });
     setSaving(true);
     try {
-      const entry = { prompt: editingPromptData.prompt, answer: editingPromptData.answer.trim() };
+      const entry = { prompt: editingPromptData.prompt, answer: (editingPromptData.answer || "").trim() };
+      if (editingPromptData.voice?.url) entry.voice = editingPromptData.voice;
       const allPrompts = prompts.map((p, i) => (i === editingPromptIdx ? entry : p));
       if (editingPromptIdx >= prompts.length) allPrompts.push(entry);
       await actions.updateProfile({ prompts: allPrompts });
@@ -1457,9 +1479,12 @@ export default function Profile() {
                     />
                   ) : (
                     <>
-                      <p style={{ fontSize: 16, fontWeight: 600, lineHeight: 1.3, color: C.text, fontFamily: FONT }}>
-                        {p.answer}
-                      </p>
+                      {p.answer && (
+                        <p style={{ fontSize: 16, fontWeight: 600, lineHeight: 1.3, color: C.text, fontFamily: FONT, marginBottom: p.voice?.url ? 10 : 0 }}>
+                          {p.answer}
+                        </p>
+                      )}
+                      {p.voice?.url && <AudioPlayer src={p.voice.url} duration={p.voice.duration} compact />}
                       <button
                         onClick={() => openPromptEditor(i)}
                         style={{
@@ -1832,12 +1857,12 @@ export default function Profile() {
               </span>
               <button
                 onClick={savePromptEdit}
-                disabled={saving || !editingPromptData.answer.trim()}
+                disabled={saving || !promptCanSave}
                 style={{
                   background: "none",
                   border: "none",
                   cursor: "pointer",
-                  color: editingPromptData.answer.trim() ? C.primary : C.sub,
+                  color: promptCanSave ? C.primary : C.sub,
                   fontSize: 14,
                   fontWeight: 700,
                   opacity: saving ? 0.5 : 1,
@@ -1888,6 +1913,19 @@ export default function Profile() {
                   <p style={{ fontSize: 11, color: C.sub, textAlign: "right", marginTop: 4 }}>
                     {editingPromptData.answer.length}/250
                   </p>
+
+                  <p style={{ fontSize: 10, fontWeight: 600, color: C.sub, textTransform: "uppercase", letterSpacing: "0.1em", margin: "10px 0 8px" }}>
+                    {editingPromptData.voice?.url ? "Voice answer" : "Or say it out loud"}
+                  </p>
+                  {editingPromptData.voice?.url ? (
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", borderRadius: 14, background: C.surface }}>
+                      <div style={{ flex: 1, minWidth: 0 }}><AudioPlayer src={editingPromptData.voice.url} duration={editingPromptData.voice.duration} compact /></div>
+                      <button onClick={() => setEditingPromptData((d) => ({ ...d, voice: null }))} style={{ background: "none", border: "none", color: C.sub, fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: FONT }}>Remove</button>
+                    </div>
+                  ) : (
+                    <VoiceRecorder maxSeconds={30} confirmLabel="Use" busy={voiceUploading} onDone={attachVoice} />
+                  )}
+                  {voiceError && <p style={{ fontSize: 12, color: "#EF4444", marginTop: 6 }}>{voiceError}</p>}
                 </div>
               )}
 

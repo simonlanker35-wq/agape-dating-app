@@ -5,6 +5,7 @@ import AgapeCross from "../components/AgapeCross";
 import DoveIcon from "../components/DoveIcon";
 import ReliabilityBadge from "../components/ReliabilityBadge";
 import WaveformBar from "../components/WaveformBar";
+import AudioPlayer from "../components/AudioPlayer";
 import ReportSheet from "../components/ReportSheet";
 import { getDovesRemaining, recordDove } from "../services/limits";
 import { track } from "../services/posthog";
@@ -144,7 +145,7 @@ export default function Standouts() {
   }
 
   const photos = profile.photos || [];
-  const prompts = (profile.prompts || []).filter((p) => p.prompt && p.answer);
+  const prompts = (profile.prompts || []).filter((p) => p.prompt && (p.answer || p.voice?.url));
 
   const handleLike = async (targetType, targetIndex, comment = null) => {
     if (standoutLikesLeft <= 0) return;
@@ -360,11 +361,12 @@ export default function Standouts() {
                 <div className="hinge-prompt-accent" />
                 <div className="hinge-prompt-content">
                   <div className="hinge-prompt-label">{p.prompt}</div>
-                  {p.voice ? (
+                  {p.answer && <div className="hinge-prompt-answer" style={{ marginBottom: p.voice?.url ? 10 : 0 }}>{p.answer}</div>}
+                  {p.voice?.url ? (
+                    <AudioPlayer src={p.voice.url} duration={p.voice.duration} />
+                  ) : p.voice && !p.answer ? (
                     <WaveformBar duration={p.voice.duration} color="#8C857C" />
-                  ) : (
-                    <div className="hinge-prompt-answer">{p.answer}</div>
-                  )}
+                  ) : null}
                 </div>
                 <div className="prompt-side-actions">
                   <button className="mini-btn prompt-skip" onClick={handleSkip}>

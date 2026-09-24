@@ -1,6 +1,7 @@
 import { useApp } from "../context/AppContext";
 import { useState, useEffect } from "react";
 import { Heart, X, Lock } from "lucide-react";
+import AudioPlayer from "../components/AudioPlayer";
 import AgapeCross from "../components/AgapeCross";
 import DoveIcon from "../components/DoveIcon";
 import ReliabilityBadge from "../components/ReliabilityBadge";
@@ -225,13 +226,14 @@ export default function LikesYou() {
             </div>
           </div>
           <div style={{ padding: "20px 16px", display: "flex", flexDirection: "column", gap: 12 }}>
-            {(viewProfile.prompts || []).filter(p => p.prompt && p.answer).map((p, i) => (
+            {(viewProfile.prompts || []).filter(p => p.prompt && (p.answer || p.voice?.url)).map((p, i) => (
               <div key={i} style={{ borderRadius: 16, overflow: "hidden", background: C.primarySoft }}>
                 <div style={{ display: "flex" }}>
                   <div style={{ width: 4, flexShrink: 0, background: C.primary }} />
                   <div style={{ flex: 1, padding: "14px" }}>
                     <p style={{ fontSize: 10, fontWeight: 600, color: C.primary, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>{p.prompt}</p>
-                    <p style={{ fontSize: 16, fontWeight: 600, color: C.text }}>{p.answer}</p>
+                    {p.answer && <p style={{ fontSize: 16, fontWeight: 600, color: C.text, marginBottom: p.voice?.url ? 10 : 0 }}>{p.answer}</p>}
+                    {p.voice?.url && <AudioPlayer src={p.voice.url} duration={p.voice.duration} compact />}
                   </div>
                 </div>
               </div>

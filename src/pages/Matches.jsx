@@ -1,13 +1,16 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useApp } from "../context/AppContext";
 import * as api from "../services/api";
-import { MessageCircle, Ban, Flag, UserMinus, Calendar, CheckCircle, Clock, Video, Heart, Lock, Flower2, ChevronLeft, Shield, ArrowUp, Utensils, Footprints, Coffee, Mountain, Shirt, Briefcase, Gem, Dumbbell, MapPin } from "lucide-react";
+import { MessageCircle, Ban, Flag, UserMinus, Calendar, CheckCircle, Clock, Video, Heart, Lock, Flower2, ChevronLeft, Shield, ArrowUp, Utensils, Footprints, Coffee, Mountain, Shirt, Briefcase, Gem, Dumbbell, MapPin, Image as ImageIcon, Mic, X } from "lucide-react";
 import AgapeCross from "../components/AgapeCross";
 import DoveIcon from "../components/DoveIcon";
 import LocationPicker from "../components/LocationPicker";
 import ReliabilityBadge from "../components/ReliabilityBadge";
 import NotificationPrompt from "../components/NotificationPrompt";
 import TutorialOverlay from "../components/TutorialOverlay";
+import AudioPlayer from "../components/AudioPlayer";
+import VoiceRecorder from "../components/VoiceRecorder";
+import { prepareChatImage, extForMime, isRecordingSupported } from "../services/media";
 import { track } from "../services/posthog";
 import { DETAIL_FIELDS } from "../data/profiles";
 import L from "leaflet";
@@ -830,6 +833,44 @@ function ChatThread({ match, onBack }) {
     }
   };
 
+  // ── Photos and voice notes ──
+  const [recording, setRecording] = useState(false);
+  const [uploading, setUploading] = useState(null); // "image" | "audio" | null
+  const [mediaError, setMediaError] = useState("");
+  const [lightbox, setLightbox] = useState(null);
+  const imageInputRef = useRef(null);
+
+  const failMedia = (msg) => { setMediaError(msg); setTimeout(() => setMediaError(""), 4000); };
+
+  const sendImage = async (file) => {
+    if (!file || chatLocked) return;
+    setUploading("image");
+    try {
+      const blob = await prepareChatImage(file);
+      const url = await api.uploadMedia(blob, "chat", "jpg", "image/jpeg");
+      await actions.sendMessage(match.id, "📷 Photo", { type: "image", url });
+      track("chat_photo_sent");
+    } catch (err) {
+      console.error("Photo send failed:", err);
+      failMedia(/bucket|not found|storage/i.test(err.message || "") ? "Photos aren't set up yet on the server." : "Couldn't send the photo. Try again.");
+    }
+    setUploading(null);
+  };
+
+  const sendVoice = async ({ blob, mime, duration }) => {
+    setUploading("audio");
+    try {
+      const url = await api.uploadMedia(blob, "voice", extForMime(mime), mime.split(";")[0]);
+      await actions.sendMessage(match.id, "🎤 Voice note", { type: "audio", url, duration });
+      track("chat_voice_sent", { duration });
+      setRecording(false);
+    } catch (err) {
+      console.error("Voice send failed:", err);
+      failMedia(/bucket|not found|storage/i.test(err.message || "") ? "Voice notes aren't set up yet on the server." : "Couldn't send the voice note. Try again.");
+    }
+    setUploading(null);
+  };
+
   const handleNudge = async () => {
     track("rose_sent");
     setNudgeSending(true);
@@ -1055,6 +1096,15 @@ function ChatThread({ match, onBack }) {
                     <span style={{ fontSize: 11, fontWeight: 600, color: C.primary, fontFamily: FONT, letterSpacing: "0.02em" }}>Sent with a Dove</span>
                   </div>
                 )}
+                {item.media?.type === "image" ? (
+                  <button onClick={() => setLightbox(item.media.url)} aria-label="Open photo" style={{ maxWidth: "70%", padding: 0, border: `1px solid ${C.border}`, borderRadius: 18, borderBottomRightRadius: isMe ? 5 : 18, borderBottomLeftRadius: isMe ? 18 : 5, overflow: "hidden", background: C.surface, cursor: "pointer", display: "block" }}>
+                    <img src={item.media.url} alt="Photo" loading="lazy" style={{ display: "block", width: "100%", maxHeight: 320, objectFit: "cover" }} />
+                  </button>
+                ) : item.media?.type === "audio" ? (
+                  <div style={{ width: "min(78%, 300px)", padding: "8px 12px", borderRadius: 18, borderBottomRightRadius: isMe ? 5 : 18, borderBottomLeftRadius: isMe ? 18 : 5, background: isMe ? C.text : C.bg, border: isMe ? "1px solid " + C.text : `1px solid ${C.border}` }}>
+                    <AudioPlayer src={item.media.url} duration={item.media.duration} dark={isMe} compact />
+                  </div>
+                ) : (
                 <div
                   style={{
                     maxWidth: "78%",
@@ -1069,6 +1119,7 @@ function ChatThread({ match, onBack }) {
                 >
                   <p style={{ fontSize: 15, lineHeight: 1.45, fontFamily: FONT, margin: 0, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{displayText}</p>
                 </div>
+                )}
                 {endOfRun && <p style={{ fontSize: 10.5, marginTop: 4, color: C.sub, fontFamily: FONT }}>{formatTime(item.timestamp)}</p>}
               </div>
             </div>
@@ -1196,27 +1247,61 @@ function ChatThread({ match, onBack }) {
               )}
             </div>
 
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <input
-                style={{ flex: 1, fontSize: 15, padding: "11px 16px", borderRadius: 22, background: C.bg, border: `1px solid ${C.border}`, outline: "none", color: C.text, fontFamily: FONT, minWidth: 0 }}
-                placeholder="Message"
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && send()}
-              />
-              <button
-                onClick={send}
-                aria-label="Send"
-                style={{ width: 40, height: 40, borderRadius: 20, display: "flex", alignItems: "center", justifyContent: "center", background: text.trim() ? C.text : C.surface, border: "none", cursor: "pointer", flexShrink: 0, transition: "background 0.15s" }}
-              >
-                <ArrowUp size={18} color={text.trim() ? "#fff" : C.sub} strokeWidth={2} />
-              </button>
-            </div>
+            {mediaError && <p style={{ fontSize: 12, color: "#EF4444", fontFamily: FONT, margin: "0 0 6px 4px" }}>{mediaError}</p>}
+            {recording ? (
+              <VoiceRecorder autoStart maxSeconds={60} confirmLabel="Send" busy={uploading === "audio"} onDone={sendVoice} onCancel={() => setRecording(false)} />
+            ) : (
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <input ref={imageInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; sendImage(f); }} />
+                <button
+                  onClick={() => imageInputRef.current?.click()}
+                  disabled={!!uploading}
+                  aria-label="Send a photo"
+                  style={{ width: 40, height: 40, borderRadius: 20, display: "flex", alignItems: "center", justifyContent: "center", background: "transparent", border: "none", cursor: "pointer", flexShrink: 0, opacity: uploading === "image" ? 0.5 : 1 }}
+                >
+                  <ImageIcon size={21} color={C.sub} strokeWidth={1.8} />
+                </button>
+                <input
+                  style={{ flex: 1, fontSize: 15, padding: "11px 16px", borderRadius: 22, background: C.bg, border: `1px solid ${C.border}`, outline: "none", color: C.text, fontFamily: FONT, minWidth: 0 }}
+                  placeholder={uploading === "image" ? "Sending photo…" : "Message"}
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && send()}
+                />
+                {text.trim() ? (
+                  <button
+                    onClick={send}
+                    aria-label="Send"
+                    style={{ width: 40, height: 40, borderRadius: 20, display: "flex", alignItems: "center", justifyContent: "center", background: C.text, border: "none", cursor: "pointer", flexShrink: 0 }}
+                  >
+                    <ArrowUp size={18} color="#fff" strokeWidth={2} />
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => { if (!isRecordingSupported()) { failMedia("Voice notes aren't supported in this browser."); return; } setRecording(true); }}
+                    disabled={!!uploading}
+                    aria-label="Record a voice note"
+                    style={{ width: 40, height: 40, borderRadius: 20, display: "flex", alignItems: "center", justifyContent: "center", background: C.surface, border: "none", cursor: "pointer", flexShrink: 0 }}
+                  >
+                    <Mic size={19} color={C.text} strokeWidth={1.8} />
+                  </button>
+                )}
+              </div>
+            )}
           </>
         )}
       </div>
 
       <TutorialOverlay screen="chat" />
+
+      {lightbox && (
+        <div onClick={() => setLightbox(null)} style={{ position: "fixed", inset: 0, zIndex: 10001, background: "rgba(0,0,0,0.94)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <button onClick={() => setLightbox(null)} aria-label="Close" style={{ position: "absolute", top: "calc(env(safe-area-inset-top, 0px) + 14px)", right: 14, width: 40, height: 40, borderRadius: 20, background: "rgba(255,255,255,0.15)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+            <X size={20} color="#fff" />
+          </button>
+          <img src={lightbox} alt="Photo" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }} />
+        </div>
+      )}
 
       {/* Date Builder Sheet */}
       {showDateBuilder && (
@@ -1286,13 +1371,14 @@ function ChatThread({ match, onBack }) {
             </div>
           </div>
           <div style={{ padding: "20px 16px", display: "flex", flexDirection: "column", gap: 12 }}>
-            {(profile.prompts || []).filter((p) => p.prompt && p.answer).map((p, i) => (
+            {(profile.prompts || []).filter((p) => p.prompt && (p.answer || p.voice?.url)).map((p, i) => (
               <div key={i} style={{ borderRadius: 16, overflow: "hidden", background: C.primarySoft }}>
                 <div style={{ display: "flex" }}>
                   <div style={{ width: 4, flexShrink: 0, background: C.primary }} />
                   <div style={{ flex: 1, padding: "14px" }}>
                     <p style={{ fontSize: 10, fontWeight: 600, color: C.primary, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>{p.prompt}</p>
-                    <p style={{ fontSize: 16, fontWeight: 600, color: C.text }}>{p.answer}</p>
+                    {p.answer && <p style={{ fontSize: 16, fontWeight: 600, color: C.text, marginBottom: p.voice?.url ? 10 : 0 }}>{p.answer}</p>}
+                    {p.voice?.url && <AudioPlayer src={p.voice.url} duration={p.voice.duration} compact />}
                   </div>
                 </div>
               </div>

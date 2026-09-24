@@ -508,13 +508,7 @@ export async function getMessages(matchId) {
     .order("created_at", { ascending: true });
   if (error) throw new Error(error.message);
 
-  const mapped = (messages || []).map((msg) => ({
-    id: msg.id,
-    text: msg.text,
-    sender: msg.sender,
-    timestamp: new Date(msg.created_at).getTime(),
-    read: msg.read,
-  }));
+  const mapped = (messages || []).map(mapMessage);
 
   // Prepend like comments as opening messages in chat
   try {
@@ -545,24 +539,51 @@ export async function getMessages(matchId) {
   return mapped;
 }
 
-export async function sendMessage(matchId, text) {
+// media: { type: "image" | "audio", url, duration } — text is a readable fallback for previews and notifications
+export async function sendMessage(matchId, text, media = null) {
   const user = await currentUser();
 
-  const { data: message, error } = await supabase
-    .from("messages")
-    .insert({ match_id: matchId, sender: user.id, text })
-    .select()
-    .single();
+  const row = { match_id: matchId, sender: user.id, text };
+  if (media) {
+    row.media_type = media.type;
+    row.media_url = media.url;
+    row.media_duration = media.duration ?? null;
+  }
+  const { data: message, error } = await withTimeout(
+    supabase.from("messages").insert(row).select().single(),
+    20000
+  );
   if (error) throw new Error(error.message);
 
   await supabase.from("matches").update({ last_activity: new Date().toISOString() }).eq("id", matchId);
 
+  return mapMessage(message);
+}
+
+function mapMessage(msg) {
   return {
-    id: message.id,
-    text: message.text,
-    sender: message.sender,
-    timestamp: new Date(message.created_at).getTime(),
+    id: msg.id,
+    text: msg.text,
+    sender: msg.sender,
+    timestamp: new Date(msg.created_at).getTime(),
+    read: msg.read,
+    media: msg.media_url ? { type: msg.media_type, url: msg.media_url, duration: msg.media_duration } : null,
   };
+}
+
+// ─── MEDIA (Supabase Storage bucket "media") ───
+
+// Uploads a Blob to <my id>/<kind>/<random>.<ext> and returns its public URL.
+export async function uploadMedia(blob, kind, ext, contentType) {
+  const user = await currentUser();
+  if (!user) throw new Error("Not signed in");
+  const name = `${user.id}/${kind}/${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${ext}`;
+  const { error } = await withTimeout(
+    supabase.storage.from("media").upload(name, blob, { contentType, upsert: false, cacheControl: "31536000" }),
+    60000
+  );
+  if (error) throw new Error(error.message);
+  return supabase.storage.from("media").getPublicUrl(name).data.publicUrl;
 }
 
 export async function unmatch(matchId) {

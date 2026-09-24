@@ -494,13 +494,14 @@ export function AppProvider({ children }) {
       });
     },
 
-    sendMessage: async (matchId, text) => {
-      const message = await api.sendMessage(matchId, text);
-      track("message_sent");
+    sendMessage: async (matchId, text, media = null) => {
+      const message = await api.sendMessage(matchId, text, media);
+      track("message_sent", { media: media?.type || "text" });
       dispatch({ type: "ADD_MESSAGE", payload: { matchId, message } });
       const m = state.matches.find((x) => x.id === matchId);
       if (m?.profileId) {
-        api.notifyUser(m.profileId, { title: state.currentUser?.name || "New message", body: text.slice(0, 120), url: "/?tab=matches", tag: `msg-${matchId}` });
+        const body = media?.type === "image" ? "Sent you a photo" : media?.type === "audio" ? "Sent you a voice note" : text.slice(0, 120);
+        api.notifyUser(m.profileId, { title: state.currentUser?.name || "New message", body, url: "/?tab=matches", tag: `msg-${matchId}` });
       }
       return message;
     },

@@ -4156,3 +4156,8 @@ input[type="range"] {
 .number-field-input::-webkit-outer-spin-button,
 .number-field-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .number-field-input { -moz-appearance: textfield; }
+
+@keyframes rosePulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.45; transform: scale(0.8); }
+}
