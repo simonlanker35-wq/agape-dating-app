@@ -3,6 +3,16 @@ import { useApp } from "../context/AppContext";
 import { compressPhoto, sendTestPush, getPhotoOriginals, savePhotoOriginals, downscaleDataUrl } from "../services/api";
 import { PROMPT_CATEGORIES, TRAITS_POOL, LOOKING_FOR_POOL, DETAIL_FIELDS } from "../data/profiles";
 
+// Details editable on the profile page (lifestyle ones are answered in onboarding and required there)
+const DETAIL_ROWS = [
+  { label: "Children", keys: ["wantsChildren", "hasChildren"] },
+  { label: "Looking for", keys: ["lookingFor"] },
+  { label: "Church attendance", keys: ["churchAttendance"] },
+  { label: "Education", keys: ["education"] },
+  { label: "Open to relocating", keys: ["relocate"] },
+];
+const DETAIL_WEIGHTS = { wantsChildren: 4, hasChildren: 3, lookingFor: 4, churchAttendance: 4, education: 2, relocate: 3 };
+
 // Profile completeness: photos 30, prompts 30, interests 10, location 5, denomination 5, details 20 = 100
 function computeCompleteness(u) {
   const photos = (u.photos || []).filter(Boolean).length;
@@ -19,8 +29,10 @@ function computeCompleteness(u) {
   if (interests >= 3) pct += 10; else missing.push({ key: "interests", label: "Pick at least 3 interests", target: "interests" });
   if (u.location?.city) pct += 5; else missing.push({ key: "location", label: "Set your location", target: "location" });
   if (u.denomination) pct += 5; else missing.push({ key: "denomination", label: "Add your denomination", target: "denomination" });
-  for (const f of DETAIL_FIELDS) {
-    if (details[f.key]) pct += 2; else missing.push({ key: f.key, label: f.label, target: "detail" });
+  for (const row of DETAIL_ROWS) {
+    const unanswered = row.keys.filter((k) => !details[k]);
+    for (const k of row.keys) if (details[k]) pct += DETAIL_WEIGHTS[k] || 0;
+    if (unanswered.length) missing.push({ key: row.label, label: row.label, target: "detail", row });
   }
   return { pct: Math.min(100, Math.round(pct)), missing };
 }
@@ -859,7 +871,12 @@ export default function Profile() {
   const cropCanvasRef = useRef(null);
   const cropBoxRef = useRef(null);
   const [originals, setOriginals] = useState([]);
-  const [editingDetail, setEditingDetail] = useState(null);
+  const [editingDetail, setEditingDetailRow] = useState(null);
+  const [detailDraft, setDetailDraft] = useState({});
+  const setEditingDetail = (row) => {
+    setEditingDetailRow(row);
+    if (row) setDetailDraft(Object.fromEntries(row.keys.map((k) => [k, currentUser?.details?.[k]]).filter(([, v]) => v)));
+  };
   const promptsRef = useRef(null);
   useEffect(() => {
     if (currentUser?.id) getPhotoOriginals().then(setOriginals).catch(() => {});
@@ -1188,7 +1205,7 @@ export default function Profile() {
               else if (m.target === "interests") { setEditingChips({ label: "Interests", type: "interests", pool: TRAITS_POOL, fieldKey: "interests" }); setEditingChipsData([...(currentUser.interests || [])]); }
               else if (m.target === "location") openSettings("location");
               else if (m.target === "denomination") openSettings("account");
-              else if (m.target === "detail") setEditingDetail(m.key);
+              else if (m.target === "detail") setEditingDetail(m.row);
             };
             return (
               <div style={{ borderRadius: 16, padding: 16, background: C.card, border: `1px solid ${C.border}` }}>
@@ -1539,18 +1556,21 @@ export default function Profile() {
             <p style={{ fontSize: 10, fontWeight: 600, color: C.primary, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 4 }}>Details</p>
             <p style={{ fontSize: 12, color: C.sub, marginBottom: 12, lineHeight: 1.5 }}>Shown on your profile and used by others' filters.</p>
             <div style={{ display: "flex", flexDirection: "column" }}>
-              {DETAIL_FIELDS.map((f, i) => {
-                const value = currentUser.details?.[f.key];
+              {DETAIL_ROWS.map((row, i) => {
+                const values = row.keys.map((k) => currentUser.details?.[k]).filter(Boolean);
+                const summary = row.keys.length > 1
+                  ? (values.length === 0 ? "" : row.keys.map((k) => { const v = currentUser.details?.[k]; if (!v) return null; return k === "hasChildren" ? (v === "Yes" ? "Has children" : "No children") : `Wants: ${v}`; }).filter(Boolean).join(" · "))
+                  : values[0] || "";
                 return (
                   <button
-                    key={f.key}
-                    onClick={() => { track("detail_edit_opened", { key: f.key }); setEditingDetail(f.key); }}
-                    style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "12px 0", background: "none", border: "none", borderBottom: i < DETAIL_FIELDS.length - 1 ? `1px solid ${C.border}` : "none", cursor: "pointer", textAlign: "left" }}
+                    key={row.label}
+                    onClick={() => { track("detail_edit_opened", { row: row.label }); setEditingDetail(row); }}
+                    style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "12px 0", background: "none", border: "none", borderBottom: i < DETAIL_ROWS.length - 1 ? `1px solid ${C.border}` : "none", cursor: "pointer", textAlign: "left" }}
                   >
-                    <span style={{ fontSize: 14, color: C.text, fontFamily: FONT }}>{f.label}</span>
-                    <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: value ? 600 : 500, color: value ? C.text : C.primary, fontFamily: FONT, flexShrink: 0 }}>
-                      {value || "Add"}
-                      <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={C.sub} strokeWidth={2}><polyline points="9 18 15 12 9 6" /></svg>
+                    <span style={{ fontSize: 14, color: C.text, fontFamily: FONT, flexShrink: 0 }}>{row.label}</span>
+                    <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: summary ? 600 : 500, color: summary ? C.text : C.primary, fontFamily: FONT, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {summary || "Add"}
+                      <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={C.sub} strokeWidth={2} style={{ flexShrink: 0 }}><polyline points="9 18 15 12 9 6" /></svg>
                     </span>
                   </button>
                 );
@@ -1674,34 +1694,38 @@ export default function Profile() {
 
       {/* Photo crop modal */}
       {editingDetail && (() => {
-        const field = DETAIL_FIELDS.find((f) => f.key === editingDetail);
-        const current = currentUser.details?.[field.key];
-        const choose = async (value) => {
+        const row = editingDetail;
+        const fields = row.keys.map((k) => DETAIL_FIELDS.find((f) => f.key === k));
+        const draft = detailDraft;
+        const setValue = (key, value) => setDetailDraft((d) => { const n = { ...d }; if (n[key] === value) delete n[key]; else n[key] = value; return n; });
+        const save = async () => {
           const details = { ...(currentUser.details || {}) };
-          if (value) details[field.key] = value; else delete details[field.key];
+          for (const f of fields) { if (draft[f.key]) details[f.key] = draft[f.key]; else delete details[f.key]; }
           setEditingDetail(null);
-          track("detail_saved", { key: field.key, cleared: !value });
+          track("detail_saved", { row: row.label });
           try { await actions.updateProfile({ details }); } catch (err) { console.error("Detail save failed:", err); }
         };
         return (
           <div onClick={() => setEditingDetail(null)} style={{ position: "fixed", inset: 0, maxWidth: 430, margin: "0 auto", zIndex: 9000, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "flex-end" }}>
-            <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", borderRadius: "22px 22px 0 0", background: C.bg, padding: "14px 16px calc(24px + env(safe-area-inset-bottom, 0px))", maxHeight: "80vh", overflowY: "auto" }}>
+            <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", borderRadius: "22px 22px 0 0", background: C.bg, padding: "14px 16px calc(20px + env(safe-area-inset-bottom, 0px))", maxHeight: "85vh", overflowY: "auto", display: "flex", flexDirection: "column" }}>
               <div style={{ width: 36, height: 4, borderRadius: 2, background: C.border, margin: "0 auto 14px" }} />
-              <p style={{ fontSize: 17, fontWeight: 700, color: C.text, fontFamily: FONT, margin: "0 0 12px", letterSpacing: "-0.2px" }}>{field.label}</p>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {field.options.map((opt) => {
-                  const on = current === opt;
-                  return (
-                    <button key={opt} onClick={() => choose(opt)} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "13px 14px", borderRadius: 12, background: on ? C.text : C.bg, color: on ? "#fff" : C.text, border: `1px solid ${on ? C.text : C.border}`, cursor: "pointer", textAlign: "left", fontSize: 14.5, fontWeight: 600, fontFamily: FONT }}>
-                      {opt}
-                      {on && <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.5}><path d="M20 6L9 17l-5-5" /></svg>}
-                    </button>
-                  );
-                })}
-              </div>
-              {current && (
-                <button onClick={() => choose(null)} style={{ width: "100%", marginTop: 10, padding: "12px 0", borderRadius: 12, fontSize: 13, fontWeight: 600, background: "none", color: C.sub, border: "none", cursor: "pointer", fontFamily: FONT }}>Remove answer</button>
-              )}
+              <p style={{ fontSize: 17, fontWeight: 700, color: C.text, fontFamily: FONT, margin: "0 0 14px", letterSpacing: "-0.2px" }}>{row.label}</p>
+              {fields.map((f, fi) => (
+                <div key={f.key} style={{ marginBottom: fi < fields.length - 1 ? 18 : 6 }}>
+                  {fields.length > 1 && <p style={{ fontSize: 12, fontWeight: 600, color: C.sub, textTransform: "uppercase", letterSpacing: "0.08em", fontFamily: FONT, margin: "0 0 8px" }}>{f.label}</p>}
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                    {f.options.map((opt) => {
+                      const on = draft[f.key] === opt;
+                      return (
+                        <button key={opt} onClick={() => setValue(f.key, opt)} style={{ padding: "10px 14px", borderRadius: 9999, background: on ? C.text : C.bg, color: on ? "#fff" : C.text, border: `1px solid ${on ? C.text : C.border}`, cursor: "pointer", fontSize: 14, fontWeight: 600, fontFamily: FONT }}>
+                          {opt}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+              <button onClick={save} style={{ width: "100%", marginTop: 14, padding: "13px 0", borderRadius: 12, fontSize: 14.5, fontWeight: 600, background: C.text, color: "#fff", border: "none", cursor: "pointer", fontFamily: FONT }}>Done</button>
             </div>
           </div>
         );

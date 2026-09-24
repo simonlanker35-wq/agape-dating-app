@@ -644,7 +644,7 @@ export default function Onboarding() {
       case "traits": return form.traits.length >= 3;
       case "whoAreYou": return form.whoAreYou.length >= 3;
       case "photos": return form.photos.filter(Boolean).length >= 1;
-      case "lifestyle": return true;
+      case "lifestyle": return LIFESTYLE_CATEGORIES.every((c) => !!form.lifestyle[c.label]);
       default: return true;
     }
   };
@@ -1596,7 +1596,8 @@ export default function Onboarding() {
           ))}
         </div>
         {signupError && <p style={{ color: "#e53e3e", fontSize: 14, marginTop: 8, textAlign: "center" }}>{signupError}</p>}
-        <BigBtn onClick={finishOnboarding} disabled={submitting}>
+        {!canProceed() && <p style={{ color: S.sub, fontSize: 12, textAlign: "center", margin: "8px 0 0" }}>Answer all four to continue</p>}
+        <BigBtn onClick={finishOnboarding} disabled={submitting || !canProceed()}>
           {submitting ? "Creating account..." : "Start matching"}
         </BigBtn>
       </Wrap>
