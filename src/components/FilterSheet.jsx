@@ -3,9 +3,10 @@ import { X } from "lucide-react";
 import { DETAIL_FIELDS } from "../data/profiles";
 import { track } from "../services/posthog";
 
-const ALL_DENOMINATIONS = [
-  "Protestant", "Catholic", "Baptist", "Methodist", "Lutheran",
-  "Pentecostal", "Non-denominational", "Orthodox", "Evangelical",
+const MAIN_DENOMINATIONS = ["Catholic", "Orthodox"];
+const MORE_DENOMINATIONS = [
+  "Protestant", "Baptist", "Methodist", "Lutheran",
+  "Pentecostal", "Non-denominational", "Evangelical",
 ];
 
 // Which profile details can be filtered on, grouped as on the profile page
@@ -24,6 +25,7 @@ export default function FilterSheet({ filters, onApply, onClose }) {
   const [denominations, setDenominations] = useState(filters.denominations || []);
   const [details, setDetails] = useState(filters.details || {});
   const [openGroup, setOpenGroup] = useState(null);
+  const [showMoreDenoms, setShowMoreDenoms] = useState(() => (filters.denominations || []).some((d) => MORE_DENOMINATIONS.includes(d)));
 
   const toggleDenom = (d) => {
     track("filter_denomination_toggled", { denomination: d });
@@ -86,17 +88,35 @@ export default function FilterSheet({ filters, onApply, onClose }) {
         <div className="filter-section">
           <div className="filter-label">Denomination</div>
           <div className="filter-chips">
-            {ALL_DENOMINATIONS.map((d) => (
+            {MAIN_DENOMINATIONS.map((d) => (
               <button key={d} className={`filter-chip ${denominations.includes(d) ? "active" : ""}`} onClick={() => toggleDenom(d)}>
                 {d}
               </button>
             ))}
+            {!showMoreDenoms && (() => {
+              const hidden = denominations.filter((d) => MORE_DENOMINATIONS.includes(d)).length;
+              return (
+                <button className={`filter-chip ${hidden > 0 ? "active" : ""}`} onClick={() => setShowMoreDenoms(true)}>
+                  More{hidden > 0 ? ` · ${hidden}` : ""}
+                </button>
+              );
+            })()}
+            {showMoreDenoms && MORE_DENOMINATIONS.map((d) => (
+              <button key={d} className={`filter-chip ${denominations.includes(d) ? "active" : ""}`} onClick={() => toggleDenom(d)}>
+                {d}
+              </button>
+            ))}
+            {showMoreDenoms && (
+              <button className="filter-chip" onClick={() => setShowMoreDenoms(false)} style={{ color: "#8C857C" }}>
+                Less
+              </button>
+            )}
           </div>
           {denominations.length === 0 && <p className="filter-hint">No selection = all denominations</p>}
         </div>
 
         <div className="filter-section">
-          <div className="filter-label">More</div>
+          <div className="filter-label">Preferences</div>
           <div className="filter-chips">
             {FILTER_GROUPS.map((group) => {
               const count = group.keys.reduce((n, k) => n + (details[k] || []).length, 0);
