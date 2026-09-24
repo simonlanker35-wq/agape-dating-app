@@ -8,6 +8,7 @@ import Standouts from "./pages/Standouts";
 import Profile from "./pages/Profile";
 import PasswordInput from "./components/PasswordInput";
 import TutorialOverlay from "./components/TutorialOverlay";
+import RoseAlert from "./components/RoseAlert";
 import { useState } from "react";
 import "./App.css";
 
@@ -82,6 +83,7 @@ function AppContent() {
       <Navigation />
       <TutorialOverlay screen={state.activeTab} />
       <RecoveryModal />
+      <RoseAlert />
     </div>
   );
 }

@@ -1319,8 +1319,16 @@ function ChatThread({ match, onBack }) {
 }
 
 export default function Matches() {
-  const { state, actions } = useApp();
+  const { state, actions, dispatch } = useApp();
   const [activeChat, setActiveChat] = useState(null);
+
+  // Opened from a rose pop-up or a notification
+  useEffect(() => {
+    if (state.openChatId) {
+      setActiveChat(state.openChatId);
+      dispatch({ type: "CLEAR_OPEN_CHAT" });
+    }
+  }, [state.openChatId, dispatch]);
 
   const currentUserId = state.currentUser?._id || state.currentUser?.id;
 

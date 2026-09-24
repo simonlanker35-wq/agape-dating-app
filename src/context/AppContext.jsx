@@ -25,6 +25,8 @@ const initialState = {
     denominations: [],
   },
   onboardingComplete: false,
+  roseAlert: null,
+  openChatId: null,
   needsProfile: false,
   passwordRecovery: false,
   activeTab: "discover",
@@ -117,6 +119,18 @@ function reducer(state, action) {
 
     case "SET_TAB":
       return { ...state, activeTab: action.payload };
+
+    case "SHOW_ROSE":
+      return { ...state, roseAlert: action.payload };
+
+    case "DISMISS_ROSE":
+      return { ...state, roseAlert: null };
+
+    case "OPEN_CHAT":
+      return { ...state, activeTab: "matches", openChatId: action.payload };
+
+    case "CLEAR_OPEN_CHAT":
+      return { ...state, openChatId: null };
 
     case "UPDATE_FILTERS":
       return { ...state, filters: { ...state.filters, ...action.payload } };
@@ -292,6 +306,20 @@ export function AppProvider({ children }) {
       console.error("Failed to load likes:", err);
     }
   }, []);
+
+  // Pop up when she sends a rose: any match whose rose timestamp we have not shown yet
+  useEffect(() => {
+    const uid = state.currentUser?.id;
+    if (!uid || state.currentUser?.gender !== "male" || state.roseAlert) return;
+    const key = `agape_seen_roses_${uid}`;
+    let seen = {};
+    try { seen = JSON.parse(localStorage.getItem(key) || "{}"); } catch (_) {}
+    const fresh = state.matches.find((m) => m.nudgeAt && m.profile && seen[m.id] !== m.nudgeAt);
+    if (!fresh) return;
+    seen[fresh.id] = fresh.nudgeAt;
+    try { localStorage.setItem(key, JSON.stringify(seen)); } catch (_) {}
+    dispatch({ type: "SHOW_ROSE", payload: { match: fresh } });
+  }, [state.matches, state.currentUser?.id, state.currentUser?.gender, state.roseAlert]);
 
   const loadMatches = useCallback(async () => {
     try {
