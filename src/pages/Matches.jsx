@@ -1385,10 +1385,12 @@ export default function Matches() {
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                    <span style={{ fontWeight: hasUnread ? 700 : 600, fontSize: 19, color: C.text, fontFamily: SERIF }}>{profile.name}</span>
-                    <span style={{ fontSize: 11, color: hasUnread ? C.primary : C.sub, fontWeight: hasUnread ? 700 : 400, fontFamily: FONT, flexShrink: 0 }}>{lastMsg ? formatTime(lastMsg.timestamp) : ""}</span>
+                    <span style={{ display: "flex", alignItems: "baseline", gap: 8, minWidth: 0, overflow: "hidden" }}>
+                      <span style={{ fontWeight: hasUnread ? 700 : 600, fontSize: 19, color: C.text, fontFamily: SERIF, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{profile.name}</span>
+                      {profile.denomination && <span style={{ fontSize: 12, color: C.primary, fontWeight: 600, fontFamily: FONT, whiteSpace: "nowrap", flexShrink: 0 }}>· {profile.denomination}</span>}
+                    </span>
+                    <span style={{ fontSize: 11, color: hasUnread ? C.primary : C.sub, fontWeight: hasUnread ? 700 : 400, fontFamily: FONT, flexShrink: 0, marginLeft: 8 }}>{lastMsg ? formatTime(lastMsg.timestamp) : ""}</span>
                   </div>
-                  {profile.denomination && <p style={{ fontSize: 12, color: C.primary, fontWeight: 600, fontFamily: FONT, margin: "0 0 6px 0" }}>{profile.denomination}</p>}
                   <p style={{ fontSize: 14, color: hasUnread ? C.text : C.sub, fontWeight: hasUnread ? 700 : 400, fontFamily: FONT, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis", margin: 0 }}>
                     {lastMsg?.isComment
                       ? (lastMsg.sender === currentUserId
