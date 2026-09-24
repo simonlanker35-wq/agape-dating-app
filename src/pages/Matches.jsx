@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useApp } from "../context/AppContext";
 import * as api from "../services/api";
-import { MessageCircle, Ban, Flag, UserMinus, Calendar, CheckCircle, Clock, Video, Heart, Lock, Flower2 } from "lucide-react";
+import { MessageCircle, Ban, Flag, UserMinus, Calendar, CheckCircle, Clock, Video, Heart, Lock, Flower2, ChevronLeft, Shield, ArrowUp, Utensils, Footprints, Coffee, Mountain, Shirt, Briefcase, Gem, Dumbbell, MapPin } from "lucide-react";
 import AgapeCross from "../components/AgapeCross";
 import DoveIcon from "../components/DoveIcon";
 import LocationPicker from "../components/LocationPicker";
@@ -16,18 +16,28 @@ const C = { bg: "#FFFFFF", card: "#FAFAF8", surface: "#F4F2EE", primary: "#B8912
 const FONT = "'Outfit', system-ui, sans-serif";
 
 const DATE_TYPES = [
-  { id: "dinner", emoji: "🍽️", label: "Dinner" },
-  { id: "walk", emoji: "🌿", label: "Walk" },
-  { id: "coffee", emoji: "☕", label: "Coffee" },
-  { id: "adventure", emoji: "🏔️", label: "Adventure" },
+  { id: "dinner", Icon: Utensils, label: "Dinner" },
+  { id: "walk", Icon: Footprints, label: "Walk" },
+  { id: "coffee", Icon: Coffee, label: "Coffee" },
+  { id: "adventure", Icon: Mountain, label: "Adventure" },
 ];
 
 const WARDROBE_OPTIONS = [
-  { id: "casual", emoji: "👕", label: "Casual" },
-  { id: "smart", emoji: "👔", label: "Smart Casual" },
-  { id: "formal", emoji: "✨", label: "Formal" },
-  { id: "sporty", emoji: "🏃", label: "Active" },
+  { id: "casual", Icon: Shirt, label: "Casual" },
+  { id: "smart", Icon: Briefcase, label: "Smart casual" },
+  { id: "formal", Icon: Gem, label: "Formal" },
+  { id: "sporty", Icon: Dumbbell, label: "Active" },
 ];
+
+function dayLabel(ts) {
+  const d = new Date(ts);
+  const today = new Date();
+  const yesterday = new Date(); yesterday.setDate(today.getDate() - 1);
+  const same = (a, b) => a.toDateString() === b.toDateString();
+  if (same(d, today)) return "Today";
+  if (same(d, yesterday)) return "Yesterday";
+  return d.toLocaleDateString("en", { weekday: "short", day: "numeric", month: "short" });
+}
 
 const DAY_SLOTS = [
   { id: "morning", label: "Morning", hint: "9 – 12", time: "10:00" },
@@ -275,7 +285,7 @@ function DateBuilder({ profileName, userLocation, onSend, onClose }) {
                     gap: 10,
                   }}
                 >
-                  <span style={{ fontSize: 20 }}>{dt.emoji}</span>
+                  <dt.Icon size={20} strokeWidth={1.7} color={dateType === dt.id ? C.primary : C.sub} />
                   <span style={{ fontSize: 14, fontWeight: 600, color: C.text, fontFamily: FONT }}>{dt.label}</span>
                 </button>
               ))}
@@ -342,7 +352,7 @@ function DateBuilder({ profileName, userLocation, onSend, onClose }) {
                     gap: 10,
                   }}
                 >
-                  <span style={{ fontSize: 20 }}>{w.emoji}</span>
+                  <w.Icon size={20} strokeWidth={1.7} color={wardrobe === w.id ? C.primary : C.sub} />
                   <span style={{ fontSize: 14, fontWeight: 600, color: C.text, fontFamily: FONT }}>{w.label}</span>
                 </button>
               ))}
@@ -413,8 +423,8 @@ function DateCard({ invitation, isMe, isMale, onRespond, onConfirm, onDecline, o
     setSelectedTimes(merged);
   };
   const pickerTitle = `When can you go for ${(DATE_TYPES.find((d) => d.id === invitation.date_type)?.label || "a date").toLowerCase()} with ${themName}?`;
-  const primaryBtn = { width: "100%", padding: "14px 0", borderRadius: 14, fontSize: 15, fontWeight: 700, fontFamily: FONT, background: C.primary, color: "white", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 };
-  const secondaryBtn = { ...primaryBtn, background: C.surface, color: C.text, fontSize: 14 };
+  const primaryBtn = { width: "100%", padding: "13px 0", borderRadius: 12, fontSize: 14.5, fontWeight: 600, fontFamily: FONT, background: C.text, color: "white", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 };
+  const secondaryBtn = { ...primaryBtn, background: C.bg, color: C.text, border: `1px solid ${C.border}` };
   const dt = DATE_TYPES.find((d) => d.id === invitation.date_type);
   const wb = WARDROBE_OPTIONS.find((w) => w.id === invitation.wardrobe);
 
@@ -459,35 +469,28 @@ function DateCard({ invitation, isMe, isMale, onRespond, onConfirm, onDecline, o
   };
 
   return (
-    <div style={{ margin: "8px 0", borderRadius: 20, overflow: "hidden", border: `1.5px solid ${invitation.status === "confirmed" ? "#22C55E" : C.primary}`, background: C.card }}>
-      <div style={{ padding: "12px 16px", background: invitation.status === "confirmed" ? "#F0FDF4" : C.surface, display: "flex", alignItems: "center", gap: 10 }}>
-        <span style={{ fontSize: 14, fontWeight: 700, color: invitation.status === "confirmed" ? "#16A34A" : C.text, fontFamily: FONT, letterSpacing: "-0.2px" }}>
-          {invitation.status === "confirmed" ? "Date Confirmed" : "Date Invitation"}
+    <div style={{ margin: "6px 0 10px", borderRadius: 16, overflow: "hidden", border: `1px solid ${C.border}`, background: C.bg }}>
+      <div style={{ padding: "14px 16px 12px", display: "flex", alignItems: "center", gap: 12, borderBottom: `1px solid ${C.border}` }}>
+        <span style={{ width: 40, height: 40, borderRadius: 12, background: C.surface, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          {dt?.Icon ? <dt.Icon size={19} strokeWidth={1.7} color={C.text} /> : <Calendar size={19} strokeWidth={1.7} color={C.text} />}
+        </span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ fontSize: 15, fontWeight: 600, color: C.text, fontFamily: FONT, margin: 0, letterSpacing: "-0.2px" }}>{dt?.label || "Date"}</p>
+          <p style={{ fontSize: 12.5, color: C.sub, fontFamily: FONT, margin: "2px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {invitation.location}{wb ? ` · ${wb.label}` : ""}
+          </p>
+        </div>
+        <span style={{ fontSize: 11, fontWeight: 600, fontFamily: FONT, letterSpacing: "0.04em", textTransform: "uppercase", padding: "4px 9px", borderRadius: 9999, background: invitation.status === "confirmed" ? "#F0FDF4" : C.surface, color: invitation.status === "confirmed" ? "#15803D" : C.sub, flexShrink: 0 }}>
+          {invitation.status === "confirmed" ? "Confirmed" : invitation.status === "declined" ? "Declined" : "Pending"}
         </span>
       </div>
 
-      <div style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: 8 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 16 }}>{dt?.emoji}</span>
-          <span style={{ fontSize: 14, fontWeight: 600, color: C.text, fontFamily: FONT }}>{dt?.label}</span>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={C.sub} strokeWidth={2}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
-          <span style={{ fontSize: 13, color: C.sub, fontFamily: FONT }}>{invitation.location}</span>
-        </div>
-        {wb && (
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 14 }}>{wb.emoji}</span>
-            <span style={{ fontSize: 13, color: C.sub, fontFamily: FONT }}>{wb.label}</span>
-          </div>
-        )}
-      </div>
-
-      <div style={{ padding: "0 16px 14px" }}>
+      <div style={{ padding: "12px 16px 14px" }}>
         {invitation.status === "confirmed" && invitation.confirmed_time && (
-          <div style={{ padding: "10px 14px", borderRadius: 12, background: "#DCFCE7", textAlign: "center" }}>
-            <span style={{ fontSize: 14, fontWeight: 700, color: "#16A34A", fontFamily: FONT }}>
-              {invitation.confirmed_time.label} · {invitation.confirmed_time.time}
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <Clock size={16} strokeWidth={1.7} color={C.sub} />
+            <span style={{ fontSize: 15, fontWeight: 600, color: C.text, fontFamily: FONT, letterSpacing: "-0.2px" }}>
+              {longDay(invitation.confirmed_time.date)} · {invitation.confirmed_time.time}
             </span>
           </div>
         )}
@@ -920,8 +923,8 @@ function ChatThread({ match, onBack }) {
   }, [messages, confirmedDate, openInvite]);
 
   const chip = (extra = {}) => ({
-    display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 14px", borderRadius: 9999, fontSize: 13, fontWeight: 700, fontFamily: FONT,
-    background: C.primarySoft, color: C.primary, border: `1.5px solid ${C.primary}`, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0, ...extra,
+    display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 13px", borderRadius: 9999, fontSize: 13, fontWeight: 600, fontFamily: FONT,
+    background: C.bg, color: C.text, border: `1px solid ${C.border}`, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0, ...extra,
   });
 
   const dateCardProps = {
@@ -943,88 +946,51 @@ function ChatThread({ match, onBack }) {
         </div>
       )}
       {/* Header */}
-      <div style={{ flexShrink: 0, padding: "40px 16px 12px", background: C.card, borderBottom: `1px solid ${C.border}` }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <button onClick={onBack} style={{ width: 36, height: 36, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: C.surface, color: C.text, border: "none", cursor: "pointer" }}>
-            <BackIcon />
-          </button>
-          <div style={{ position: "relative", flexShrink: 0, cursor: "pointer" }} onClick={() => setViewProfile(true)}>
-            <img src={profile.photos[0]} alt={profile.name} style={{ width: 40, height: 40, borderRadius: "50%", objectFit: "cover", objectPosition: "50% 20%", border: `2px solid ${C.primary}` }} onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${profile.name}&size=40&background=random`; }} />
+      {(() => {
+        let status = profile.denomination || "";
+        let statusColor = C.sub;
+        if (chatLocked) { status = "Chat closed · no date was set in time"; statusColor = "#B91C1C"; }
+        else if (confirmedDate && !datePassed) { status = `Date set · ${longDay(confirmedDate.confirmed_time?.date)} · ${confirmedDate.confirmed_time?.time || ""}`; statusColor = "#15803D"; }
+        else if (openInvite) {
+          status = openInvite.status === "pending"
+            ? (isMale ? "Plan sent · waiting for her times" : "He planned a date · tell him when you're free")
+            : (isMale ? "She's free · pick one of her times" : "Times sent · waiting for him to pick one");
+        }
+        else if (hasVideoCall) status = "Video call scheduled";
+        else if (firstMessageTime && !timerStopped && timeLeftMs !== null) status = isMale ? `${formatTimeLeft(timeLeftMs)} to plan a date` : `${formatTimeLeft(timeLeftMs)} for him to plan a date`;
+        return (
+          <div style={{ flexShrink: 0, padding: "max(44px, env(safe-area-inset-top, 44px)) 12px 10px", background: C.bg, borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 10 }}>
+            <button onClick={onBack} aria-label="Back" style={{ width: 36, height: 36, borderRadius: 18, background: "none", border: "none", cursor: "pointer", color: C.text, display: "flex", alignItems: "center", justifyContent: "center", marginLeft: -6 }}>
+              <ChevronLeft size={22} strokeWidth={1.8} />
+            </button>
+            <img src={profile.photos[0]} alt={profile.name} onClick={() => setViewProfile(true)} style={{ width: 36, height: 36, borderRadius: "50%", objectFit: "cover", objectPosition: "50% 20%", cursor: "pointer", flexShrink: 0 }} onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${profile.name}&size=72&background=F4F2EE&color=B8912A`; }} />
+            <div style={{ flex: 1, minWidth: 0, cursor: "pointer" }} onClick={() => setViewProfile(true)}>
+              <p style={{ fontWeight: 600, fontSize: 16, lineHeight: 1.15, color: C.text, fontFamily: FONT, margin: 0, letterSpacing: "-0.2px" }}>{profile.name}</p>
+              <p style={{ fontSize: 12, color: statusColor, fontFamily: FONT, margin: "2px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{status}</p>
+            </div>
+            <button onClick={() => setShowReportMenu(true)} aria-label="Safety options" style={{ width: 36, height: 36, borderRadius: 18, background: "none", border: "none", cursor: "pointer", color: C.sub, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Shield size={19} strokeWidth={1.7} />
+            </button>
           </div>
-          <div style={{ flex: 1, minWidth: 0, cursor: "pointer" }} onClick={() => setViewProfile(true)}>
-            <p style={{ fontWeight: 700, fontSize: 16, lineHeight: 1, color: C.text, fontFamily: FONT, margin: 0 }}>{profile.name}</p>
-            {profile.reliability?.dates > 0 && <div style={{ marginTop: 5 }}><ReliabilityBadge reliability={profile.reliability} /></div>}
-          </div>
-          <button onClick={() => setShowReportMenu(true)} aria-label="Safety options" style={{ width: 36, height: 36, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: "#FEF2F2", border: "none", cursor: "pointer" }}>
-            <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth={2.5}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
-          </button>
-        </div>
-
-        <div style={{ marginTop: 12, borderRadius: 12, padding: "8px 16px", display: "flex", alignItems: "center", gap: 8, background: C.primarySoft }}>
-          <span style={{ color: C.primary }}><AgapeCross size={11} strokeWidth={1.5} /></span>
-          <p style={{ fontSize: 12, fontWeight: 600, color: C.primary, margin: 0 }}>You matched with {profile.name}{profile.denomination ? ` · ${profile.denomination}` : ""}</p>
-        </div>
-
-        {firstMessageTime && !timerStopped && !chatLocked && timeLeftMs !== null && (
-          <div style={{ marginTop: 8, borderRadius: 12, padding: "8px 16px", display: "flex", alignItems: "center", gap: 8, background: timeLeftMs < 86400000 ? "#FEF2F2" : C.surface }}>
-            <Clock size={14} color={timeLeftMs < 86400000 ? "#EF4444" : C.primary} style={{ flexShrink: 0 }} />
-            <p style={{ fontSize: 12, fontWeight: 600, color: timeLeftMs < 86400000 ? "#EF4444" : C.sub, margin: 0 }}>
-              {isMale
-                ? `${formatTimeLeft(timeLeftMs)} left to plan a date${nudgeSent || match.nudgeAt ? " — she sent a rose (+36h)" : ""}`
-                : `${formatTimeLeft(timeLeftMs)} left${nudgeSent ? " (+36h from your rose)" : " — waiting for him to plan a date"}`}
-            </p>
-          </div>
-        )}
-        {openInvite && (
-          <div style={{ marginTop: 8, borderRadius: 12, padding: "8px 16px", display: "flex", alignItems: "center", gap: 8, background: C.surface }}>
-            <Calendar size={14} color={C.primary} />
-            <p style={{ fontSize: 12, fontWeight: 600, color: C.sub, margin: 0 }}>
-              {openInvite.status === "pending"
-                ? (isMale ? "Plan sent — waiting for her to say when she's free" : "He planned a date — tell him when you're free")
-                : (isMale ? "She's free — pick one of her times" : "Times sent — waiting for him to pick one")}
-            </p>
-          </div>
-        )}
-        {(deadlinePaused || hasVideoCall) && !confirmedDate && !openInvite && (
-          <div style={{ marginTop: 8, borderRadius: 12, padding: "8px 16px", display: "flex", alignItems: "center", gap: 8, background: "#F0FDF4" }}>
-            {hasVideoCall ? <Video size={14} color="#16A34A" /> : <Heart size={14} color="#16A34A" />}
-            <p style={{ fontSize: 12, fontWeight: 600, color: "#16A34A", margin: 0 }}>
-              {hasVideoCall ? "Video call scheduled — no deadline, take your time" : "No time pressure — chat at your own pace"}
-            </p>
-          </div>
-        )}
-        {chatLocked && (
-          <div style={{ marginTop: 8, borderRadius: 12, padding: "8px 16px", display: "flex", alignItems: "center", gap: 8, background: "#FEF2F2" }}>
-            <Lock size={14} color="#EF4444" />
-            <p style={{ fontSize: 12, fontWeight: 600, color: "#EF4444", margin: 0 }}>Chat closed — no date was set in time</p>
-          </div>
-        )}
-        {confirmedDate && !datePassed && (
-          <div style={{ marginTop: 8, borderRadius: 12, padding: "8px 16px", display: "flex", alignItems: "center", gap: 8, background: "#F0FDF4" }}>
-            <CheckCircle size={14} color="#16A34A" />
-            <p style={{ fontSize: 12, fontWeight: 600, color: "#16A34A", margin: 0 }}>
-              Date confirmed{confirmedDate.confirmed_time ? ` · ${longDay(confirmedDate.confirmed_time.date)} · ${confirmedDate.confirmed_time.time}` : ""}
-            </p>
-          </div>
-        )}
-      </div>
+        );
+      })()}
 
       {/* Timeline */}
-      <div style={{ flex: 1, minHeight: 0, overflowY: "auto", WebkitOverflowScrolling: "touch", padding: "16px 16px 24px", display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ flex: 1, minHeight: 0, overflowY: "auto", WebkitOverflowScrolling: "touch", padding: "18px 16px 20px", display: "flex", flexDirection: "column", gap: 6 }}>
         {timeline.length === 0 && !lastDeclined && (
-          <div style={{ borderRadius: 20, padding: "18px 16px", background: C.primarySoft, border: `1.5px solid ${C.primary}` }}>
-            <p style={{ fontSize: 15, fontWeight: 700, color: C.text, fontFamily: FONT, margin: "0 0 6px" }}>Say hello to {profile.name}</p>
+          <div style={{ borderRadius: 16, padding: "16px", background: C.card, border: `1px solid ${C.border}`, marginBottom: 8 }}>
+            <p style={{ fontSize: 15, fontWeight: 600, color: C.text, fontFamily: FONT, margin: "0 0 6px", letterSpacing: "-0.2px" }}>You matched with {profile.name}</p>
             <p style={{ fontSize: 13, color: C.sub, fontFamily: FONT, lineHeight: 1.55, margin: 0 }}>
               {isMale
-                ? "Once the chat starts you have 5 days to plan a date. She says when she's free, you pick one of her times."
-                : "Once the chat starts he has 5 days to plan a date. Send him a rose if you'd love to go — it gives him extra time."}
+                ? "Say hello. Once the conversation starts you have five days to plan a date — she'll tell you when she's free and you pick one of her times."
+                : "Say hello. Once the conversation starts he has five days to plan a date. A rose lets him know you'd love to go, and gives him extra time."}
             </p>
           </div>
         )}
 
         {lastDeclined && (
-          <div style={{ borderRadius: 16, padding: "14px 16px", background: "#FEF2F2" }}>
-            <p style={{ fontSize: 13, fontWeight: 700, color: "#EF4444", fontFamily: FONT, margin: "0 0 4px 0" }}>
+          <div style={{ borderRadius: 14, padding: "12px 14px", background: C.card, border: `1px solid ${C.border}`, marginBottom: 8 }}>
+            <p style={{ fontSize: 13, fontWeight: 600, color: C.text, fontFamily: FONT, margin: "0 0 2px" }}>
               {isMale ? "She passed on this plan" : "You passed on this plan"}
             </p>
             <p style={{ fontSize: 12, color: C.sub, fontFamily: FONT, margin: 0 }}>
@@ -1035,85 +1001,106 @@ function ChatThread({ match, onBack }) {
           </div>
         )}
 
-        {timeline.map((item) => {
+        {timeline.map((item, i) => {
+          const prev = timeline[i - 1];
+          const next = timeline[i + 1];
+          const showDay = !prev || dayLabel(prev.timestamp) !== dayLabel(item.timestamp);
+          const divider = showDay ? (
+            <div key={`day-${item.timestamp}`} style={{ textAlign: "center", padding: "10px 0 8px" }}>
+              <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", textTransform: "uppercase", color: C.sub, fontFamily: FONT }}>{dayLabel(item.timestamp)}</span>
+            </div>
+          ) : null;
+
           if (item._type === "date") {
-            return <DateCard key={`date-${item.id}`} invitation={item} isMe={item.from_user === currentUserId} {...dateCardProps} />;
+            return (
+              <div key={`date-${item.id}`}>
+                {divider}
+                <DateCard invitation={item} isMe={item.from_user === currentUserId} {...dateCardProps} />
+              </div>
+            );
           }
+
           const isMe = item.sender === currentUserId;
           const isDoveMsg = item.text?.startsWith("🕊️ ");
           const displayText = isDoveMsg ? item.text.slice(3) : item.text;
-          return (
-            <div key={item.id} style={{ display: "flex", flexDirection: "column", alignItems: isMe ? "flex-end" : "flex-start" }}>
-              {isDoveMsg && (
-                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4, marginLeft: isMe ? 0 : 32, padding: "4px 10px", background: C.primarySoft, borderRadius: 10, alignSelf: isMe ? "flex-end" : "flex-start" }}>
-                  <DoveIcon size={12} color={C.primary} strokeWidth={2.2} />
-                  <span style={{ fontSize: 11, fontWeight: 700, color: C.primary, fontFamily: FONT }}>Sent with a Dove</span>
+          const endOfRun = !next || next._type !== "message" || next.sender !== item.sender || (next.timestamp - item.timestamp) > 5 * 60 * 1000;
+
+          // System-style events (rose, video call) render as quiet centered lines instead of bubbles
+          const isRose = item.text?.trim() === "🌹";
+          const isVideoNote = item.text?.startsWith("📹");
+          if (isRose || isVideoNote) {
+            const label = isRose ? `${isMe ? "You" : profile.name} sent a rose` : item.text.replace(/^📹\s*/, "").replace("Video call scheduled:", "Video call ·");
+            return (
+              <div key={item.id}>
+                {divider}
+                <div style={{ display: "flex", justifyContent: "center", margin: "6px 0 12px" }}>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 9999, background: C.card, border: `1px solid ${C.border}`, fontSize: 12, fontWeight: 500, color: C.sub, fontFamily: FONT }}>
+                    {isRose ? <Flower2 size={13} color={C.primary} strokeWidth={1.8} /> : <Video size={13} color={C.sub} strokeWidth={1.8} />}
+                    {label}
+                  </span>
                 </div>
-              )}
-              <div style={{ display: "flex", alignItems: "flex-end", gap: 8, maxWidth: "80%" }}>
-                {!isMe && (
-                  <img src={profile.photos[0]} alt={profile.name} style={{ width: 24, height: 24, borderRadius: "50%", objectFit: "cover", objectPosition: "50% 20%", flexShrink: 0, marginBottom: 4 }} onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${profile.name}&size=24&background=random`; }} />
+              </div>
+            );
+          }
+
+          return (
+            <div key={item.id}>
+              {divider}
+              <div style={{ display: "flex", flexDirection: "column", alignItems: isMe ? "flex-end" : "flex-start", marginBottom: endOfRun ? 10 : 2 }}>
+                {isDoveMsg && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 4 }}>
+                    <DoveIcon size={12} color={C.primary} strokeWidth={2.2} />
+                    <span style={{ fontSize: 11, fontWeight: 600, color: C.primary, fontFamily: FONT, letterSpacing: "0.02em" }}>Sent with a Dove</span>
+                  </div>
                 )}
                 <div
                   style={{
-                    padding: "12px 16px",
-                    borderRadius: 16,
-                    background: isMe ? C.sent : isDoveMsg ? C.primarySoft : C.card,
-                    color: isMe ? "white" : C.text,
-                    borderBottomRightRadius: isMe ? 6 : 16,
-                    borderBottomLeftRadius: !isMe ? 6 : 16,
-                    boxShadow: !isMe ? "0 1px 4px rgba(0,0,0,0.06)" : undefined,
-                    border: isDoveMsg && !isMe ? `1.5px solid ${C.primary}` : undefined,
-                    cursor: "pointer",
+                    maxWidth: "78%",
+                    padding: "10px 14px",
+                    borderRadius: 18,
+                    borderBottomRightRadius: isMe ? 5 : 18,
+                    borderBottomLeftRadius: isMe ? 18 : 5,
+                    background: isMe ? C.text : C.bg,
+                    color: isMe ? "#fff" : C.text,
+                    border: isMe ? "1px solid " + C.text : `1px solid ${isDoveMsg ? C.primary : C.border}`,
                   }}
-                  onDoubleClick={() => setReacting(reacting === item.id ? null : item.id)}
                 >
-                  <p style={{ fontSize: 14, lineHeight: 1.5, fontFamily: FONT, margin: 0, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{displayText}</p>
+                  <p style={{ fontSize: 15, lineHeight: 1.45, fontFamily: FONT, margin: 0, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{displayText}</p>
                 </div>
+                {endOfRun && <p style={{ fontSize: 10.5, marginTop: 4, color: C.sub, fontFamily: FONT }}>{formatTime(item.timestamp)}</p>}
               </div>
-              <p style={{ fontSize: 10, marginTop: 6, marginLeft: 32, marginRight: 32, color: C.sub }}>{formatTime(item.timestamp)}</p>
-
-              {reacting === item.id && (
-                <div style={{ display: "flex", gap: 6, marginTop: 4, marginLeft: 32, marginRight: 32, borderRadius: 16, padding: "8px 12px", background: C.card, boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
-                  {REACTIONS.map((r) => (
-                    <button key={r} onClick={() => setReacting(null)} style={{ fontSize: 18, background: "none", border: "none", cursor: "pointer", transition: "all 0.2s" }}>{r}</button>
-                  ))}
-                </div>
-              )}
             </div>
           );
         })}
 
         {datePassed && myRating === null && !openInvite && (
-          <div style={{ borderRadius: 20, padding: "16px", background: C.primarySoft, border: `1.5px solid ${C.primary}` }}>
-            <p style={{ fontSize: 15, fontWeight: 700, color: C.text, fontFamily: FONT, margin: "0 0 4px" }}>Did {profile.name} show up?</p>
-            <p style={{ fontSize: 12, color: C.sub, fontFamily: FONT, margin: "0 0 12px", lineHeight: 1.5 }}>Your answer is shown on {profile.name}'s profile as a reliability score — it keeps Agape honest.</p>
+          <div style={{ borderRadius: 16, padding: "16px", background: C.card, border: `1px solid ${C.border}`, marginTop: 8 }}>
+            <p style={{ fontSize: 15, fontWeight: 600, color: C.text, fontFamily: FONT, margin: "0 0 4px", letterSpacing: "-0.2px" }}>Did {profile.name} show up?</p>
+            <p style={{ fontSize: 12.5, color: C.sub, fontFamily: FONT, margin: "0 0 12px", lineHeight: 1.5 }}>Your answer becomes part of {profile.name}'s reliability score.</p>
             <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={() => handleRate(true)} disabled={rating} style={{ flex: 1, padding: "12px 0", borderRadius: 12, fontSize: 14, fontWeight: 700, fontFamily: FONT, background: GREEN, color: "white", border: "none", cursor: "pointer" }}>Yes, we met</button>
-              <button onClick={() => handleRate(false)} disabled={rating} style={{ flex: 1, padding: "12px 0", borderRadius: 12, fontSize: 14, fontWeight: 700, fontFamily: FONT, background: "#FEF2F2", color: "#EF4444", border: "1.5px solid #FCA5A5", cursor: "pointer" }}>No-show</button>
+              <button onClick={() => handleRate(true)} disabled={rating} style={{ flex: 1, padding: "11px 0", borderRadius: 12, fontSize: 14, fontWeight: 600, fontFamily: FONT, background: C.text, color: "#fff", border: "none", cursor: "pointer" }}>Yes, we met</button>
+              <button onClick={() => handleRate(false)} disabled={rating} style={{ flex: 1, padding: "11px 0", borderRadius: 12, fontSize: 14, fontWeight: 600, fontFamily: FONT, background: C.bg, color: "#B91C1C", border: `1px solid ${C.border}`, cursor: "pointer" }}>No-show</button>
             </div>
           </div>
         )}
         {datePassed && myRating && (
-          <div style={{ borderRadius: 20, padding: 16, background: myRating.showed_up ? "#F0FDF4" : "#FEF2F2", border: `1.5px solid ${myRating.showed_up ? "#BBF7D0" : "#FECACA"}` }}>
+          <div style={{ borderRadius: 16, padding: "16px", background: C.card, border: `1px solid ${C.border}`, marginTop: 8 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-              {myRating.showed_up ? <CheckCircle size={18} color="#16A34A" /> : <Ban size={18} color="#EF4444" />}
-              <p style={{ fontSize: 15, fontWeight: 700, color: myRating.showed_up ? "#166534" : "#B91C1C", fontFamily: FONT, margin: 0 }}>
-                {myRating.showed_up ? `Great — you met ${profile.name}` : `You reported ${profile.name} as a no-show`}
+              {myRating.showed_up ? <CheckCircle size={16} color="#15803D" strokeWidth={1.8} /> : <Ban size={16} color="#B91C1C" strokeWidth={1.8} />}
+              <p style={{ fontSize: 15, fontWeight: 600, color: C.text, fontFamily: FONT, margin: 0, letterSpacing: "-0.2px" }}>
+                {myRating.showed_up ? `You met ${profile.name}` : `${profile.name} didn't show up`}
               </p>
             </div>
-            <p style={{ fontSize: 12, color: C.sub, fontFamily: FONT, margin: "0 0 12px", lineHeight: 1.5 }}>
-              {myRating.showed_up
-                ? "It now counts towards their reliability score. Keep chatting here, or plan the next one."
-                : "Sorry that happened. It now shows on their profile so others know. You can unmatch below."}
+            <p style={{ fontSize: 12.5, color: C.sub, fontFamily: FONT, margin: "0 0 12px", lineHeight: 1.5 }}>
+              {myRating.showed_up ? "Counted towards their reliability score. Keep chatting, or plan the next one." : "It now shows on their profile. You can unmatch below."}
             </p>
             <div style={{ display: "flex", gap: 8 }}>
               {myRating.showed_up && isMale && !openInvite && (
-                <button onClick={() => { track("plan_date_tapped", { again: true }); setShowDateBuilder(true); }} style={{ flex: 1, padding: "11px 0", borderRadius: 12, fontSize: 13, fontWeight: 700, fontFamily: FONT, background: C.primary, color: "white", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-                  <Calendar size={14} color="white" /> Plan another date
+                <button onClick={() => { track("plan_date_tapped", { again: true }); setShowDateBuilder(true); }} style={{ flex: 1, padding: "11px 0", borderRadius: 12, fontSize: 13.5, fontWeight: 600, fontFamily: FONT, background: C.text, color: "#fff", border: "none", cursor: "pointer" }}>
+                  Plan another date
                 </button>
               )}
-              <button onClick={() => setShowReportMenu(true)} style={{ flex: 1, padding: "11px 0", borderRadius: 12, fontSize: 13, fontWeight: 700, fontFamily: FONT, background: "white", color: myRating.showed_up ? C.sub : "#EF4444", border: `1.5px solid ${myRating.showed_up ? C.border : "#FECACA"}`, cursor: "pointer" }}>
+              <button onClick={() => setShowReportMenu(true)} style={{ flex: 1, padding: "11px 0", borderRadius: 12, fontSize: 13.5, fontWeight: 600, fontFamily: FONT, background: C.bg, color: C.sub, border: `1px solid ${C.border}`, cursor: "pointer" }}>
                 {myRating.showed_up ? "Unmatch or report" : "Unmatch"}
               </button>
             </div>
@@ -1123,109 +1110,104 @@ function ChatThread({ match, onBack }) {
       </div>
 
       {/* Compose */}
-      <div style={{ flexShrink: 0, padding: "10px 16px calc(12px + env(safe-area-inset-bottom, 0px))", background: C.card, borderTop: `1px solid ${C.border}` }}>
+      <div style={{ flexShrink: 0, padding: "8px 12px calc(10px + env(safe-area-inset-bottom, 0px))", background: C.bg, borderTop: `1px solid ${C.border}` }}>
         {chatLocked ? (
           <div style={{ textAlign: "center", padding: "12px 0", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-            <Lock size={14} color={C.sub} />
-            <p style={{ fontSize: 13, color: C.sub, fontFamily: FONT, margin: 0 }}>This chat has expired</p>
+            <Lock size={14} color={C.sub} strokeWidth={1.8} />
+            <p style={{ fontSize: 13, color: C.sub, fontFamily: FONT, margin: 0 }}>This conversation has closed</p>
           </div>
         ) : (
           <>
             {isMale && (nudgeSent || match.nudgeAt) && !showNudgeExplainer && messages.length <= 5 && (
-              <button onClick={() => setShowNudgeExplainer(true)} style={{ width: "100%", padding: "10px 14px", marginBottom: 8, borderRadius: 14, background: C.primarySoft, border: `1.5px solid ${C.primary}`, cursor: "pointer", textAlign: "center", fontSize: 13, fontWeight: 700, color: C.primary, fontFamily: FONT }}>
-                She sent you a rose — tap to learn what it means
+              <button onClick={() => setShowNudgeExplainer(true)} style={{ width: "100%", padding: "10px 14px", marginBottom: 8, borderRadius: 12, background: C.card, border: `1px solid ${C.border}`, cursor: "pointer", textAlign: "left", fontSize: 13, color: C.text, fontFamily: FONT, display: "flex", alignItems: "center", gap: 8 }}>
+                <Flower2 size={14} color={C.primary} /> She sent you a rose — what it means
               </button>
             )}
             {showNudgeExplainer && (
-              <div style={{ padding: "14px 16px", marginBottom: 8, borderRadius: 14, background: C.primarySoft, border: `1.5px solid ${C.primary}` }}>
-                <p style={{ fontSize: 13, fontWeight: 700, color: C.primary, fontFamily: FONT, margin: "0 0 6px 0" }}>What does the rose mean?</p>
-                <p style={{ fontSize: 12, color: C.text, fontFamily: FONT, lineHeight: 1.5, margin: "0 0 8px 0" }}>
-                  She's letting you know she'd love to go on a date with you — and you got an extra 36 hours to plan something special.
+              <div style={{ padding: "12px 14px", marginBottom: 8, borderRadius: 12, background: C.card, border: `1px solid ${C.border}` }}>
+                <p style={{ fontSize: 13, color: C.text, fontFamily: FONT, lineHeight: 1.5, margin: "0 0 6px" }}>
+                  She'd love to go on a date with you — and you've got an extra 36 hours to plan something.
                 </p>
-                <button onClick={() => setShowNudgeExplainer(false)} style={{ fontSize: 12, fontWeight: 600, color: C.primary, background: "none", border: "none", cursor: "pointer", padding: 0 }}>Got it</button>
+                <button onClick={() => setShowNudgeExplainer(false)} style={{ fontSize: 12, fontWeight: 600, color: C.sub, background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: FONT }}>Got it</button>
               </div>
             )}
 
             {showVideoCallScheduler && (
-              <div style={{ padding: "14px 16px", marginBottom: 8, borderRadius: 14, background: "#F0FDF4", border: "1.5px solid #22C55E" }}>
-                <p style={{ fontSize: 13, fontWeight: 700, color: "#16A34A", fontFamily: FONT, margin: "0 0 4px 0" }}>Schedule a video call</p>
-                <p style={{ fontSize: 12, color: C.sub, fontFamily: FONT, margin: "0 0 12px 0" }}>Pick a day and time — the deadline timer stops.</p>
-                <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 8, marginBottom: 8 }}>
+              <div style={{ padding: "14px", marginBottom: 8, borderRadius: 14, background: C.card, border: `1px solid ${C.border}` }}>
+                <p style={{ fontSize: 14, fontWeight: 600, color: C.text, fontFamily: FONT, margin: "0 0 2px" }}>Schedule a video call</p>
+                <p style={{ fontSize: 12, color: C.sub, fontFamily: FONT, margin: "0 0 12px" }}>Pick a day and time. The deadline pauses.</p>
+                <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 8, marginBottom: 6, scrollbarWidth: "none" }}>
                   {vcDays.map((d) => (
                     <button
                       key={d.date}
                       onClick={() => setVcDay(vcDay?.date === d.date ? null : d)}
-                      style={{ flexShrink: 0, padding: "10px 14px", borderRadius: 14, cursor: "pointer", textAlign: "center", minWidth: 60, border: vcDay?.date === d.date ? "2px solid #22C55E" : `1.5px solid ${C.border}`, background: vcDay?.date === d.date ? "#DCFCE7" : "white" }}
+                      style={{ flexShrink: 0, padding: "9px 12px", borderRadius: 12, cursor: "pointer", textAlign: "center", minWidth: 58, border: `1px solid ${vcDay?.date === d.date ? C.text : C.border}`, background: vcDay?.date === d.date ? C.text : C.bg, color: vcDay?.date === d.date ? "#fff" : C.text }}
                     >
-                      <span style={{ fontSize: 11, color: C.sub, display: "block", fontWeight: 600 }}>{d.dayName}</span>
-                      <span style={{ fontSize: 18, fontWeight: 700, color: C.text, display: "block" }}>{d.dayNum}</span>
-                      <span style={{ fontSize: 10, color: C.sub }}>{d.month}</span>
+                      <span style={{ fontSize: 10.5, display: "block", fontWeight: 600, opacity: 0.7, fontFamily: FONT }}>{d.dayName}</span>
+                      <span style={{ fontSize: 17, fontWeight: 600, display: "block", fontFamily: FONT }}>{d.dayNum}</span>
                     </button>
                   ))}
                 </div>
                 {vcDay && (
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12, alignItems: "center" }}>
                     {TIME_SLOTS.map((t) => (
-                      <button key={t} onClick={() => setVcTime(vcTime === t ? null : t)} style={{ padding: "8px 16px", borderRadius: 10, cursor: "pointer", fontSize: 14, fontWeight: 600, color: vcTime === t ? "white" : C.text, fontFamily: FONT, border: vcTime === t ? "2px solid #22C55E" : `1.5px solid ${C.border}`, background: vcTime === t ? "#22C55E" : "white" }}>
+                      <button key={t} onClick={() => setVcTime(vcTime === t ? null : t)} style={{ padding: "8px 14px", borderRadius: 10, cursor: "pointer", fontSize: 13.5, fontWeight: 600, fontFamily: FONT, color: vcTime === t ? "#fff" : C.text, border: `1px solid ${vcTime === t ? C.text : C.border}`, background: vcTime === t ? C.text : C.bg }}>
                         {t}
                       </button>
                     ))}
-                    <input
-                      type="time"
-                      onChange={(e) => { if (e.target.value) setVcTime(e.target.value); }}
-                      style={{ padding: "8px 12px", borderRadius: 10, fontSize: 14, fontWeight: 600, fontFamily: FONT, color: C.text, border: `1.5px solid ${C.border}`, background: "white", outline: "none", width: 100 }}
-                    />
+                    <input type="time" onChange={(e) => { if (e.target.value) setVcTime(e.target.value); }} style={{ padding: "8px 10px", borderRadius: 10, fontSize: 13.5, fontWeight: 600, fontFamily: FONT, color: C.text, border: `1px solid ${C.border}`, background: C.bg, outline: "none", width: 96 }} />
                   </div>
                 )}
                 <div style={{ display: "flex", gap: 8 }}>
-                  <button onClick={() => { setShowVideoCallScheduler(false); setVcDay(null); setVcTime(null); }} style={{ flex: 1, padding: "10px 0", borderRadius: 12, fontSize: 13, fontWeight: 600, background: C.surface, color: C.sub, border: "none", cursor: "pointer" }}>Cancel</button>
-                  <button onClick={handleVideoCall} disabled={!vcDay || !vcTime} style={{ flex: 1, padding: "10px 0", borderRadius: 12, fontSize: 13, fontWeight: 700, background: vcDay && vcTime ? "#22C55E" : C.border, color: "white", border: "none", cursor: vcDay && vcTime ? "pointer" : "default" }}>Schedule</button>
+                  <button onClick={() => { setShowVideoCallScheduler(false); setVcDay(null); setVcTime(null); }} style={{ flex: 1, padding: "10px 0", borderRadius: 12, fontSize: 13.5, fontWeight: 600, background: C.bg, color: C.sub, border: `1px solid ${C.border}`, cursor: "pointer", fontFamily: FONT }}>Cancel</button>
+                  <button onClick={handleVideoCall} disabled={!vcDay || !vcTime} style={{ flex: 1, padding: "10px 0", borderRadius: 12, fontSize: 13.5, fontWeight: 600, background: vcDay && vcTime ? C.text : C.border, color: "#fff", border: "none", cursor: vcDay && vcTime ? "pointer" : "default", fontFamily: FONT }}>Schedule</button>
                 </div>
               </div>
             )}
 
-            {/* Action chips — Plan a Date and Video call side by side */}
-            <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 8, marginBottom: 2, scrollbarWidth: "none", alignItems: "center" }}>
+            {/* Action chips */}
+            <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 8, scrollbarWidth: "none" }}>
               {isMale && !openInvite && !confirmedDate && (
-                <button aria-label="Plan a date" onClick={() => { track("plan_date_tapped"); setShowDateBuilder(true); }} style={chip({ background: C.primary, color: "white" })}>
-                  <Calendar size={14} color="white" /> {lastDeclined ? "Plan another date" : "Plan a Date"}
+                <button aria-label="Plan a date" onClick={() => { track("plan_date_tapped"); setShowDateBuilder(true); }} style={chip({ background: C.text, color: "#fff", border: `1px solid ${C.text}` })}>
+                  <Calendar size={14} color="#fff" strokeWidth={1.8} /> {lastDeclined ? "Plan another date" : "Plan a date"}
                 </button>
               )}
               {!isMale && !nudgeSent && !openInvite && !confirmedDate && (
                 <button aria-label="Send a rose" onClick={handleNudge} disabled={nudgeSending} style={chip()}>
-                  <Flower2 size={14} color={C.primary} /> {nudgeSending ? "Sending..." : "Send him a rose"}
+                  <Flower2 size={14} color={C.primary} strokeWidth={1.8} /> {nudgeSending ? "Sending…" : "Send a rose"}
                 </button>
               )}
               {!isMale && nudgeSent && !openInvite && !confirmedDate && (
-                <span style={chip({ background: C.surface, border: `1.5px solid ${C.border}`, color: C.sub, cursor: "default" })}>
-                  <Flower2 size={14} color={C.sub} /> Rose sent · he has extra time
+                <span style={chip({ color: C.sub, cursor: "default" })}>
+                  <Flower2 size={14} color={C.primary} strokeWidth={1.8} /> Rose sent
                 </span>
               )}
               {!hasVideoCall && !showVideoCallScheduler && (
-                <button aria-label="Video call" onClick={() => { track("video_call_scheduler_opened"); setShowVideoCallScheduler(true); }} style={chip({ background: "#F0FDF4", color: "#16A34A", border: "1.5px solid #22C55E" })}>
-                  <Video size={14} color="#16A34A" /> Video call
+                <button aria-label="Video call" onClick={() => { track("video_call_scheduler_opened"); setShowVideoCallScheduler(true); }} style={chip()}>
+                  <Video size={14} color={C.sub} strokeWidth={1.8} /> Video call
                 </button>
               )}
               {hasVideoCall && (
-                <button onClick={() => { track("video_call_joined"); window.open(`https://meet.ffmuc.net/agape-${match.id.slice(0, 8)}`, "_blank"); }} style={chip({ background: "#22C55E", color: "white", border: "1.5px solid #22C55E" })}>
-                  <Video size={14} color="white" /> Join video call
+                <button onClick={() => { track("video_call_joined"); window.open(`https://meet.ffmuc.net/agape-${match.id.slice(0, 8)}`, "_blank"); }} style={chip()}>
+                  <Video size={14} color="#15803D" strokeWidth={1.8} /> Join video call
                 </button>
               )}
             </div>
 
-            <div style={{ display: "flex", alignItems: "center", gap: 12, borderRadius: 16, padding: "12px 16px", background: C.surface }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <input
-                style={{ flex: 1, fontSize: 14, background: "transparent", outline: "none", border: "none", color: C.text, fontFamily: FONT }}
-                placeholder={`Message ${profile.name}...`}
+                style={{ flex: 1, fontSize: 15, padding: "11px 16px", borderRadius: 22, background: C.bg, border: `1px solid ${C.border}`, outline: "none", color: C.text, fontFamily: FONT, minWidth: 0 }}
+                placeholder="Message"
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && send()}
               />
               <button
                 onClick={send}
-                style={{ width: 32, height: 32, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: text.trim() ? C.primary : C.border, border: "none", cursor: "pointer" }}
+                aria-label="Send"
+                style={{ width: 40, height: 40, borderRadius: 20, display: "flex", alignItems: "center", justifyContent: "center", background: text.trim() ? C.text : C.surface, border: "none", cursor: "pointer", flexShrink: 0, transition: "background 0.15s" }}
               >
-                <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2.5} strokeLinecap="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" /></svg>
+                <ArrowUp size={18} color={text.trim() ? "#fff" : C.sub} strokeWidth={2} />
               </button>
             </div>
           </>
