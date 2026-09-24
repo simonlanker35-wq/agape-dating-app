@@ -940,6 +940,12 @@ export default function Profile() {
     setEditingPromptData({ prompt: p.prompt, answer: p.answer, category: cat || "Faith" });
   };
 
+  const openNewPromptEditor = () => {
+    track("prompt_add_opened");
+    setEditingPromptIdx(prompts.length);
+    setEditingPromptData({ prompt: "", answer: "", category: Object.keys(PROMPT_CATEGORIES)[0] });
+  };
+
   const selectPromptQuestion = (promptText) => {
     track("prompt_question_selected", { prompt: promptText });
     setEditingPromptData((d) => ({ ...d, prompt: promptText, answer: d.prompt === promptText ? d.answer : "" }));
@@ -951,10 +957,9 @@ export default function Profile() {
     track("prompt_edit_saved", { prompt: editingPromptData.prompt });
     setSaving(true);
     try {
-      const allPrompts = (currentUser.prompts || []).map((p, i) => {
-        if (i === editingPromptIdx) return { prompt: editingPromptData.prompt, answer: editingPromptData.answer };
-        return p;
-      });
+      const entry = { prompt: editingPromptData.prompt, answer: editingPromptData.answer.trim() };
+      const allPrompts = prompts.map((p, i) => (i === editingPromptIdx ? entry : p));
+      if (editingPromptIdx >= prompts.length) allPrompts.push(entry);
       await actions.updateProfile({ prompts: allPrompts });
       setEditingPromptIdx(null);
       setEditingPromptData(null);
@@ -1202,7 +1207,7 @@ export default function Profile() {
             const go = (m) => {
               track("completeness_item_tapped", { key: m.key });
               if (m.target === "photos") { setEditPhotos(true); setTimeout(() => photosRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 50); }
-              else if (m.target === "prompts") { promptsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }); }
+              else if (m.target === "prompts") { if (prompts.length < 3) openNewPromptEditor(); else promptsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }); }
               else if (m.target === "interests") { setEditingChips({ label: "Interests", type: "interests", pool: TRAITS_POOL, fieldKey: "interests" }); setEditingChipsData([...(currentUser.interests || [])]); }
               else if (m.target === "location") openSettings("location");
               else if (m.target === "denomination") openSettings("account");
@@ -1482,6 +1487,18 @@ export default function Profile() {
               </div>
             </div>
           ))}
+          {!editMode && prompts.length < 3 && (
+            <button
+              onClick={openNewPromptEditor}
+              style={{ width: "100%", borderRadius: 16, border: `1.5px dashed ${C.primary}`, background: C.primarySoft, padding: "16px 14px", textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", gap: 12 }}
+            >
+              <span style={{ width: 32, height: 32, borderRadius: "50%", background: C.primary, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, fontWeight: 600, lineHeight: 1, flexShrink: 0 }}>+</span>
+              <span>
+                <span style={{ display: "block", fontSize: 15, fontWeight: 700, color: C.text, fontFamily: FONT }}>Add a prompt</span>
+                <span style={{ display: "block", fontSize: 12, color: C.sub, fontFamily: FONT, marginTop: 2 }}>{3 - prompts.length} more to complete your profile</span>
+              </span>
+            </button>
+          )}
 
           {/* Interests */}
           {(() => {
@@ -1811,7 +1828,7 @@ export default function Profile() {
                 Cancel
               </button>
               <span style={{ fontSize: 16, fontWeight: 700, fontFamily: FONT, color: C.text }}>
-                {editingPromptData.category}
+                {editingPromptIdx >= prompts.length ? "New prompt" : "Edit prompt"}
               </span>
               <button
                 onClick={savePromptEdit}
@@ -1877,6 +1894,17 @@ export default function Profile() {
               <p style={{ fontSize: 10, fontWeight: 600, color: C.sub, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>
                 {editingPromptData.prompt ? "Or pick a different question" : "Pick a question"}
               </p>
+              <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 10, marginBottom: 6, scrollbarWidth: "none" }}>
+                {Object.keys(PROMPT_CATEGORIES).map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => setEditingPromptData((d) => ({ ...d, category: cat }))}
+                    style={{ flexShrink: 0, padding: "7px 14px", borderRadius: 999, fontSize: 13, fontWeight: 600, fontFamily: FONT, cursor: "pointer", border: `1.5px solid ${cat === editingPromptData.category ? C.primary : C.border}`, background: cat === editingPromptData.category ? C.primary : C.card, color: cat === editingPromptData.category ? "#fff" : C.text }}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 {(PROMPT_CATEGORIES[editingPromptData.category] || []).map((q) => (
                   <button
