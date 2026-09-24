@@ -540,6 +540,12 @@ export default function Onboarding() {
           maxDistance: form.maxDistance,
         },
         lifestyle: form.lifestyle,
+        details: {
+          ...(form.lifestyle.Exercise ? { exercise: form.lifestyle.Exercise } : {}),
+          ...(form.lifestyle.Drinking ? { drinking: form.lifestyle.Drinking } : {}),
+          ...(form.lifestyle.Smoking ? { smoking: form.lifestyle.Smoking } : {}),
+          ...(form.lifestyle.Pets ? { pets: form.lifestyle.Pets } : {}),
+        },
       });
 
       // Keep the originals (aligned with the saved photos) so crops can be redone later — best effort

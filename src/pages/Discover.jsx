@@ -4,6 +4,7 @@ import { Heart, X, MessageCircle, Ban, Flag } from "lucide-react";
 import DoveIcon from "../components/DoveIcon";
 import ReliabilityBadge from "../components/ReliabilityBadge";
 import AgapeCross from "../components/AgapeCross";
+import { DETAIL_FIELDS } from "../data/profiles";
 import WaveformBar from "../components/WaveformBar";
 import FilterSheet from "../components/FilterSheet";
 import ReportSheet from "../components/ReportSheet";
@@ -60,6 +61,9 @@ export default function Discover() {
       if (localLikes.has(p.id)) return false;
       if (p.age < filters.minAge || p.age > filters.maxAge) return false;
       if (filters.denominations.length > 0 && !filters.denominations.includes(p.denomination)) return false;
+      for (const [key, wanted] of Object.entries(filters.details || {})) {
+        if (wanted.length > 0 && !wanted.includes(p.details?.[key])) return false;
+      }
       if (userLat && userLng && p.lat && p.lng) {
         const dist = haversine(userLat, userLng, p.lat, p.lng);
         if (dist > filters.maxDistance) return false;
@@ -373,6 +377,18 @@ export default function Discover() {
               </div>
             </div>
           ))}
+
+          {/* Details */}
+          {DETAIL_FIELDS.some((f) => profile.details?.[f.key]) && (
+            <div className="profile-interests-section">
+              <div className="interests-label">About {profile.name}</div>
+              <div className="interests-wrap">
+                {DETAIL_FIELDS.filter((f) => profile.details?.[f.key]).map((f) => (
+                  <span key={f.key} className="interest-chip"><span style={{ opacity: 0.6 }}>{f.label} · </span>{profile.details[f.key]}</span>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Interests */}
           {profile.interests?.length > 0 && (

@@ -9,6 +9,7 @@ import ReliabilityBadge from "../components/ReliabilityBadge";
 import NotificationPrompt from "../components/NotificationPrompt";
 import TutorialOverlay from "../components/TutorialOverlay";
 import { track } from "../services/posthog";
+import { DETAIL_FIELDS } from "../data/profiles";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
@@ -1295,6 +1296,13 @@ function ChatThread({ match, onBack }) {
                 </div>
               </div>
             ))}
+            {DETAIL_FIELDS.some((f) => profile.details?.[f.key]) && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, padding: "4px 0" }}>
+                {DETAIL_FIELDS.filter((f) => profile.details?.[f.key]).map((f) => (
+                  <span key={f.key} style={{ fontSize: 12, fontWeight: 600, padding: "6px 12px", borderRadius: 9999, background: C.bg, border: `1px solid ${C.border}`, color: C.text }}><span style={{ color: C.sub, fontWeight: 500 }}>{f.label} · </span>{profile.details[f.key]}</span>
+                ))}
+              </div>
+            )}
             {profile.interests?.length > 0 && (
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8, padding: "8px 0" }}>
                 {profile.interests.map((v) => (

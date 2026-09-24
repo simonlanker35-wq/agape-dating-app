@@ -65,6 +65,9 @@ export default function Standouts() {
       if (state.blocked.some((b) => (b.id || b) === p.id)) return false;
       if (p.age < filters.minAge || p.age > filters.maxAge) return false;
       if (filters.denominations.length > 0 && !filters.denominations.includes(p.denomination)) return false;
+      for (const [key, wanted] of Object.entries(filters.details || {})) {
+        if (wanted.length > 0 && !wanted.includes(p.details?.[key])) return false;
+      }
       if (userLat && userLng && p.lat && p.lng) {
         const dist = haversine(userLat, userLng, p.lat, p.lng);
         if (dist > filters.maxDistance) return false;

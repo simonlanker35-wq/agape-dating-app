@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { X } from "lucide-react";
+import { DETAIL_FIELDS } from "../data/profiles";
 import { track } from "../services/posthog";
 
 const ALL_DENOMINATIONS = [
@@ -7,21 +8,34 @@ const ALL_DENOMINATIONS = [
   "Pentecostal", "Non-denominational", "Orthodox", "Evangelical",
 ];
 
+// Which profile details can be filtered on, in this order
+const FILTERABLE = ["wantsChildren", "hasChildren", "lookingFor", "churchAttendance", "drinking", "smoking", "relocate"];
+
 export default function FilterSheet({ filters, onApply, onClose }) {
   const [maxAge, setMaxAge] = useState(filters.maxAge ?? 35);
   const [maxDistance, setMaxDistance] = useState(filters.maxDistance ?? 80);
   const [denominations, setDenominations] = useState(filters.denominations || []);
+  const [details, setDetails] = useState(filters.details || {});
 
   const toggleDenom = (d) => {
     track("filter_denomination_toggled", { denomination: d });
-    setDenominations((prev) =>
-      prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d]
-    );
+    setDenominations((prev) => (prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d]));
+  };
+
+  const toggleDetail = (key, value) => {
+    track("filter_detail_toggled", { key, value });
+    setDetails((prev) => {
+      const cur = prev[key] || [];
+      const next = cur.includes(value) ? cur.filter((v) => v !== value) : [...cur, value];
+      const out = { ...prev, [key]: next };
+      if (next.length === 0) delete out[key];
+      return out;
+    });
   };
 
   const handleApply = () => {
-    track("filter_applied", { maxAge, maxDistance, denominations });
-    onApply({ minAge: 18, maxAge, maxDistance, denominations });
+    track("filter_applied", { maxAge, maxDistance, denominations, details: Object.keys(details) });
+    onApply({ minAge: 18, maxAge, maxDistance, denominations, details });
     onClose();
   };
 
@@ -30,13 +44,16 @@ export default function FilterSheet({ filters, onApply, onClose }) {
     setMaxAge(35);
     setMaxDistance(80);
     setDenominations([]);
+    setDetails({});
   };
+
+  const activeCount = denominations.length + Object.values(details).reduce((n, arr) => n + arr.length, 0);
 
   return (
     <div className="filter-overlay" onClick={onClose}>
-      <div className="filter-sheet" onClick={(e) => e.stopPropagation()}>
+      <div className="filter-sheet" onClick={(e) => e.stopPropagation()} style={{ maxHeight: "88vh", overflowY: "auto" }}>
         <div className="filter-header">
-          <h3>Filters</h3>
+          <h3>Filters{activeCount > 0 ? ` · ${activeCount}` : ""}</h3>
           <button className="filter-close-btn" onClick={onClose}>
             <X size={20} />
           </button>
@@ -44,49 +61,49 @@ export default function FilterSheet({ filters, onApply, onClose }) {
 
         <div className="filter-section">
           <div className="filter-label">
-            Maximum Age
+            Maximum age
             <span className="filter-value">{maxAge}</span>
           </div>
-          <input
-            type="range"
-            min={18}
-            max={60}
-            value={maxAge}
-            onChange={(e) => setMaxAge(+e.target.value)}
-          />
+          <input type="range" min={18} max={60} value={maxAge} onChange={(e) => setMaxAge(+e.target.value)} />
         </div>
 
         <div className="filter-section">
           <div className="filter-label">
-            Maximum Distance
+            Maximum distance
             <span className="filter-value">{maxDistance} km</span>
           </div>
-          <input
-            type="range"
-            min={5}
-            max={500}
-            value={maxDistance}
-            onChange={(e) => setMaxDistance(+e.target.value)}
-          />
+          <input type="range" min={5} max={500} value={maxDistance} onChange={(e) => setMaxDistance(+e.target.value)} />
         </div>
 
         <div className="filter-section">
           <div className="filter-label">Denomination</div>
           <div className="filter-chips">
             {ALL_DENOMINATIONS.map((d) => (
-              <button
-                key={d}
-                className={`filter-chip ${denominations.includes(d) ? "active" : ""}`}
-                onClick={() => toggleDenom(d)}
-              >
+              <button key={d} className={`filter-chip ${denominations.includes(d) ? "active" : ""}`} onClick={() => toggleDenom(d)}>
                 {d}
               </button>
             ))}
           </div>
-          {denominations.length === 0 && (
-            <p className="filter-hint">No selection = all denominations</p>
-          )}
+          {denominations.length === 0 && <p className="filter-hint">No selection = all denominations</p>}
         </div>
+
+        {FILTERABLE.map((key) => {
+          const field = DETAIL_FIELDS.find((f) => f.key === key);
+          const selected = details[key] || [];
+          return (
+            <div className="filter-section" key={key}>
+              <div className="filter-label">{field.label}</div>
+              <div className="filter-chips">
+                {field.options.map((opt) => (
+                  <button key={opt} className={`filter-chip ${selected.includes(opt) ? "active" : ""}`} onClick={() => toggleDetail(key, opt)}>
+                    {opt}
+                  </button>
+                ))}
+              </div>
+              {selected.length === 0 && <p className="filter-hint">No selection = show everyone</p>}
+            </div>
+          );
+        })}
 
         <div className="filter-actions">
           <button className="filter-reset-btn" onClick={handleReset}>Reset</button>

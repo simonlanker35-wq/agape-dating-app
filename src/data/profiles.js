@@ -380,4 +380,18 @@ export function generateProfiles(count = 40) {
   return profiles;
 }
 
-export { PROMPTS, PROMPT_CATEGORIES, INTERESTS_POOL, TRAITS_POOL, LOOKING_FOR_POOL, DENOMINATIONS };
+// Profile details users fill in on their profile page; each is also a filter in Seek
+const DETAIL_FIELDS = [
+  { key: "wantsChildren", label: "Wants children", options: ["Yes", "Open to it", "No", "Not sure yet"] },
+  { key: "hasChildren", label: "Has children", options: ["No", "Yes"] },
+  { key: "lookingFor", label: "Looking for", options: ["Marriage", "A serious relationship", "Not sure yet"] },
+  { key: "churchAttendance", label: "Church attendance", options: ["Every week", "A few times a month", "On special occasions", "Rarely"] },
+  { key: "exercise", label: "Exercise", options: ["Daily", "Almost daily", "Sometimes", "Never"] },
+  { key: "drinking", label: "Drinking", options: ["Not for me", "Sober curious", "On special occasions", "Socially", "Most nights"] },
+  { key: "smoking", label: "Smoking", options: ["Non-smoker", "Social smoker", "Smoker when drinking", "Smoker"] },
+  { key: "pets", label: "Pets", options: ["Dog", "Cat", "Fish", "Bird", "Hamster", "Reptile", "Don't have but love", "Allergic", "Other", "Pet-free"] },
+  { key: "education", label: "Education", options: ["High school", "Apprenticeship", "Bachelor's", "Master's", "Doctorate"] },
+  { key: "relocate", label: "Open to relocating", options: ["Yes", "Within my country", "No"] },
+];
+
+export { PROMPTS, PROMPT_CATEGORIES, INTERESTS_POOL, TRAITS_POOL, LOOKING_FOR_POOL, DENOMINATIONS, DETAIL_FIELDS };

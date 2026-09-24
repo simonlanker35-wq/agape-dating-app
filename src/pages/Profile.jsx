@@ -1,7 +1,29 @@
 import { useState, useRef, useEffect } from "react";
 import { useApp } from "../context/AppContext";
 import { compressPhoto, sendTestPush, getPhotoOriginals, savePhotoOriginals, downscaleDataUrl } from "../services/api";
-import { PROMPT_CATEGORIES, TRAITS_POOL, LOOKING_FOR_POOL } from "../data/profiles";
+import { PROMPT_CATEGORIES, TRAITS_POOL, LOOKING_FOR_POOL, DETAIL_FIELDS } from "../data/profiles";
+
+// Profile completeness: photos 30, prompts 30, interests 10, location 5, denomination 5, details 20 = 100
+function computeCompleteness(u) {
+  const photos = (u.photos || []).filter(Boolean).length;
+  const prompts = (u.prompts || []).filter((p) => p.prompt && p.answer).length;
+  const interests = (u.interests || []).length;
+  const details = u.details || {};
+  const missing = [];
+  let pct = 0;
+  if (photos >= 1) pct += 15; else missing.push({ key: "photo", label: "Add your first photo", target: "photos" });
+  pct += Math.min(3, Math.max(0, photos - 1)) * 5;
+  if (photos > 0 && photos < 4) missing.push({ key: "photos", label: `Add ${4 - photos} more photo${4 - photos === 1 ? "" : "s"}`, target: "photos" });
+  pct += Math.min(3, prompts) * 10;
+  if (prompts < 3) missing.push({ key: "prompts", label: prompts === 0 ? "Answer a prompt" : `Answer ${3 - prompts} more prompt${3 - prompts === 1 ? "" : "s"}`, target: "prompts" });
+  if (interests >= 3) pct += 10; else missing.push({ key: "interests", label: "Pick at least 3 interests", target: "interests" });
+  if (u.location?.city) pct += 5; else missing.push({ key: "location", label: "Set your location", target: "location" });
+  if (u.denomination) pct += 5; else missing.push({ key: "denomination", label: "Add your denomination", target: "denomination" });
+  for (const f of DETAIL_FIELDS) {
+    if (details[f.key]) pct += 2; else missing.push({ key: f.key, label: f.label, target: "detail" });
+  }
+  return { pct: Math.min(100, Math.round(pct)), missing };
+}
 import AgapeCross from "../components/AgapeCross";
 import LocationPicker from "../components/LocationPicker";
 import { redirectToCheckout, getSubscriptionStatus } from "../services/stripe";
@@ -837,6 +859,8 @@ export default function Profile() {
   const cropCanvasRef = useRef(null);
   const cropBoxRef = useRef(null);
   const [originals, setOriginals] = useState([]);
+  const [editingDetail, setEditingDetail] = useState(null);
+  const promptsRef = useRef(null);
   useEffect(() => {
     if (currentUser?.id) getPhotoOriginals().then(setOriginals).catch(() => {});
   }, [currentUser?.id]);
@@ -1055,24 +1079,31 @@ export default function Profile() {
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 14 }}>
+          {(() => { const { pct } = computeCompleteness(currentUser); const r = 50, c = 2 * Math.PI * r; return (
           <button
             onClick={() => { setEditPhotos((v) => { if (!v) setTimeout(() => photosRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 50); return !v; }); }}
             aria-label="Change photos"
-            style={{ position: "relative", width: 96, height: 96, borderRadius: "50%", padding: 0, border: `3px solid ${C.primary}`, background: C.card, cursor: "pointer" }}
+            style={{ position: "relative", width: 108, height: 108, borderRadius: "50%", padding: 0, border: "none", background: "transparent", cursor: "pointer" }}
           >
+            <svg width={108} height={108} viewBox="0 0 108 108" style={{ position: "absolute", inset: 0, transform: "rotate(-90deg)" }}>
+              <circle cx="54" cy="54" r={r} fill="none" stroke={C.border} strokeWidth={4} />
+              <circle cx="54" cy="54" r={r} fill="none" stroke={C.primary} strokeWidth={4} strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - pct / 100)} style={{ transition: "stroke-dashoffset 0.6s ease" }} />
+            </svg>
             <img
               src={currentUser.photos?.[0]}
               alt="Me"
-              style={{ width: "100%", height: "100%", borderRadius: "50%", objectFit: "cover", objectPosition: "50% 20%", display: "block" }}
+              style={{ position: "absolute", top: 8, left: 8, width: 92, height: 92, borderRadius: "50%", objectFit: "cover", objectPosition: "50% 20%", display: "block", background: C.card }}
               onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${currentUser.name}&size=200&background=F4F2EE&color=B8912A`; }}
             />
-            <span style={{ position: "absolute", bottom: -2, right: -2, width: 28, height: 28, borderRadius: "50%", background: C.primary, border: `2px solid ${C.surface}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <span style={{ position: "absolute", top: -2, right: -6, padding: "3px 8px", borderRadius: 9999, background: pct === 100 ? "#15803D" : C.text, color: "#fff", fontSize: 11, fontWeight: 700, fontFamily: FONT, border: `2px solid ${C.surface}` }}>{pct}%</span>
+            <span style={{ position: "absolute", bottom: 2, right: 2, width: 28, height: 28, borderRadius: "50%", background: C.primary, border: `2px solid ${C.surface}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
               <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
                 <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
                 <circle cx="12" cy="13" r="4" />
               </svg>
             </span>
           </button>
+          ); })()}
 
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 12 }}>
             <span style={{ color: C.text, fontFamily: SERIF, fontSize: 24, fontWeight: 700, lineHeight: 1 }}>{currentUser.name}</span>
@@ -1160,6 +1191,42 @@ export default function Profile() {
         }}
       >
         <div style={{ display: "flex", flexDirection: "column", gap: 12, paddingTop: 8 }}>
+          {/* Complete your profile */}
+          {(() => {
+            const { pct, missing } = computeCompleteness(currentUser);
+            if (pct >= 100 || missing.length === 0) return null;
+            const go = (m) => {
+              track("completeness_item_tapped", { key: m.key });
+              if (m.target === "photos") { setEditPhotos(true); setTimeout(() => photosRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 50); }
+              else if (m.target === "prompts") { promptsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }); }
+              else if (m.target === "interests") { setEditingChips({ label: "Interests", type: "interests", pool: TRAITS_POOL, fieldKey: "interests" }); setEditingChipsData([...(currentUser.interests || [])]); }
+              else if (m.target === "location") openSettings("location");
+              else if (m.target === "denomination") openSettings("account");
+              else if (m.target === "detail") setEditingDetail(m.key);
+            };
+            return (
+              <div style={{ borderRadius: 16, padding: 16, background: C.card, border: `1px solid ${C.border}` }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
+                  <p style={{ fontSize: 14, fontWeight: 700, color: C.text, margin: 0 }}>Complete your profile</p>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: C.primary }}>{pct}%</span>
+                </div>
+                <p style={{ fontSize: 12, color: C.sub, margin: "0 0 10px", lineHeight: 1.5 }}>Complete profiles get noticeably more matches.</p>
+                <div style={{ height: 6, borderRadius: 3, background: C.border, overflow: "hidden", marginBottom: 12 }}>
+                  <div style={{ width: `${pct}%`, height: "100%", background: C.primary, transition: "width 0.5s" }} />
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {missing.slice(0, 3).map((m) => (
+                    <button key={m.key} onClick={() => go(m)} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px", borderRadius: 12, background: C.bg, border: `1px solid ${C.border}`, cursor: "pointer", textAlign: "left" }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: C.text, fontFamily: FONT }}>{m.label}</span>
+                      <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={C.sub} strokeWidth={2}><polyline points="9 18 15 12 9 6" /></svg>
+                    </button>
+                  ))}
+                  {missing.length > 3 && <p style={{ fontSize: 11, color: C.sub, margin: "4px 0 0", textAlign: "center" }}>+ {missing.length - 3} more below</p>}
+                </div>
+              </div>
+            );
+          })()}
+
           {/* Agape+ banner */}
           <div
             style={{
@@ -1332,6 +1399,7 @@ export default function Profile() {
           )}
 
           {/* Prompts */}
+          <div ref={promptsRef} style={{ height: 0 }} />
           {(editMode ? editPrompts : prompts).map((p, i) => (
             <div
               key={i}
@@ -1480,6 +1548,30 @@ export default function Profile() {
             );
           })()}
 
+          {/* Details */}
+          <div style={{ borderRadius: 16, padding: 16, background: C.card }}>
+            <p style={{ fontSize: 10, fontWeight: 600, color: C.primary, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 4 }}>Details</p>
+            <p style={{ fontSize: 12, color: C.sub, marginBottom: 12, lineHeight: 1.5 }}>Shown on your profile and used by others' filters.</p>
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              {DETAIL_FIELDS.map((f, i) => {
+                const value = currentUser.details?.[f.key];
+                return (
+                  <button
+                    key={f.key}
+                    onClick={() => { track("detail_edit_opened", { key: f.key }); setEditingDetail(f.key); }}
+                    style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "12px 0", background: "none", border: "none", borderBottom: i < DETAIL_FIELDS.length - 1 ? `1px solid ${C.border}` : "none", cursor: "pointer", textAlign: "left" }}
+                  >
+                    <span style={{ fontSize: 14, color: C.text, fontFamily: FONT }}>{f.label}</span>
+                    <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: value ? 600 : 500, color: value ? C.text : C.primary, fontFamily: FONT, flexShrink: 0 }}>
+                      {value || "Add"}
+                      <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={C.sub} strokeWidth={2}><polyline points="9 18 15 12 9 6" /></svg>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           {/* Account settings rows */}
           <div style={{ marginTop: 4 }}>
             <p style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em", color: C.sub, padding: "0 4px", marginBottom: 8 }}>Account</p>
@@ -1595,6 +1687,40 @@ export default function Profile() {
       </div>
 
       {/* Photo crop modal */}
+      {editingDetail && (() => {
+        const field = DETAIL_FIELDS.find((f) => f.key === editingDetail);
+        const current = currentUser.details?.[field.key];
+        const choose = async (value) => {
+          const details = { ...(currentUser.details || {}) };
+          if (value) details[field.key] = value; else delete details[field.key];
+          setEditingDetail(null);
+          track("detail_saved", { key: field.key, cleared: !value });
+          try { await actions.updateProfile({ details }); } catch (err) { console.error("Detail save failed:", err); }
+        };
+        return (
+          <div onClick={() => setEditingDetail(null)} style={{ position: "fixed", inset: 0, maxWidth: 430, margin: "0 auto", zIndex: 9000, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "flex-end" }}>
+            <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", borderRadius: "22px 22px 0 0", background: C.bg, padding: "14px 16px calc(24px + env(safe-area-inset-bottom, 0px))", maxHeight: "80vh", overflowY: "auto" }}>
+              <div style={{ width: 36, height: 4, borderRadius: 2, background: C.border, margin: "0 auto 14px" }} />
+              <p style={{ fontSize: 17, fontWeight: 700, color: C.text, fontFamily: FONT, margin: "0 0 12px", letterSpacing: "-0.2px" }}>{field.label}</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {field.options.map((opt) => {
+                  const on = current === opt;
+                  return (
+                    <button key={opt} onClick={() => choose(opt)} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "13px 14px", borderRadius: 12, background: on ? C.text : C.bg, color: on ? "#fff" : C.text, border: `1px solid ${on ? C.text : C.border}`, cursor: "pointer", textAlign: "left", fontSize: 14.5, fontWeight: 600, fontFamily: FONT }}>
+                      {opt}
+                      {on && <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.5}><path d="M20 6L9 17l-5-5" /></svg>}
+                    </button>
+                  );
+                })}
+              </div>
+              {current && (
+                <button onClick={() => choose(null)} style={{ width: "100%", marginTop: 10, padding: "12px 0", borderRadius: 12, fontSize: 13, fontWeight: 600, background: "none", color: C.sub, border: "none", cursor: "pointer", fontFamily: FONT }}>Remove answer</button>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
       {cropSrc && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.9)", zIndex: 9999, display: "flex", flexDirection: "column" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 16px", paddingTop: "max(16px, env(safe-area-inset-top, 48px))" }}>
