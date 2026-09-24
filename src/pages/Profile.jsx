@@ -1078,26 +1078,25 @@ export default function Profile() {
           </button>
         </div>
 
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 14 }}>
-          {(() => { const { pct } = computeCompleteness(currentUser); const r = 50, c = 2 * Math.PI * r; return (
+        <div style={{ display: "flex", alignItems: "center", gap: 14, paddingTop: 12 }}>
+          {(() => { const { pct } = computeCompleteness(currentUser); const r = 31, c = 2 * Math.PI * r; return (
           <button
             onClick={() => { setEditPhotos((v) => { if (!v) setTimeout(() => photosRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 50); return !v; }); }}
             aria-label="Change photos"
-            style={{ position: "relative", width: 108, height: 108, borderRadius: "50%", padding: 0, border: "none", background: "transparent", cursor: "pointer" }}
+            style={{ position: "relative", width: 70, height: 70, borderRadius: "50%", padding: 0, border: "none", background: "transparent", cursor: "pointer", flexShrink: 0 }}
           >
-            <svg width={108} height={108} viewBox="0 0 108 108" style={{ position: "absolute", inset: 0, transform: "rotate(-90deg)" }}>
-              <circle cx="54" cy="54" r={r} fill="none" stroke={C.border} strokeWidth={4} />
-              <circle cx="54" cy="54" r={r} fill="none" stroke={C.primary} strokeWidth={4} strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - pct / 100)} style={{ transition: "stroke-dashoffset 0.6s ease" }} />
+            <svg width={70} height={70} viewBox="0 0 70 70" style={{ position: "absolute", inset: 0, transform: "rotate(-90deg)" }}>
+              <circle cx="35" cy="35" r={r} fill="none" stroke={C.border} strokeWidth={3} />
+              <circle cx="35" cy="35" r={r} fill="none" stroke={pct === 100 ? "#15803D" : C.primary} strokeWidth={3} strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - pct / 100)} style={{ transition: "stroke-dashoffset 0.6s ease" }} />
             </svg>
             <img
               src={currentUser.photos?.[0]}
               alt="Me"
-              style={{ position: "absolute", top: 8, left: 8, width: 92, height: 92, borderRadius: "50%", objectFit: "cover", objectPosition: "50% 20%", display: "block", background: C.card }}
+              style={{ position: "absolute", top: 6, left: 6, width: 58, height: 58, borderRadius: "50%", objectFit: "cover", objectPosition: "50% 20%", display: "block", background: C.card }}
               onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${currentUser.name}&size=200&background=F4F2EE&color=B8912A`; }}
             />
-            <span style={{ position: "absolute", top: -2, right: -6, padding: "3px 8px", borderRadius: 9999, background: pct === 100 ? "#15803D" : C.text, color: "#fff", fontSize: 11, fontWeight: 700, fontFamily: FONT, border: `2px solid ${C.surface}` }}>{pct}%</span>
-            <span style={{ position: "absolute", bottom: 2, right: 2, width: 28, height: 28, borderRadius: "50%", background: C.primary, border: `2px solid ${C.surface}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+            <span style={{ position: "absolute", bottom: -1, right: -1, width: 22, height: 22, borderRadius: "50%", background: C.text, border: `2px solid ${C.surface}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
                 <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
                 <circle cx="12" cy="13" r="4" />
               </svg>
@@ -1105,43 +1104,30 @@ export default function Profile() {
           </button>
           ); })()}
 
-          <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 12 }}>
-            <span style={{ color: C.text, fontFamily: SERIF, fontSize: 24, fontWeight: 700, lineHeight: 1 }}>{currentUser.name}</span>
-            <span style={{ color: C.sub, fontFamily: FONT, fontSize: 18, fontWeight: 300 }}>{currentUser.age}</span>
-            <svg width={15} height={15} viewBox="0 0 24 24">
-              <circle cx="12" cy="12" r="10" fill={C.primary} />
-              <path d="M9 12l2 2 4-4" stroke="white" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" fill="none" />
-            </svg>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ color: C.text, fontFamily: FONT, fontSize: 19, fontWeight: 700, lineHeight: 1.1, letterSpacing: "-0.3px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{currentUser.name}</span>
+              <span style={{ color: C.sub, fontFamily: FONT, fontSize: 16, fontWeight: 400 }}>{currentUser.age}</span>
+              <svg width={14} height={14} viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
+                <circle cx="12" cy="12" r="10" fill={C.primary} />
+                <path d="M9 12l2 2 4-4" stroke="white" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+              </svg>
+            </div>
+            <p style={{ color: C.sub, fontSize: 12, fontFamily: FONT, margin: "3px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {currentUser.denomination}{currentUser.location?.city ? ` · ${currentUser.location.city}` : ""}
+            </p>
+            <p style={{ color: C.primary, fontSize: 11, fontWeight: 600, fontFamily: FONT, margin: "4px 0 0" }}>{computeCompleteness(currentUser).pct}% complete</p>
           </div>
-          <p style={{ color: C.sub, fontSize: 12, fontFamily: FONT, marginTop: 4 }}>
-            {currentUser.denomination}{currentUser.location?.city ? ` · ${currentUser.location.city}` : ""}
-          </p>
 
           {editMode ? (
-            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-              <button
-                onClick={cancelEdit}
-                style={{ padding: "8px 18px", borderRadius: 9999, fontSize: 12, fontWeight: 700, background: C.card, color: C.sub, border: `1px solid ${C.border}`, cursor: "pointer" }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={saveEdit}
-                disabled={saving}
-                style={{ padding: "8px 18px", borderRadius: 9999, fontSize: 12, fontWeight: 700, background: C.text, color: "white", border: "none", cursor: "pointer", opacity: saving ? 0.6 : 1 }}
-              >
-                {saving ? "Saving..." : "Save"}
-              </button>
+            <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+              <button onClick={cancelEdit} style={{ padding: "8px 12px", borderRadius: 9999, fontSize: 12, fontWeight: 600, background: C.bg, color: C.sub, border: `1px solid ${C.border}`, cursor: "pointer", fontFamily: FONT }}>Cancel</button>
+              <button onClick={saveEdit} disabled={saving} style={{ padding: "8px 14px", borderRadius: 9999, fontSize: 12, fontWeight: 600, background: C.text, color: "white", border: "none", cursor: "pointer", opacity: saving ? 0.6 : 1, fontFamily: FONT }}>{saving ? "Saving…" : "Save"}</button>
             </div>
           ) : (
-            <button
-              onClick={startEdit}
-              style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 18px", borderRadius: 9999, fontSize: 12, fontWeight: 700, background: C.primary, color: "white", border: "none", cursor: "pointer", marginTop: 12 }}
-            >
-              <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2.5}>
-                <path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
-              </svg>
-              Edit profile
+            <button onClick={startEdit} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 9999, fontSize: 12, fontWeight: 600, background: C.bg, color: C.text, border: `1px solid ${C.border}`, cursor: "pointer", flexShrink: 0, fontFamily: FONT }}>
+              <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke={C.text} strokeWidth={2}><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" /></svg>
+              Edit
             </button>
           )}
         </div>
@@ -1151,7 +1137,7 @@ export default function Profile() {
       <div
         style={{
           display: "flex",
-          padding: "16px 16px 8px",
+          padding: "12px 16px 6px",
           gap: 8,
           background: C.surface,
           position: "relative",
