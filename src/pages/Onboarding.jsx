@@ -687,7 +687,7 @@ export default function Onboarding() {
   if (mode === "login") {
     return (
       <div style={{ minHeight: "100vh", background: S.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "24px 28px", maxWidth: 430, margin: "0 auto" }}>
-        <AgapeCross size={48} strokeWidth={1.2} style={{ color: S.primary }} />
+        <img src="/logo.svg" alt="Agape" width={64} height={64} style={{ borderRadius: 16, display: "block" }} />
         <h2 style={{ color: S.text, fontSize: 28, fontWeight: 800, marginTop: 20, marginBottom: 4, fontFamily: "'Outfit', system-ui, sans-serif" }}>Welcome back</h2>
         <p style={{ color: S.sub, fontSize: 14, marginBottom: 20 }}>Sign in with your phone number or email</p>
         <ProviderButtons onGoogle={() => startProvider("google")} onApple={() => startProvider("apple")} dark />
@@ -875,9 +875,7 @@ export default function Onboarding() {
     return (
       <div style={{ minHeight: "100vh", background: "#F5F0E8", display: "flex", flexDirection: "column", alignItems: "center", color: "#1A1612", maxWidth: 430, margin: "0 auto" }}>
         <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, padding: "80px 28px 0" }}>
-          <div style={{ width: 80, height: 80, borderRadius: 20, background: "white", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 16px rgba(0,0,0,0.06)" }}>
-            <AgapeCross size={36} strokeWidth={1.5} />
-          </div>
+          <img src="/logo.svg" alt="Agape" width={96} height={96} style={{ borderRadius: 22, display: "block", boxShadow: "0 4px 24px rgba(0,0,0,0.08)" }} />
           <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase", color: "#B8912A", marginTop: 8 }}>Faith + Love</p>
           <span style={{ fontSize: 48, fontWeight: 800, letterSpacing: -1, color: "#1A1612", fontFamily: "'Outfit', system-ui, sans-serif" }}>agape</span>
           <p style={{ fontSize: 16, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "#B8912A", lineHeight: 1.4, textAlign: "center", marginTop: 8 }}>Created by Christians<br />for Christians</p>

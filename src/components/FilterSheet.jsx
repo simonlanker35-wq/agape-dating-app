@@ -8,8 +8,15 @@ const ALL_DENOMINATIONS = [
   "Pentecostal", "Non-denominational", "Orthodox", "Evangelical",
 ];
 
-// Which profile details can be filtered on, in this order
-const FILTERABLE = ["wantsChildren", "hasChildren", "lookingFor", "churchAttendance", "drinking", "smoking", "relocate"];
+// Which profile details can be filtered on, grouped as on the profile page
+const FILTER_GROUPS = [
+  { label: "Children", keys: ["hasChildren", "wantsChildren"] },
+  { label: "Looking for", keys: ["lookingFor"] },
+  { label: "Church attendance", keys: ["churchAttendance"] },
+  { label: "Drinking", keys: ["drinking"] },
+  { label: "Smoking", keys: ["smoking"] },
+  { label: "Open to relocating", keys: ["relocate"] },
+];
 
 export default function FilterSheet({ filters, onApply, onClose }) {
   const [maxAge, setMaxAge] = useState(filters.maxAge ?? 35);
@@ -87,23 +94,28 @@ export default function FilterSheet({ filters, onApply, onClose }) {
           {denominations.length === 0 && <p className="filter-hint">No selection = all denominations</p>}
         </div>
 
-        {FILTERABLE.map((key) => {
-          const field = DETAIL_FIELDS.find((f) => f.key === key);
-          const selected = details[key] || [];
-          return (
-            <div className="filter-section" key={key}>
-              <div className="filter-label">{field.label}</div>
-              <div className="filter-chips">
-                {field.options.map((opt) => (
-                  <button key={opt} className={`filter-chip ${selected.includes(opt) ? "active" : ""}`} onClick={() => toggleDetail(key, opt)}>
-                    {opt}
-                  </button>
-                ))}
-              </div>
-              {selected.length === 0 && <p className="filter-hint">No selection = show everyone</p>}
-            </div>
-          );
-        })}
+        {FILTER_GROUPS.map((group) => (
+          <div className="filter-section" key={group.label}>
+            <div className="filter-label">{group.label}</div>
+            {group.keys.map((key) => {
+              const field = DETAIL_FIELDS.find((f) => f.key === key);
+              const selected = details[key] || [];
+              return (
+                <div key={key} style={{ marginBottom: group.keys.length > 1 ? 10 : 0 }}>
+                  {group.keys.length > 1 && <p className="filter-hint" style={{ marginTop: 0, marginBottom: 6 }}>{field.label}</p>}
+                  <div className="filter-chips">
+                    {field.options.map((opt) => (
+                      <button key={opt} className={`filter-chip ${selected.includes(opt) ? "active" : ""}`} onClick={() => toggleDetail(key, opt)}>
+                        {opt}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+            {group.keys.every((k) => !(details[k] || []).length) && <p className="filter-hint">No selection = show everyone</p>}
+          </div>
+        ))}
 
         <div className="filter-actions">
           <button className="filter-reset-btn" onClick={handleReset}>Reset</button>
