@@ -15,6 +15,7 @@ import "leaflet/dist/leaflet.css";
 
 const C = { bg: "#FFFFFF", card: "#FAFAF8", surface: "#F4F2EE", primary: "#B8912A", primarySoft: "#FBF5E6", text: "#1A1612", sub: "#8C857C", border: "#E8E4DF", sent: "#111111" };
 const FONT = "'Outfit', system-ui, sans-serif";
+const SERIF = "'Lora', Georgia, serif";
 
 const DATE_TYPES = [
   { id: "dinner", Icon: Utensils, label: "Dinner" },
@@ -966,7 +967,7 @@ function ChatThread({ match, onBack }) {
             </button>
             <img src={profile.photos[0]} alt={profile.name} onClick={() => setViewProfile(true)} style={{ width: 36, height: 36, borderRadius: "50%", objectFit: "cover", objectPosition: "50% 20%", cursor: "pointer", flexShrink: 0 }} onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${profile.name}&size=72&background=F4F2EE&color=B8912A`; }} />
             <div style={{ flex: 1, minWidth: 0, cursor: "pointer" }} onClick={() => setViewProfile(true)}>
-              <p style={{ fontWeight: 600, fontSize: 16, lineHeight: 1.15, color: C.text, fontFamily: FONT, margin: 0, letterSpacing: "-0.2px" }}>{profile.name}</p>
+              <p style={{ fontWeight: 600, fontSize: 17, lineHeight: 1.15, color: C.text, fontFamily: SERIF, margin: 0 }}>{profile.name}</p>
               <p style={{ fontSize: 12, color: statusColor, fontFamily: FONT, margin: "2px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{status}</p>
             </div>
             <button onClick={() => setShowReportMenu(true)} aria-label="Safety options" style={{ width: 36, height: 36, borderRadius: 18, background: "none", border: "none", cursor: "pointer", color: C.sub, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -1245,7 +1246,7 @@ function ChatThread({ match, onBack }) {
             ) : (
               <>
                 <div style={{ width: 36, height: 4, borderRadius: 2, background: C.border, margin: "0 auto 16px" }} />
-                <p style={{ fontSize: 16, fontWeight: 700, color: C.text, fontFamily: FONT, textAlign: "center", marginBottom: 16 }}>{profile.name}</p>
+                <p style={{ fontSize: 17, fontWeight: 600, color: C.text, fontFamily: SERIF, textAlign: "center", marginBottom: 16 }}>{profile.name}</p>
                 {[
                   { icon: <Flag size={18} strokeWidth={1.8} color="#EF4444" />, label: "Report", desc: "Flag inappropriate behaviour", color: "#EF4444", action: async () => { track("profile_reported", { source: "chat" }); dispatch({ type: "ADD_REPORT", payload: { profileId: profile.id, name: profile.name, photo: profile.photos?.[0], reason: "Inappropriate behaviour", timestamp: Date.now() } }); setReportDone("report"); } },
                   { icon: <Ban size={18} strokeWidth={1.8} color="#EF4444" />, label: "Block", desc: "They won't be able to see you", color: "#EF4444", action: async () => { track("profile_blocked", { source: "chat" }); dispatch({ type: "BLOCK_PROFILE", payload: { id: profile.id, name: profile.name, photo: profile.photos?.[0] } }); setShowReportMenu(false); setBlockFlash(true); try { await actions.unmatch(match.id); } catch (_) {} setTimeout(() => { setBlockFlash(false); setShowReportMenu(true); setReportDone("block"); }, 1500); } },
@@ -1277,7 +1278,7 @@ function ChatThread({ match, onBack }) {
             </button>
             <div style={{ position: "absolute", bottom: 20, left: 16 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ color: "white", fontSize: 28, fontWeight: 700 }}>{profile.name}</span>
+                <span style={{ color: "white", fontSize: 28, fontWeight: 600, fontFamily: SERIF }}>{profile.name}</span>
                 <span style={{ color: "rgba(255,255,255,0.8)", fontSize: 22, fontWeight: 300 }}>{profile.age}</span>
               </div>
               <p style={{ color: "rgba(255,255,255,0.7)", fontSize: 12, marginTop: 4 }}>{profile.denomination}{profile.location ? ` · ${profile.location}` : ""}</p>
@@ -1384,7 +1385,7 @@ export default function Matches() {
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                    <span style={{ fontWeight: hasUnread ? 800 : 700, fontSize: 18, color: C.text, fontFamily: FONT }}>{profile.name}</span>
+                    <span style={{ fontWeight: hasUnread ? 700 : 600, fontSize: 19, color: C.text, fontFamily: SERIF }}>{profile.name}</span>
                     <span style={{ fontSize: 11, color: hasUnread ? C.primary : C.sub, fontWeight: hasUnread ? 700 : 400, fontFamily: FONT, flexShrink: 0 }}>{lastMsg ? formatTime(lastMsg.timestamp) : ""}</span>
                   </div>
                   {profile.denomination && <p style={{ fontSize: 12, color: C.primary, fontWeight: 600, fontFamily: FONT, margin: "0 0 6px 0" }}>{profile.denomination}</p>}

@@ -1124,7 +1124,7 @@ export default function Profile() {
 
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <span style={{ color: C.text, fontFamily: FONT, fontSize: 19, fontWeight: 700, lineHeight: 1.1, letterSpacing: "-0.3px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{currentUser.name}</span>
+              <span style={{ color: C.text, fontFamily: SERIF, fontSize: 20, fontWeight: 600, lineHeight: 1.1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{currentUser.name}</span>
               <span style={{ color: C.sub, fontFamily: FONT, fontSize: 16, fontWeight: 400 }}>{currentUser.age}</span>
               <svg width={14} height={14} viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
                 <circle cx="12" cy="12" r="10" fill={C.primary} />

@@ -9,6 +9,7 @@ import { track } from "../services/posthog";
 
 const C = { bg: "#FFFFFF", card: "#FAFAF8", surface: "#F4F2EE", primary: "#B8912A", primarySoft: "#FBF5E6", text: "#1A1612", sub: "#8C857C", border: "#E8E4DF" };
 const FONT = "'Outfit', system-ui, sans-serif";
+const SERIF = "'Lora', Georgia, serif";
 
 export default function LikesYou() {
   const { state, actions, dispatch } = useApp();
@@ -157,7 +158,7 @@ export default function LikesYou() {
                 ) : (
                   <>
                     <div style={{ position: "absolute", bottom: 56, left: 12, right: 12 }}>
-                      <p style={{ color: "white", fontSize: 18, fontWeight: 700, fontFamily: FONT, margin: 0, textShadow: "0 1px 4px rgba(0,0,0,0.4)" }}>
+                      <p style={{ color: "white", fontSize: 19, fontWeight: 600, fontFamily: SERIF, margin: 0, textShadow: "0 1px 4px rgba(0,0,0,0.4)" }}>
                         {profile.name}, {profile.age}
                       </p>
                       <p style={{ color: "rgba(255,255,255,0.8)", fontSize: 12, fontWeight: 600, marginTop: 2 }}>
@@ -216,7 +217,7 @@ export default function LikesYou() {
             </button>
             <div style={{ position: "absolute", bottom: 20, left: 16 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ color: "white", fontSize: 28, fontWeight: 700 }}>{viewProfile.name}</span>
+                <span style={{ color: "white", fontSize: 28, fontWeight: 600, fontFamily: SERIF }}>{viewProfile.name}</span>
                 <span style={{ color: "rgba(255,255,255,0.8)", fontSize: 22, fontWeight: 300 }}>{viewProfile.age}</span>
               </div>
               <p style={{ color: "rgba(255,255,255,0.7)", fontSize: 12, marginTop: 4 }}>{viewProfile.denomination}{viewProfile.location ? ` · ${viewProfile.location}` : ""}</p>
