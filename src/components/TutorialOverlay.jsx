@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { track } from "../services/posthog";
 
 const FONT = "'Outfit', system-ui, sans-serif";
@@ -33,12 +34,28 @@ const TOURS = {
 
 const key = (screen) => `agape_tour_${screen}`;
 
+// Among all matches, prefer one that is actually laid out and on screen
+function findTarget(selector) {
+  const els = [...document.querySelectorAll(selector)].filter((el) => {
+    const r = el.getBoundingClientRect();
+    return r.width > 0 && r.height > 0;
+  });
+  if (!els.length) return null;
+  const vh = window.innerHeight;
+  return els.find((el) => { const r = el.getBoundingClientRect(); return r.bottom > 0 && r.top < vh; }) || els[0];
+}
+
+const sameRect = (a, b) => !!a && !!b && Math.abs(a.top - b.top) < 0.5 && Math.abs(a.left - b.left) < 0.5 && Math.abs(a.width - b.width) < 0.5 && Math.abs(a.height - b.height) < 0.5;
+
 export default function TutorialOverlay({ screen }) {
   const steps = TOURS[screen];
   const [visible, setVisible] = useState(false);
   const [idx, setIdx] = useState(0);
   const [rect, setRect] = useState(null);
+  const [bubbleH, setBubbleH] = useState(170);
+  const [viewport, setViewport] = useState({ w: window.innerWidth, h: window.innerHeight });
   const shown = useRef(0);
+  const bubbleRef = useRef(null);
 
   useEffect(() => {
     let done = false;
@@ -65,57 +82,106 @@ export default function TutorialOverlay({ screen }) {
 
   const step = visible && steps ? steps[idx] : null;
 
+  // Follow the target every frame: it can move after first paint (images loading, sheets and cards
+  // still animating in, scrolling, the mobile address bar collapsing). The spotlight is only shown
+  // once the target has held still for a few frames, then keeps tracking it.
   useEffect(() => {
     if (!step) return;
     setRect(null);
+    if (step.full) { shown.current += 1; return; }
+
+    let raf = 0;
+    let timer = 0;
     let cancelled = false;
-    let tries = 0;
-    const measure = () => {
-      if (step.full) { setRect(null); return true; }
-      const el = document.querySelector(step.selector);
-      const r = el?.getBoundingClientRect();
-      if (!r || r.width === 0) return false;
-      setRect({ top: r.top, left: r.left, width: r.width, height: r.height });
-      return true;
+    // Animation frames pause while the page is not being painted; a slow timer keeps the loop alive
+    const schedule = () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(timer);
+      raf = requestAnimationFrame(loop);
+      timer = setTimeout(loop, 150);
     };
-    const tick = () => {
+    let last = null;
+    let stable = 0;
+    let displayed = false;
+    let scrolled = false;
+    const startedAt = performance.now();
+
+    const loop = () => {
       if (cancelled) return;
-      if (measure()) { shown.current += 1; return; }
-      tries += 1;
-      if (tries < 16) setTimeout(tick, 250);
-      else if (idx + 1 < steps.length) setIdx(idx + 1);
-      else finish();
+      const vw = window.innerWidth, vh = window.innerHeight;
+      setViewport((v) => (v.w === vw && v.h === vh ? v : { w: vw, h: vh }));
+
+      const el = findTarget(step.selector);
+      if (!el) {
+        if (!displayed && performance.now() - startedAt > 4000) {
+          if (idx + 1 < steps.length) setIdx(idx + 1); else finish();
+          return;
+        }
+        schedule();
+        return;
+      }
+
+      let r = el.getBoundingClientRect();
+      // Bring an off-screen or edge-hugging target into view once, without animation
+      if (!scrolled && (r.top < 70 || r.bottom > vh - 70)) {
+        scrolled = true;
+        try { el.scrollIntoView({ block: "center", inline: "nearest", behavior: "instant" }); } catch { el.scrollIntoView(); }
+        r = el.getBoundingClientRect();
+      }
+
+      const cur = { top: r.top, left: r.left, width: r.width, height: r.height };
+      stable = sameRect(cur, last) ? stable + 1 : 0;
+      last = cur;
+
+      if (displayed || stable >= 3) {
+        if (!displayed) { displayed = true; shown.current += 1; }
+        setRect((prev) => (sameRect(prev, cur) ? prev : cur));
+      }
+      schedule();
     };
-    tick();
-    window.addEventListener("resize", measure);
-    return () => { cancelled = true; window.removeEventListener("resize", measure); };
+    schedule();
+    return () => { cancelled = true; cancelAnimationFrame(raf); clearTimeout(timer); };
   }, [step, idx]);
+
+  // Real bubble height, so above/below placement never relies on a guess
+  useLayoutEffect(() => {
+    const h = bubbleRef.current?.offsetHeight;
+    if (h && Math.abs(h - bubbleH) > 1) setBubbleH(h);
+  });
 
   if (!step) return null;
   if (!step.full && !rect) return null;
 
   const pad = 8;
-  const vh = window.innerHeight;
-  const vw = Math.min(window.innerWidth, 430);
-  const vLeft = (window.innerWidth - vw) / 2;
-  const placeBelow = !rect || vh - (rect.top + rect.height) > 200;
-  const bubblePos = rect
-    ? placeBelow
-      ? { top: rect.top + rect.height + pad + 14 }
-      : { bottom: vh - rect.top + pad + 14 }
-    : { top: "50%", transform: "translateY(-50%)" };
-  const arrowX = rect ? Math.max(14, Math.min(vw - 48, rect.left + rect.width / 2 - vLeft - 16 - 8)) : 0;
+  const gap = 14;
+  const edge = 12;
+  const vh = viewport.h;
+  const vw = Math.min(viewport.w, 430);
+  const vLeft = (viewport.w - vw) / 2;
+
+  let bubbleTop;
+  let placeBelow = true;
+  if (rect) {
+    const spaceBelow = vh - (rect.top + rect.height + pad + gap);
+    const spaceAbove = rect.top - pad - gap;
+    placeBelow = bubbleH + edge <= spaceBelow || spaceBelow >= spaceAbove;
+    const wanted = placeBelow ? rect.top + rect.height + pad + gap : rect.top - pad - gap - bubbleH;
+    bubbleTop = Math.max(edge, Math.min(vh - bubbleH - edge, wanted));
+  } else {
+    bubbleTop = Math.max(edge, (vh - bubbleH) / 2);
+  }
+  const arrowX = rect ? Math.max(14, Math.min(vw - 32 - 30, rect.left + rect.width / 2 - (vLeft + 16) - 8)) : 0;
   const isLast = idx + 1 >= steps.length;
 
-  return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 9000, fontFamily: FONT }} onClick={next}>
+  return createPortal(
+    <div style={{ position: "fixed", inset: 0, zIndex: 9000, fontFamily: FONT, touchAction: "none", overscrollBehavior: "contain" }} onClick={next}>
       {rect ? (
-        <div style={{ position: "absolute", top: rect.top - pad, left: rect.left - pad, width: rect.width + pad * 2, height: rect.height + pad * 2, borderRadius: 16, boxShadow: "0 0 0 9999px rgba(0,0,0,0.64)", border: "2px solid rgba(255,255,255,0.9)", pointerEvents: "none" }} />
+        <div style={{ position: "fixed", boxSizing: "border-box", top: rect.top - pad, left: rect.left - pad, width: rect.width + pad * 2, height: rect.height + pad * 2, borderRadius: 16, boxShadow: "0 0 0 9999px rgba(0,0,0,0.64)", border: "2px solid rgba(255,255,255,0.9)", pointerEvents: "none" }} />
       ) : (
         <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.64)" }} />
       )}
 
-      <div onClick={(e) => e.stopPropagation()} style={{ position: "absolute", left: vLeft + 16, width: vw - 32, ...bubblePos, background: "#fff", borderRadius: 18, padding: "16px 16px 12px", boxShadow: "0 12px 40px rgba(0,0,0,0.3)" }}>
+      <div ref={bubbleRef} onClick={(e) => e.stopPropagation()} style={{ position: "fixed", boxSizing: "border-box", left: vLeft + 16, width: vw - 32, top: bubbleTop, background: "#fff", borderRadius: 18, padding: "16px 16px 12px", boxShadow: "0 12px 40px rgba(0,0,0,0.3)" }}>
         {rect && (
           <div style={{ position: "absolute", left: arrowX, [placeBelow ? "top" : "bottom"]: -8, width: 16, height: 16, background: "#fff", transform: "rotate(45deg)", borderRadius: 3 }} />
         )}
@@ -136,6 +202,7 @@ export default function TutorialOverlay({ screen }) {
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
