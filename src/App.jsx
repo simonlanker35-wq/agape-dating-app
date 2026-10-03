@@ -9,6 +9,7 @@ import Profile from "./pages/Profile";
 import PasswordInput from "./components/PasswordInput";
 import TutorialOverlay from "./components/TutorialOverlay";
 import RoseAlert from "./components/RoseAlert";
+import MatchAlert from "./components/MatchAlert";
 import { useState } from "react";
 import "./App.css";
 
@@ -83,6 +84,7 @@ function AppContent() {
       <Navigation />
       <TutorialOverlay screen={state.activeTab} />
       <RecoveryModal />
+      <MatchAlert />
       <RoseAlert />
     </div>
   );

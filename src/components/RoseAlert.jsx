@@ -10,7 +10,8 @@ const C = { bg: "#FFFFFF", primary: "#B8912A", primarySoft: "#FBF5E6", text: "#1
 export default function RoseAlert() {
   const { state, dispatch } = useApp();
   const alert = state.roseAlert;
-  if (!alert) return null;
+  // A match celebration takes the screen first; the rose shows once it is closed
+  if (!alert || state.matchAlert) return null;
 
   const { match } = alert;
   const name = match.profile?.name || "She";

@@ -32,7 +32,6 @@ export default function Discover() {
   const [doveSheet, setDoveSheet] = useState(false);
   const [likeFlash, setLikeFlash] = useState(null);
   const [likeError, setLikeError] = useState("");
-  const [matchCelebration, setMatchCelebration] = useState(null);
   const [cardEnter, setCardEnter] = useState(true);
   const [photoIdx, setPhotoIdx] = useState(0);
   const [likeChoice, setLikeChoice] = useState(null);
@@ -145,10 +144,6 @@ export default function Discover() {
         const res = await actions.likeProfile(likedId, targetType, targetIndex, comment, isDove);
         setLikeFlash(null);
 
-        if (res.matched) {
-          setMatchCelebration(likedProfile);
-          setTimeout(() => setMatchCelebration(null), 3000);
-        }
       } catch (err) {
         console.error("Like failed:", err);
         setLikeFlash(null);
@@ -508,74 +503,6 @@ export default function Discover() {
           onBlock={handleBlock}
           onClose={() => setShowReport(false)}
         />
-      )}
-
-      {matchCelebration && (
-        <div className="match-celebration-overlay" onClick={() => setMatchCelebration(null)}>
-          <div className="match-confetti">
-            {Array.from({ length: 28 }, (_, i) => {
-              const colors = ["#B8912A", "#F5D878", "#E8C44A", "#ffffff", "#111111", "#D4AF37"];
-              return (
-                <div
-                  key={i}
-                  className="confetti-piece"
-                  style={{
-                    left: `${5 + ((i * 3.3) % 90)}%`,
-                    width: i % 3 === 0 ? 8 : i % 3 === 1 ? 6 : 10,
-                    height: i % 3 === 0 ? 8 : i % 3 === 1 ? 12 : 5,
-                    background: colors[i % colors.length],
-                    borderRadius: i % 4 === 0 ? "50%" : "2px",
-                    "--spin": `${(i % 2 === 0 ? 1 : -1) * (180 + ((i * 37) % 360))}deg`,
-                    "--dur": `${0.9 + ((i * 0.07) % 0.7)}s`,
-                    "--delay": `${(i * 0.045) % 0.5}s`,
-                  }}
-                />
-              );
-            })}
-          </div>
-          <div className="match-reveal">
-            <div className="match-cross">
-              <AgapeCross size={22} strokeWidth={1.5} />
-            </div>
-            <div className="match-label">It's a Match</div>
-            <h2 className="match-title shimmer-gold">You & {matchCelebration.name}</h2>
-            <div className="match-subtitle">You both liked each other ✦</div>
-            <div className="match-photos">
-              <div className="pulse-ring">
-                <img
-                  src={state.user?.photos?.[0] || "/profile.jpg"}
-                  alt="You"
-                  onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=You&size=200&background=random`; }}
-                />
-              </div>
-              <span className="match-sparkle">✦</span>
-              <div className="pulse-ring">
-                <img
-                  src={matchCelebration.photos[0]}
-                  alt={matchCelebration.name}
-                  onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${matchCelebration.name}&size=200&background=random`; }}
-                />
-              </div>
-            </div>
-            <button
-              className="match-celebration-btn"
-              onClick={(e) => {
-                e.stopPropagation();
-                track("match_send_message_tapped");
-                setMatchCelebration(null);
-                dispatch({ type: "SET_TAB", payload: "matches" });
-              }}
-            >
-              Send a message
-            </button>
-            <button
-              className="match-celebration-dismiss"
-              onClick={(e) => { e.stopPropagation(); track("match_keep_browsing_tapped"); setMatchCelebration(null); }}
-            >
-              Keep browsing
-            </button>
-          </div>
-        </div>
       )}
     </div>
   );

@@ -26,6 +26,8 @@ const initialState = {
   },
   onboardingComplete: false,
   roseAlert: null,
+  matchAlert: null,
+  matchesLoaded: false,
   openChatId: null,
   needsProfile: false,
   passwordRecovery: false,
@@ -65,7 +67,13 @@ function reducer(state, action) {
       return { ...state, likesReceived: action.payload };
 
     case "SET_MATCHES":
-      return { ...state, matches: action.payload };
+      return { ...state, matches: action.payload, matchesLoaded: true };
+
+    case "SHOW_MATCH":
+      return { ...state, matchAlert: action.payload };
+
+    case "DISMISS_MATCH":
+      return { ...state, matchAlert: null };
 
     case "NEXT_PROFILE":
       return { ...state, currentProfileIndex: state.currentProfileIndex + 1 };
@@ -307,10 +315,31 @@ export function AppProvider({ children }) {
     }
   }, []);
 
+  // Celebrate every new match, wherever the user is. Matches already known on this device are remembered
+  // in localStorage; the first time this runs, existing matches are recorded silently.
+  useEffect(() => {
+    const uid = state.currentUser?.id;
+    if (!uid || !state.matchesLoaded || state.matchAlert) return;
+    const key = `agape_seen_matches_${uid}`;
+    const real = state.matches.filter((m) => m.profile && !String(m.id).startsWith("temp-"));
+    let raw = null;
+    try { raw = localStorage.getItem(key); } catch (_) {}
+    if (raw === null) {
+      try { localStorage.setItem(key, JSON.stringify(real.map((m) => m.id))); } catch (_) {}
+      return;
+    }
+    let seen = [];
+    try { seen = JSON.parse(raw) || []; } catch (_) {}
+    const fresh = real.find((m) => !seen.includes(m.id));
+    if (!fresh) return;
+    try { localStorage.setItem(key, JSON.stringify([...seen, fresh.id].slice(-500))); } catch (_) {}
+    dispatch({ type: "SHOW_MATCH", payload: { match: fresh } });
+  }, [state.matches, state.matchesLoaded, state.currentUser?.id, state.matchAlert]);
+
   // Pop up when she sends a rose: any match whose rose timestamp we have not shown yet
   useEffect(() => {
     const uid = state.currentUser?.id;
-    if (!uid || state.currentUser?.gender !== "male" || state.roseAlert) return;
+    if (!uid || state.currentUser?.gender !== "male" || state.roseAlert || state.matchAlert) return;
     const key = `agape_seen_roses_${uid}`;
     let seen = {};
     try { seen = JSON.parse(localStorage.getItem(key) || "{}"); } catch (_) {}
@@ -319,7 +348,7 @@ export function AppProvider({ children }) {
     seen[fresh.id] = fresh.nudgeAt;
     try { localStorage.setItem(key, JSON.stringify(seen)); } catch (_) {}
     dispatch({ type: "SHOW_ROSE", payload: { match: fresh } });
-  }, [state.matches, state.currentUser?.id, state.currentUser?.gender, state.roseAlert]);
+  }, [state.matches, state.currentUser?.id, state.currentUser?.gender, state.roseAlert, state.matchAlert]);
 
   const loadMatches = useCallback(async () => {
     try {
@@ -463,18 +492,21 @@ export function AppProvider({ children }) {
       if (res.matched) {
         track("match_created", { fromSparks: true });
         api.notifyUser(like.fromId, { title: "It's a match", body: `${state.currentUser?.name || "Someone"} liked you back. Time to plan a date.`, url: "/?tab=matches", tag: "match" });
-        const alreadyMatched = state.matches.some(
-          (m) => m.profileId === like.fromId
-        );
-        if (!alreadyMatched) {
-          const newMatch = {
-            id: res.matchId || `temp-${Date.now()}`,
-            profileId: like.fromId,
-            profile: like.profile,
-            timestamp: Date.now(),
-            lastMessage: like.comment ? { text: like.comment, sender: like.fromId, timestamp: Date.now() } : null,
-          };
-          dispatch({ type: "SET_MATCHES", payload: [...state.matches, newMatch] });
+        try {
+          const matches = await api.getMatches();
+          dispatch({ type: "SET_MATCHES", payload: matches });
+        } catch (_) {
+          const alreadyMatched = state.matches.some((m) => m.profileId === like.fromId);
+          if (!alreadyMatched) {
+            const newMatch = {
+              id: res.matchId || `temp-${Date.now()}`,
+              profileId: like.fromId,
+              profile: like.profile,
+              timestamp: Date.now(),
+              lastMessage: like.comment ? { text: like.comment, sender: like.fromId, timestamp: Date.now() } : null,
+            };
+            dispatch({ type: "SET_MATCHES", payload: [...state.matches, newMatch] });
+          }
         }
         dispatch({ type: "MATCH_FROM_LIKES", payload: { like, matchData: null } });
       }
