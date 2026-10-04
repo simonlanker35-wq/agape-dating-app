@@ -235,8 +235,7 @@ export async function getProfile() {
 export async function updateProfile(data) {
   const user = await currentUser();
   const updates = {};
-  if (data.name !== undefined) updates.name = data.name;
-  if (data.age !== undefined) updates.age = data.age;
+  // name and age are set once at sign-up (createProfile) and are deliberately not editable afterwards
   if (data.height !== undefined) updates.height = data.height;
   if (data.denomination !== undefined) updates.denomination = data.denomination;
   if (data.job !== undefined) updates.job = data.job;

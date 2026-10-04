@@ -342,8 +342,7 @@ function SettingsScreen({ onBack, initialSection = null }) {
     setSaveError("");
     try {
       const updates = {};
-      if (editField === "name") updates.name = editValue.trim();
-      else if (editField === "denomination") updates.denomination = editValue;
+      if (editField === "denomination") updates.denomination = editValue;
       await actions.updateProfile(updates);
       setEditField(null);
       setEditValue("");
@@ -698,11 +697,12 @@ function SettingsScreen({ onBack, initialSection = null }) {
               <div>
                 <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: C.sub, padding: "0 4px", marginBottom: 8 }}>Personal details</p>
                 <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
-                  <SettingsRow icon={I.user} label="Name" sub={currentUser?.name || "Not set"} onPress={() => { setEditField("name"); setEditValue(currentUser?.name || ""); }} />
+                  <SettingsRow icon={I.user} label="Name" sub={currentUser?.name || "Not set"} />
                   <SettingsRow icon={I.phone} label="Phone" sub={state.currentUser?.phone || "Not set"} />
                   <SettingsRow icon={I.cake} label="Age" sub={currentUser?.age ? `${currentUser.age} years old` : "Not set"} />
                   <SettingsRow icon={I.cross} label="Denomination" sub={currentUser?.denomination || "Not set"} onPress={() => { setEditField("denomination"); setEditValue(currentUser?.denomination || ""); }} />
                 </div>
+                <p style={{ fontSize: 12, color: C.sub, padding: "8px 4px 0", lineHeight: 1.5 }}>Your name and age are fixed once your profile is created, so people always know who they are talking to.</p>
               </div>
               {editField && (
                 <div style={{ borderRadius: 16, padding: 16, background: C.card }}>
