@@ -856,6 +856,8 @@ export default function Profile() {
   const [editMode, setEditMode] = useState(false);
   const [editPrompts, setEditPrompts] = useState([]);
   const [saving, setSaving] = useState(false);
+  const [voiceUploading, setVoiceUploading] = useState(false);
+  const [voiceError, setVoiceError] = useState("");
   const [uploading, setUploading] = useState(false);
   const [editPhotos, setEditPhotos] = useState(false);
   const [editingPromptIdx, setEditingPromptIdx] = useState(null);
@@ -955,8 +957,6 @@ export default function Profile() {
     setTimeout(() => answerRef.current?.focus(), 100);
   };
 
-  const [voiceUploading, setVoiceUploading] = useState(false);
-  const [voiceError, setVoiceError] = useState("");
   const attachVoice = async ({ blob, mime, duration }) => {
     setVoiceUploading(true);
     setVoiceError("");
