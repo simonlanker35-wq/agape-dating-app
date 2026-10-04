@@ -110,6 +110,19 @@ function reducer(state, action) {
         conversations: { ...state.conversations, ...action.payload },
       };
 
+    case "SET_MESSAGE_REACTIONS": {
+      const { matchId, messageId, reactions } = action.payload;
+      const convo = state.conversations[matchId];
+      if (!convo) return state;
+      return {
+        ...state,
+        conversations: {
+          ...state.conversations,
+          [matchId]: { ...convo, messages: convo.messages.map((m) => (m.id === messageId ? { ...m, reactions } : m)) },
+        },
+      };
+    }
+
     case "ADD_MESSAGE": {
       const { matchId, message } = action.payload;
       const convo = state.conversations[matchId] || { messages: [] };
@@ -524,6 +537,28 @@ export function AppProvider({ children }) {
         type: "SET_CONVERSATIONS",
         payload: { [matchId]: { messages, lastActivity: Date.now() } },
       });
+    },
+
+    // emoji "" removes my reaction. Updates the chat immediately and rolls back if saving fails.
+    reactToMessage: async (matchId, message, emoji) => {
+      const myId = state.currentUser?.id;
+      const before = message.reactions || {};
+      const optimistic = { ...before };
+      if (emoji) optimistic[myId] = emoji; else delete optimistic[myId];
+      dispatch({ type: "SET_MESSAGE_REACTIONS", payload: { matchId, messageId: message.id, reactions: optimistic } });
+      try {
+        const saved = await api.reactToMessage(message.id, emoji);
+        dispatch({ type: "SET_MESSAGE_REACTIONS", payload: { matchId, messageId: message.id, reactions: saved } });
+        track("message_reaction", { media: message.media?.type || "text", removed: !emoji });
+        const m = state.matches.find((x) => x.id === matchId);
+        if (emoji && m?.profileId && message.sender !== myId) {
+          const what = message.media?.type === "image" ? "your photo" : message.media?.type === "audio" ? "your voice note" : "your message";
+          api.notifyUser(m.profileId, { title: state.currentUser?.name || "New reaction", body: `Reacted ${emoji} to ${what}`, url: "/?tab=matches", tag: `react-${message.id}` });
+        }
+      } catch (err) {
+        dispatch({ type: "SET_MESSAGE_REACTIONS", payload: { matchId, messageId: message.id, reactions: before } });
+        throw err;
+      }
     },
 
     sendMessage: async (matchId, text, media = null) => {

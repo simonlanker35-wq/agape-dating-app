@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useApp } from "../context/AppContext";
 import * as api from "../services/api";
-import { MessageCircle, Ban, Flag, UserMinus, Calendar, CheckCircle, Clock, Video, Heart, Lock, Flower2, ChevronLeft, Shield, ArrowUp, Utensils, Footprints, Coffee, Mountain, Shirt, Briefcase, Gem, Dumbbell, MapPin, Image as ImageIcon, Mic, X } from "lucide-react";
+import { MessageCircle, Ban, Flag, UserMinus, Calendar, CheckCircle, Clock, Video, Heart, Lock, Flower2, ChevronLeft, Shield, ArrowUp, Utensils, Footprints, Coffee, Mountain, Shirt, Briefcase, Gem, Dumbbell, MapPin, Image as ImageIcon, Mic, X, SmilePlus } from "lucide-react";
 import AgapeCross from "../components/AgapeCross";
 import DoveIcon from "../components/DoveIcon";
 import LocationPicker from "../components/LocationPicker";
@@ -729,7 +729,6 @@ function ChatThread({ match, onBack }) {
   const conversation = state.conversations[match.id];
   const profile = match.profile;
 
-  const REACTIONS = ["🙏", "❤️", "😊", "🔥", "😂", "✨"];
 
   useEffect(() => {
     actions.loadMessages(match.id).catch(console.error);
@@ -841,6 +840,27 @@ function ChatThread({ match, onBack }) {
   const imageInputRef = useRef(null);
 
   const failMedia = (msg) => { setMediaError(msg); setTimeout(() => setMediaError(""), 4000); };
+
+  // ── Reactions on photos and voice notes ──
+  const REACTIONS = ["❤️", "😂", "😮", "🙏", "👍"];
+  const [reactFor, setReactFor] = useState(null); // id of the message whose picker is open
+  const pressTimer = useRef(null);
+  const pressHandlers = (id) => ({
+    onContextMenu: (e) => { e.preventDefault(); setReactFor(id); },
+    onTouchStart: () => { clearTimeout(pressTimer.current); pressTimer.current = setTimeout(() => setReactFor(id), 450); },
+    onTouchEnd: () => clearTimeout(pressTimer.current),
+    onTouchMove: () => clearTimeout(pressTimer.current),
+  });
+  const react = async (message, emoji) => {
+    setReactFor(null);
+    const mine = (message.reactions || {})[currentUserId];
+    try {
+      await actions.reactToMessage(match.id, message, mine === emoji ? "" : emoji);
+    } catch (err) {
+      console.error("Reaction failed:", err);
+      failMedia(/react_to_message|function|schema cache|reactions/i.test(err.message || "") ? "Reactions aren't set up yet on the server." : "Couldn't save the reaction. Try again.");
+    }
+  };
 
   const sendImage = async (file) => {
     if (!file || chatLocked) return;
@@ -1096,15 +1116,55 @@ function ChatThread({ match, onBack }) {
                     <span style={{ fontSize: 11, fontWeight: 600, color: C.primary, fontFamily: FONT, letterSpacing: "0.02em" }}>Sent with a Dove</span>
                   </div>
                 )}
-                {item.media?.type === "image" ? (
-                  <button onClick={() => setLightbox(item.media.url)} aria-label="Open photo" style={{ maxWidth: "70%", padding: 0, border: `1px solid ${C.border}`, borderRadius: 18, borderBottomRightRadius: isMe ? 5 : 18, borderBottomLeftRadius: isMe ? 18 : 5, overflow: "hidden", background: C.surface, cursor: "pointer", display: "block" }}>
-                    <img src={item.media.url} alt="Photo" loading="lazy" style={{ display: "block", width: "100%", maxHeight: 320, objectFit: "cover" }} />
-                  </button>
-                ) : item.media?.type === "audio" ? (
-                  <div style={{ width: "min(78%, 300px)", padding: "8px 12px", borderRadius: 18, borderBottomRightRadius: isMe ? 5 : 18, borderBottomLeftRadius: isMe ? 18 : 5, background: isMe ? C.text : C.bg, border: isMe ? "1px solid " + C.text : `1px solid ${C.border}` }}>
-                    <AudioPlayer src={item.media.url} duration={item.media.duration} dark={isMe} compact />
-                  </div>
-                ) : (
+                {item.media?.type === "image" || item.media?.type === "audio" ? (() => {
+                  const reactions = item.reactions || {};
+                  const mine = reactions[currentUserId];
+                  const shown = Object.values(reactions);
+                  const counts = shown.reduce((acc, e) => { acc[e] = (acc[e] || 0) + 1; return acc; }, {});
+                  const open = reactFor === item.id;
+                  const isImage = item.media.type === "image";
+                  return (
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, flexDirection: isMe ? "row-reverse" : "row", width: "100%", marginBottom: shown.length ? 14 : 0 }}>
+                      <div style={{ position: "relative", ...(isImage ? { maxWidth: "70%" } : { width: "min(78%, 300px)" }) }} {...pressHandlers(item.id)}>
+                        {isImage ? (
+                          <button onClick={() => setLightbox(item.media.url)} aria-label="Open photo" style={{ width: "100%", padding: 0, border: `1px solid ${C.border}`, borderRadius: 18, borderBottomRightRadius: isMe ? 5 : 18, borderBottomLeftRadius: isMe ? 18 : 5, overflow: "hidden", background: C.surface, cursor: "pointer", display: "block", WebkitTouchCallout: "none", userSelect: "none" }}>
+                            <img src={item.media.url} alt="Photo" loading="lazy" draggable={false} style={{ display: "block", width: "100%", maxHeight: 320, objectFit: "cover" }} />
+                          </button>
+                        ) : (
+                          <div style={{ padding: "8px 12px", borderRadius: 18, borderBottomRightRadius: isMe ? 5 : 18, borderBottomLeftRadius: isMe ? 18 : 5, background: isMe ? C.text : C.bg, border: isMe ? "1px solid " + C.text : `1px solid ${C.border}` }}>
+                            <AudioPlayer src={item.media.url} duration={item.media.duration} dark={isMe} compact />
+                          </div>
+                        )}
+
+                        {shown.length > 0 && (
+                          <button
+                            onClick={() => setReactFor(open ? null : item.id)}
+                            aria-label="Reactions"
+                            style={{ position: "absolute", bottom: -13, [isMe ? "left" : "right"]: 10, display: "flex", alignItems: "center", gap: 4, padding: "2px 7px", borderRadius: 999, background: C.bg, border: `1px solid ${mine ? C.primary : C.border}`, boxShadow: "0 1px 4px rgba(0,0,0,0.08)", cursor: "pointer", fontSize: 14, lineHeight: 1.3, fontFamily: FONT }}
+                          >
+                            {Object.entries(counts).map(([e, n]) => (
+                              <span key={e}>{e}{n > 1 && <span style={{ fontSize: 11, fontWeight: 600, color: C.sub, marginLeft: 2 }}>{n}</span>}</span>
+                            ))}
+                          </button>
+                        )}
+
+                        {open && (
+                          <>
+                            <div onClick={() => setReactFor(null)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
+                            <div role="menu" aria-label="Pick a reaction" style={{ position: "absolute", bottom: "calc(100% + 6px)", [isMe ? "right" : "left"]: 0, zIndex: 41, display: "flex", gap: 2, padding: "5px 6px", borderRadius: 999, background: C.bg, border: `1px solid ${C.border}`, boxShadow: "0 8px 24px rgba(0,0,0,0.16)" }}>
+                              {REACTIONS.map((e) => (
+                                <button key={e} onClick={() => react(item, e)} aria-label={`React ${e}`} style={{ width: 38, height: 38, borderRadius: 19, border: "none", background: mine === e ? C.primarySoft : "transparent", fontSize: 21, lineHeight: 1, cursor: "pointer", padding: 0 }}>{e}</button>
+                              ))}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                      <button onClick={() => setReactFor(open ? null : item.id)} aria-label="Add a reaction" style={{ width: 30, height: 30, borderRadius: 15, border: "none", background: C.surface, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}>
+                        <SmilePlus size={15} color={C.sub} strokeWidth={1.8} />
+                      </button>
+                    </div>
+                  );
+                })() : (
                 <div
                   style={{
                     maxWidth: "78%",

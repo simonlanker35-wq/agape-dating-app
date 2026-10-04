@@ -568,7 +568,19 @@ function mapMessage(msg) {
     timestamp: new Date(msg.created_at).getTime(),
     read: msg.read,
     media: msg.media_url ? { type: msg.media_type, url: msg.media_url, duration: msg.media_duration } : null,
+    reactions: msg.reactions || {},
   };
+}
+
+// Set my reaction on a message (empty emoji removes it). Returns the message's reactions map.
+export async function reactToMessage(messageId, emoji) {
+  const { data, error } = await withTimeout(
+    supabase.rpc("react_to_message", { p_message_id: messageId, p_emoji: emoji || "" }),
+    15000
+  );
+  if (error) throw new Error(error.message);
+  if (data == null) throw new Error("Could not save the reaction");
+  return data;
 }
 
 // ─── MEDIA (Supabase Storage bucket "media") ───
