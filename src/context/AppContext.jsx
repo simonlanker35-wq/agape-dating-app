@@ -27,6 +27,9 @@ const initialState = {
   onboardingComplete: false,
   roseAlert: null,
   matchAlert: null,
+  reviewAlert: null,
+  myVerifications: {},
+  verificationsLoaded: false,
   matchesLoaded: false,
   openChatId: null,
   needsProfile: false,
@@ -68,6 +71,15 @@ function reducer(state, action) {
 
     case "SET_MATCHES":
       return { ...state, matches: action.payload, matchesLoaded: true };
+
+    case "SET_VERIFICATIONS":
+      return { ...state, myVerifications: action.payload, verificationsLoaded: true };
+
+    case "SHOW_REVIEW":
+      return { ...state, reviewAlert: action.payload };
+
+    case "DISMISS_REVIEW":
+      return { ...state, reviewAlert: null };
 
     case "SHOW_MATCH":
       return { ...state, matchAlert: action.payload };
@@ -273,8 +285,10 @@ export function AppProvider({ children }) {
       let tick = 0;
       let debounce = 0;
       const refresh = () => { loadLikesReceived(); loadMatches(); };
+      loadVerifications();
       const poll = setInterval(() => {
         tick += 1;
+        if (tick % 6 === 0) loadVerifications();
         if (live && tick % 6 !== 0) return;
         refresh();
       }, 10000);
@@ -284,12 +298,19 @@ export function AppProvider({ children }) {
             { table: "matches", filter: `user1=eq.${uid}` },
             { table: "matches", filter: `user2=eq.${uid}` },
             { table: "messages" },
-          ], () => { live = true; clearTimeout(debounce); debounce = setTimeout(refresh, 250); })
+            { table: "photo_verifications", filter: `user_id=eq.${uid}` },
+          ], (table) => {
+            if (table === "photo_verifications") { loadVerifications(); return; }
+            live = true;
+            clearTimeout(debounce);
+            debounce = setTimeout(refresh, 250);
+          })
         : () => {};
       const heartbeat = setInterval(() => { if (document.visibilityState === "visible") api.touchActivity(); }, 2 * 60 * 1000);
       const refreshProfile = async () => {
         if (document.visibilityState === "visible") {
           api.touchActivity();
+          loadVerifications();
           try {
             const user = await withStripeFallback(await api.getMe());
             dispatch({ type: "SET_USER", payload: user });
@@ -343,6 +364,36 @@ export function AppProvider({ children }) {
       console.error("Failed to load likes:", err);
     }
   }, []);
+
+  const loadVerifications = useCallback(async () => {
+    try {
+      const v = await api.getMyVerifications();
+      dispatch({ type: "SET_VERIFICATIONS", payload: v });
+    } catch (_) {
+      // table not set up yet, or offline: nothing to show
+    }
+  }, []);
+
+  // Tell the user once when the team has approved or rejected a verification selfie.
+  // What was already announced is remembered per device, keyed by status and photo.
+  useEffect(() => {
+    const uid = state.currentUser?.id;
+    if (!uid || !state.verificationsLoaded || state.reviewAlert) return;
+    const key = `agape_verif_seen_${uid}`;
+    let seen = {};
+    try { seen = JSON.parse(localStorage.getItem(key) || "{}") || {}; } catch (_) {}
+    const v = state.myVerifications || {};
+    const mark = (k) => `${v[k].status}|${String(v[k].url || "").slice(-24)}`;
+    const reviewed = (k) => v[k] && (v[k].status === "approved" || v[k].status === "rejected");
+    const fresh = ["church", "bible"].find((k) => reviewed(k) && seen[k] !== mark(k));
+    const next = { ...seen };
+    ["church", "bible"].forEach((k) => {
+      if (!v[k]) delete next[k];
+      else if (!reviewed(k) || k === fresh) next[k] = mark(k);
+    });
+    try { localStorage.setItem(key, JSON.stringify(next)); } catch (_) {}
+    if (fresh) dispatch({ type: "SHOW_REVIEW", payload: { kind: fresh, status: v[fresh].status, note: v[fresh].note || "", url: v[fresh].url } });
+  }, [state.myVerifications, state.verificationsLoaded, state.currentUser?.id, state.reviewAlert]);
 
   // Celebrate every new match, wherever the user is. Matches already known on this device are remembered
   // in localStorage; the first time this runs, existing matches are recorded silently.
@@ -602,6 +653,7 @@ export function AppProvider({ children }) {
     refreshDiscover: loadDiscover,
     refreshLikes: loadLikesReceived,
     refreshMatches: loadMatches,
+    refreshVerifications: loadVerifications,
   };
 
   return (

@@ -10,6 +10,7 @@ import PasswordInput from "./components/PasswordInput";
 import TutorialOverlay from "./components/TutorialOverlay";
 import RoseAlert from "./components/RoseAlert";
 import MatchAlert from "./components/MatchAlert";
+import ReviewAlert from "./components/ReviewAlert";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { useState } from "react";
 import "./App.css";
@@ -90,6 +91,7 @@ function AppContent() {
       <RecoveryModal />
       <MatchAlert />
       <RoseAlert />
+      <ReviewAlert />
     </div>
   );
 }

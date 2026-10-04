@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useApp } from "../context/AppContext";
-import { compressPhoto, sendTestPush, getPhotoOriginals, savePhotoOriginals, downscaleDataUrl, uploadMedia, getMyVerifications, submitVerification, removeVerification } from "../services/api";
+import { compressPhoto, sendTestPush, getPhotoOriginals, savePhotoOriginals, downscaleDataUrl, uploadMedia, submitVerification, removeVerification } from "../services/api";
 import { Hourglass, Check, X as XIcon, Plus } from "lucide-react";
 import { PROMPT_CATEGORIES, TRAITS_POOL, LOOKING_FOR_POOL, DETAIL_FIELDS } from "../data/profiles";
 
@@ -918,8 +918,12 @@ export default function Profile() {
   const [verifMsg, setVerifMsg] = useState("");
   const verifInputRef = useRef(null);
   const verifKindRef = useRef(null);
+  // Kept in step with the app-wide copy, which updates live when the team reviews a selfie
   useEffect(() => {
-    if (currentUser?.id) getMyVerifications().then(setVerif).catch(() => {});
+    if (state.verificationsLoaded) setVerif(state.myVerifications || {});
+  }, [state.myVerifications, state.verificationsLoaded]);
+  useEffect(() => {
+    if (currentUser?.id) actions.refreshVerifications?.();
   }, [currentUser?.id]);
   const [uploading, setUploading] = useState(false);
   const [editPhotos, setEditPhotos] = useState(false);
@@ -1175,6 +1179,7 @@ export default function Profile() {
       setVerif((v) => ({ ...v, [verifDraft.kind]: saved }));
       track("verification_selfie_submitted", { kind: verifDraft.kind });
       setVerifDraft(null);
+      actions.refreshVerifications?.();
     } catch (err) {
       console.error("Selfie upload failed:", err);
       setVerifMsg(/photo_verifications|schema cache|relation/i.test(err.message || "") ? "Verification isn't set up yet on the server." : "Couldn't upload the selfie. Try again.");
@@ -1185,7 +1190,7 @@ export default function Profile() {
   const deleteVerification = async (kind) => {
     const before = verif;
     setVerif((v) => { const n = { ...v }; delete n[kind]; return n; });
-    try { await removeVerification(kind); track("verification_selfie_removed", { kind }); }
+    try { await removeVerification(kind); track("verification_selfie_removed", { kind }); actions.refreshVerifications?.(); }
     catch (err) { console.error("Selfie remove failed:", err); setVerif(before); }
   };
 
@@ -1539,6 +1544,11 @@ export default function Profile() {
                 Selfies with the hourglass are waiting for the Agape team. Nobody else can see them until they are verified.
               </p>
             )}
+            {["church", "bible"].filter((k) => verif[k]?.status === "rejected").map((k) => (
+              <p key={k} style={{ fontSize: 12, color: C.text, marginTop: 10, lineHeight: 1.45, padding: "10px 12px", borderRadius: 12, background: "#FDECEC" }}>
+                <strong>{k === "church" ? "Selfie with Church" : "Selfie with Bible"} was not approved{verif[k].note ? ":" : "."}</strong>{verif[k].note ? ` ${String(verif[k].note).replace(/[.\s]+$/, "")}.` : ""} Tap the photo to upload a new one.
+              </p>
+            ))}
             {verifMsg && <p style={{ fontSize: 12, color: "#DC2626", marginTop: 8 }}>{verifMsg}</p>}
             <input ref={fileInputRef} type="file" accept="image/*" onChange={handleAddPhoto} style={{ display: "none" }} />
             <button
