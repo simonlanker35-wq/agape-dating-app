@@ -28,6 +28,7 @@ const initialState = {
   roseAlert: null,
   matchAlert: null,
   reviewAlert: null,
+  openPhotoEditor: false,
   myVerifications: {},
   verificationsLoaded: false,
   matchesLoaded: false,
@@ -80,6 +81,13 @@ function reducer(state, action) {
 
     case "DISMISS_REVIEW":
       return { ...state, reviewAlert: null };
+
+    // Jump straight to the photo editor on the profile tab
+    case "OPEN_PHOTO_EDITOR":
+      return { ...state, activeTab: "profile", openPhotoEditor: true };
+
+    case "CLEAR_OPEN_PHOTO_EDITOR":
+      return { ...state, openPhotoEditor: false };
 
     case "SHOW_MATCH":
       return { ...state, matchAlert: action.payload };

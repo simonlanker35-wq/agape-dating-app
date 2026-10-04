@@ -954,6 +954,17 @@ export default function Profile() {
   useEffect(() => {
     if (currentUser?.id) getPhotoOriginals().then(setOriginals).catch(() => {});
   }, [currentUser?.id]);
+  // Asked to open the photo editor from elsewhere (e.g. the "photo reviewed" popup)
+  useEffect(() => {
+    if (!state.openPhotoEditor) return;
+    setShowSettings(false);
+    setSection("profile");
+    setEditPhotos(true);
+    dispatch({ type: "CLEAR_OPEN_PHOTO_EDITOR" });
+    // Bring the whole photo section to the top of the screen, without animation so it cannot stop half way
+    // No cleanup on purpose: clearing the flag above re-runs this effect, which would cancel the timer.
+    setTimeout(() => photosRef.current?.scrollIntoView({ behavior: "auto", block: "start" }), 150);
+  }, [state.openPhotoEditor]);
   const persistOriginals = (next) => {
     setOriginals(next);
     savePhotoOriginals(next).catch(() => {});

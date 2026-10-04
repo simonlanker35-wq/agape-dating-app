@@ -20,7 +20,8 @@ export default function ReviewAlert() {
   const goToProfile = () => {
     track("review_alert_opened", { status: alert.status });
     dispatch({ type: "DISMISS_REVIEW" });
-    dispatch({ type: "SET_TAB", payload: "profile" });
+    // A rejected selfie goes straight to the photo editor so a new one can be uploaded
+    dispatch(approved ? { type: "SET_TAB", payload: "profile" } : { type: "OPEN_PHOTO_EDITOR" });
   };
 
   return (

@@ -15,8 +15,18 @@ begin
     new.reviewed_at := null;
     new.notified_at := null;
     new.created_at := now();
-  elsif new.status <> 'pending' and new.reviewed_at is null then
-    new.reviewed_at := now();
+  else
+    -- The team can type everyday words in the status cell; they are turned into the two real values
+    new.status := case lower(trim(new.status))
+      when 'accepted' then 'approved' when 'accept' then 'approved' when 'approve' then 'approved'
+      when 'yes' then 'approved' when 'ok' then 'approved' when 'verified' then 'approved'
+      when 'denied' then 'rejected' when 'declined' then 'rejected' when 'reject' then 'rejected'
+      when 'no' then 'rejected' when 'not approved' then 'rejected'
+      else lower(trim(new.status))
+    end;
+    if new.status <> 'pending' and new.reviewed_at is null then
+      new.reviewed_at := now();
+    end if;
   end if;
   return new;
 end;
