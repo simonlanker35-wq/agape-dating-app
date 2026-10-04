@@ -58,13 +58,42 @@ Deno.serve(async (req) => {
             plan: sub ? sub.items.data[0]?.price?.id : null,
             currentPeriodEnd: sub ? sub.current_period_end : null,
             cancelAtPeriodEnd: sub ? sub.cancel_at_period_end : false,
+            startedAt: sub ? sub.start_date : null,
           }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
     }
 
-    const { priceId } = await req.json();
+    const body = await req.json();
+
+    // Stop or resume the renewal. Cancelling never cuts access short: Agape+ stays active
+    // until the end of the period that was already paid for.
+    if (body.action === "cancel" || body.action === "resume") {
+      if (!profile?.stripe_customer_id) throw new Error("No subscription found");
+      const subscriptions = await stripe.subscriptions.list({
+        customer: profile.stripe_customer_id,
+        status: "active",
+        limit: 1,
+      });
+      const sub = subscriptions.data[0];
+      if (!sub) throw new Error("No active subscription");
+      const updated = await stripe.subscriptions.update(sub.id, {
+        cancel_at_period_end: body.action === "cancel",
+      });
+      return new Response(
+        JSON.stringify({
+          status: "active",
+          plan: updated.items.data[0]?.price?.id ?? null,
+          currentPeriodEnd: updated.current_period_end,
+          cancelAtPeriodEnd: updated.cancel_at_period_end,
+          startedAt: updated.start_date,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const { priceId } = body;
     if (!priceId) throw new Error("Missing priceId");
 
     let customerId = profile?.stripe_customer_id;
