@@ -41,6 +41,7 @@ function computeCompleteness(u) {
 import AgapeCross from "../components/AgapeCross";
 import LocationPicker from "../components/LocationPicker";
 import NumberField from "../components/NumberField";
+import VerifiedBadge from "../components/VerifiedBadge";
 import AudioPlayer from "../components/AudioPlayer";
 import VoiceRecorder from "../components/VoiceRecorder";
 import { extForMime } from "../services/media";
@@ -1271,10 +1272,7 @@ export default function Profile() {
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <span style={{ color: C.text, fontFamily: SERIF, fontSize: 20, fontWeight: 600, lineHeight: 1.1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{currentUser.name}</span>
               <span style={{ color: C.sub, fontFamily: FONT, fontSize: 16, fontWeight: 400 }}>{currentUser.age}</span>
-              <svg width={14} height={14} viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
-                <circle cx="12" cy="12" r="10" fill={C.primary} />
-                <path d="M9 12l2 2 4-4" stroke="white" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" fill="none" />
-              </svg>
+              {(verif.church?.status === "approved" || verif.bible?.status === "approved") && <VerifiedBadge size={20} />}
             </div>
             <p style={{ color: C.sub, fontSize: 12, fontFamily: FONT, margin: "3px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {currentUser.denomination}{currentUser.location?.city ? ` · ${currentUser.location.city}` : ""}

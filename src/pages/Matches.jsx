@@ -9,6 +9,7 @@ import ReliabilityBadge from "../components/ReliabilityBadge";
 import NotificationPrompt from "../components/NotificationPrompt";
 import TutorialOverlay from "../components/TutorialOverlay";
 import AudioPlayer from "../components/AudioPlayer";
+import VerifiedBadge from "../components/VerifiedBadge";
 import VoiceRecorder from "../components/VoiceRecorder";
 import { prepareChatImage, extForMime, isRecordingSupported } from "../services/media";
 import { track } from "../services/posthog";
@@ -1041,7 +1042,10 @@ function ChatThread({ match, onBack }) {
             </button>
             <img src={profile.photos[0]} alt={profile.name} onClick={() => setViewProfile(true)} style={{ width: 36, height: 36, borderRadius: "50%", objectFit: "cover", objectPosition: "50% 20%", cursor: "pointer", flexShrink: 0 }} onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${profile.name}&size=72&background=F4F2EE&color=B8912A`; }} />
             <div style={{ flex: 1, minWidth: 0, cursor: "pointer" }} onClick={() => setViewProfile(true)}>
-              <p style={{ fontWeight: 600, fontSize: 17, lineHeight: 1.15, color: C.text, fontFamily: SERIF, margin: 0 }}>{profile.name}</p>
+              <p style={{ fontWeight: 600, fontSize: 17, lineHeight: 1.15, color: C.text, fontFamily: SERIF, margin: 0, display: "flex", alignItems: "center", gap: 5 }}>
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{profile.name}</span>
+                {profile.isVerified && <VerifiedBadge size={18} />}
+              </p>
               <p style={{ fontSize: 12, color: statusColor, fontFamily: FONT, margin: "2px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{status}</p>
             </div>
             <button onClick={() => setShowReportMenu(true)} aria-label="Safety options" style={{ width: 36, height: 36, borderRadius: 18, background: "none", border: "none", cursor: "pointer", color: C.sub, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -1438,6 +1442,7 @@ function ChatThread({ match, onBack }) {
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <span style={{ color: "white", fontSize: 28, fontWeight: 600, fontFamily: SERIF }}>{profile.name}</span>
                 <span style={{ color: "rgba(255,255,255,0.8)", fontSize: 22, fontWeight: 300 }}>{profile.age}</span>
+                {profile.isVerified && <VerifiedBadge size={20} label />}
               </div>
               <p style={{ color: "rgba(255,255,255,0.7)", fontSize: 12, marginTop: 4 }}>{profile.denomination}{profile.location ? ` · ${profile.location}` : ""}</p>
               {profile.reliability?.dates > 0 && <div style={{ marginTop: 8 }}><ReliabilityBadge reliability={profile.reliability} light /></div>}
@@ -1553,8 +1558,9 @@ export default function Matches() {
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
                     <span style={{ display: "flex", alignItems: "baseline", gap: 8, minWidth: 0, overflow: "hidden" }}>
-                      <span style={{ fontWeight: hasUnread ? 700 : 600, fontSize: 19, color: C.text, fontFamily: SERIF, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{profile.name}</span>
-                      {profile.denomination && <span style={{ fontSize: 12, color: C.primary, fontWeight: 600, fontFamily: FONT, whiteSpace: "nowrap", flexShrink: 0 }}>· {profile.denomination}</span>}
+                      <span style={{ fontWeight: hasUnread ? 700 : 600, fontSize: 19, color: C.text, fontFamily: SERIF, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", flexShrink: 0, maxWidth: "62%" }}>{profile.name}</span>
+                      {profile.isVerified && <VerifiedBadge size={19} style={{ marginLeft: -3 }} />}
+                      {profile.denomination && <span style={{ fontSize: 12, color: C.primary, fontWeight: 600, fontFamily: FONT, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", minWidth: 0, flexShrink: 1 }}>· {profile.denomination}</span>}
                     </span>
                     <span style={{ fontSize: 11, color: hasUnread ? C.primary : C.sub, fontWeight: hasUnread ? 700 : 400, fontFamily: FONT, flexShrink: 0, marginLeft: 8 }}>{lastMsg ? formatTime(lastMsg.timestamp) : ""}</span>
                   </div>

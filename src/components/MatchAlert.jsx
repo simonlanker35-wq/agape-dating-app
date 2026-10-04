@@ -1,5 +1,6 @@
 import { useApp } from "../context/AppContext";
 import AgapeCross from "./AgapeCross";
+import VerifiedBadge from "./VerifiedBadge";
 import { track } from "../services/posthog";
 
 // Full-screen "It's a Match" celebration. Shown for every new match, on whatever screen the user is on:
@@ -51,6 +52,11 @@ export default function MatchAlert() {
         <div className="match-label">It's a Match</div>
         <h2 className="match-title shimmer-gold">You &amp; {name}</h2>
         <div className="match-subtitle">You both liked each other ✦</div>
+        {them.isVerified && (
+          <div style={{ display: "flex", justifyContent: "center", marginTop: 10 }}>
+            <VerifiedBadge size={18} label />
+          </div>
+        )}
         <div className="match-photos">
           <div className="pulse-ring">
             <img

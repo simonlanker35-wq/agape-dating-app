@@ -6,6 +6,7 @@ import DoveIcon from "../components/DoveIcon";
 import ReliabilityBadge from "../components/ReliabilityBadge";
 import WaveformBar from "../components/WaveformBar";
 import AudioPlayer from "../components/AudioPlayer";
+import VerifiedBadge from "../components/VerifiedBadge";
 import ReportSheet from "../components/ReportSheet";
 import { getDovesRemaining, recordDove } from "../services/limits";
 import { track } from "../services/posthog";
@@ -302,15 +303,11 @@ export default function Standouts() {
             {/* Identity block */}
             <div className="id-block">
               <div className="id-info">
+                {profile.isVerified && <div style={{ marginBottom: 6 }}><VerifiedBadge size={18} label /></div>}
                 <div className="id-line1">
                   <span className="id-name">{profile.name},</span>
                   <span className="id-age">{profile.age}</span>
-                  {profile.isVerified && (
-                    <svg className="id-verified" width={15} height={15} viewBox="0 0 24 24">
-                      <circle cx="12" cy="12" r="10" fill="#B8912A" />
-                      <path d="M9 12l2 2 4-4" stroke="white" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" fill="none" />
-                    </svg>
-                  )}
+                  
                 </div>
                 <div className="id-line2">
                   {profile.location && (
