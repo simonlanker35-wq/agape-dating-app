@@ -541,7 +541,8 @@ export async function getMessages(matchId) {
 }
 
 // media: { type: "image" | "audio", url, duration } — text is a readable fallback for previews and notifications
-export async function sendMessage(matchId, text, media = null) {
+// replyTo: id of the message this one answers (optional)
+export async function sendMessage(matchId, text, media = null, replyTo = null) {
   const user = await currentUser();
 
   const row = { match_id: matchId, sender: user.id, text };
@@ -550,10 +551,16 @@ export async function sendMessage(matchId, text, media = null) {
     row.media_url = media.url;
     row.media_duration = media.duration ?? null;
   }
-  const { data: message, error } = await withTimeout(
+  if (replyTo) row.reply_to = replyTo;
+  let { data: message, error } = await withTimeout(
     supabase.from("messages").insert(row).select().single(),
     20000
   );
+  // Replies not set up on the server yet: send it as a normal message rather than losing it
+  if (error && replyTo && /reply_to/i.test(error.message || "")) {
+    delete row.reply_to;
+    ({ data: message, error } = await withTimeout(supabase.from("messages").insert(row).select().single(), 20000));
+  }
   if (error) throw new Error(error.message);
 
   await supabase.from("matches").update({ last_activity: new Date().toISOString() }).eq("id", matchId);
@@ -570,6 +577,7 @@ function mapMessage(msg) {
     read: msg.read,
     media: msg.media_url ? { type: msg.media_type, url: msg.media_url, duration: msg.media_duration } : null,
     reactions: msg.reactions || {},
+    replyTo: msg.reply_to || null,
   };
 }
 

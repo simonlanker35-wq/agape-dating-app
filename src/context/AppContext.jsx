@@ -636,8 +636,8 @@ export function AppProvider({ children }) {
       }
     },
 
-    sendMessage: async (matchId, text, media = null) => {
-      const message = await api.sendMessage(matchId, text, media);
+    sendMessage: async (matchId, text, media = null, replyTo = null) => {
+      const message = await api.sendMessage(matchId, text, media, replyTo);
       track("message_sent", { media: media?.type || "text" });
       dispatch({ type: "ADD_MESSAGE", payload: { matchId, message } });
       const m = state.matches.find((x) => x.id === matchId);

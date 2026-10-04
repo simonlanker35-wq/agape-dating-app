@@ -1272,7 +1272,9 @@ export default function Profile() {
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <span style={{ color: C.text, fontFamily: SERIF, fontSize: 20, fontWeight: 600, lineHeight: 1.1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{currentUser.name}</span>
               <span style={{ color: C.sub, fontFamily: FONT, fontSize: 16, fontWeight: 400 }}>{currentUser.age}</span>
-              {(verif.church?.status === "approved" || verif.bible?.status === "approved") && <VerifiedBadge size={20} />}
+              {(verif.church?.status === "approved" || verif.bible?.status === "approved")
+                ? <VerifiedBadge size={20} />
+                : <VerifiedBadge size={20} empty />}
             </div>
             <p style={{ color: C.sub, fontSize: 12, fontFamily: FONT, margin: "3px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {currentUser.denomination}{currentUser.location?.city ? ` · ${currentUser.location.city}` : ""}

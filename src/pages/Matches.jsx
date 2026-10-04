@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useApp } from "../context/AppContext";
 import * as api from "../services/api";
-import { MessageCircle, Ban, Flag, UserMinus, Calendar, CheckCircle, Clock, Video, Heart, Lock, Flower2, ChevronLeft, Shield, ArrowUp, Utensils, Footprints, Coffee, Mountain, Shirt, Briefcase, Gem, Dumbbell, MapPin, Image as ImageIcon, Mic, X, SmilePlus } from "lucide-react";
+import { MessageCircle, Ban, Flag, UserMinus, Calendar, CheckCircle, Clock, Video, Heart, Lock, Flower2, ChevronLeft, Shield, ArrowUp, Utensils, Footprints, Coffee, Mountain, Shirt, Briefcase, Gem, Dumbbell, MapPin, Image as ImageIcon, Mic, X, SmilePlus, Reply } from "lucide-react";
 import AgapeCross from "../components/AgapeCross";
 import DoveIcon from "../components/DoveIcon";
 import LocationPicker from "../components/LocationPicker";
@@ -838,9 +838,11 @@ function ChatThread({ match, onBack }) {
   const send = async () => {
     if (!text.trim() || chatLocked) return;
     const msg = text.trim();
+    const replyId = replyTo?.id || null;
     setText("");
+    setReplyTo(null);
     try {
-      await actions.sendMessage(match.id, msg);
+      await actions.sendMessage(match.id, msg, null, replyId);
     } catch (err) {
       console.error("Send failed:", err);
     }
@@ -854,6 +856,44 @@ function ChatThread({ match, onBack }) {
   const imageInputRef = useRef(null);
 
   const failMedia = (msg) => { setMediaError(msg); setTimeout(() => setMediaError(""), 4000); };
+
+  // ── Replying to one specific message, photo or voice note ──
+  const [replyTo, setReplyTo] = useState(null);   // the message being answered
+  const [flashId, setFlashId] = useState(null);   // briefly highlights the original after tapping a quote
+  const inputRef = useRef(null);
+  const msgRefs = useRef({});
+  // Like comments shown at the top of a chat are not real messages and cannot be quoted
+  const canReply = (m) => !!m?.id && !String(m.id).startsWith("like-") && !String(m.id).startsWith("temp");
+  const previewOf = (m) => (m.media?.type === "image" ? "Photo" : m.media?.type === "audio" ? "Voice note" : (m.text || "").replace(/^🕊️ /, ""));
+  const startReply = (m) => {
+    if (!canReply(m) || chatLocked) return;
+    track("chat_reply_started", { media: m.media?.type || "text" });
+    setReactFor(null);
+    setReplyTo(m);
+    setTimeout(() => inputRef.current?.focus(), 50);
+  };
+  const jumpTo = (id) => {
+    msgRefs.current[id]?.scrollIntoView({ behavior: "smooth", block: "center" });
+    setFlashId(id);
+    setTimeout(() => setFlashId((cur) => (cur === id ? null : cur)), 1400);
+  };
+  const renderQuote = (item, onDark) => {
+    if (!item.replyTo) return null;
+    const orig = (conversation?.messages || []).find((m) => m.id === item.replyTo);
+    const who = orig ? (orig.sender === currentUserId ? "You" : profile.name) : "Message";
+    return (
+      <button
+        onClick={(e) => { e.stopPropagation(); if (orig) jumpTo(orig.id); }}
+        style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", textAlign: "left", padding: "6px 8px", marginBottom: 6, borderRadius: 10, border: "none", borderLeft: `3px solid ${onDark ? "#F5D878" : C.primary}`, background: onDark ? "rgba(255,255,255,0.14)" : C.surface, cursor: orig ? "pointer" : "default", fontFamily: FONT }}
+      >
+        {orig?.media?.type === "image" && <img src={orig.media.url} alt="" style={{ width: 34, height: 34, borderRadius: 6, objectFit: "cover", flexShrink: 0 }} />}
+        <span style={{ minWidth: 0, flex: 1 }}>
+          <span style={{ display: "block", fontSize: 11.5, fontWeight: 700, color: onDark ? "#F5D878" : C.primary }}>{who}</span>
+          <span style={{ display: "block", fontSize: 13, color: onDark ? "rgba(255,255,255,0.85)" : C.sub, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{orig ? previewOf(orig) : "Original message not available"}</span>
+        </span>
+      </button>
+    );
+  };
 
   // ── Reactions on photos and voice notes ──
   const REACTIONS = ["❤️", "😂", "😮", "🙏", "👍"];
@@ -882,7 +922,8 @@ function ChatThread({ match, onBack }) {
     try {
       const blob = await prepareChatImage(file);
       const url = await api.uploadMedia(blob, "chat", "jpg", "image/jpeg");
-      await actions.sendMessage(match.id, "📷 Photo", { type: "image", url });
+      await actions.sendMessage(match.id, "📷 Photo", { type: "image", url }, replyTo?.id || null);
+      setReplyTo(null);
       track("chat_photo_sent");
     } catch (err) {
       console.error("Photo send failed:", err);
@@ -895,7 +936,8 @@ function ChatThread({ match, onBack }) {
     setUploading("audio");
     try {
       const url = await api.uploadMedia(blob, "voice", extForMime(mime), mime.split(";")[0]);
-      await actions.sendMessage(match.id, "🎤 Voice note", { type: "audio", url, duration });
+      await actions.sendMessage(match.id, "🎤 Voice note", { type: "audio", url, duration }, replyTo?.id || null);
+      setReplyTo(null);
       track("chat_voice_sent", { duration });
       setRecording(false);
     } catch (err) {
@@ -1124,7 +1166,7 @@ function ChatThread({ match, onBack }) {
           }
 
           return (
-            <div key={item.id}>
+            <div key={item.id} ref={(el) => { msgRefs.current[item.id] = el; }} style={{ borderRadius: 14, background: flashId === item.id ? C.primarySoft : "transparent", transition: "background 0.4s" }}>
               {divider}
               <div style={{ display: "flex", flexDirection: "column", alignItems: isMe ? "flex-end" : "flex-start", marginBottom: endOfRun ? 10 : 2 }}>
                 {isDoveMsg && (
@@ -1143,6 +1185,7 @@ function ChatThread({ match, onBack }) {
                   return (
                     <div style={{ display: "flex", alignItems: "center", gap: 6, flexDirection: isMe ? "row-reverse" : "row", width: "100%", marginBottom: shown.length ? 14 : 0 }}>
                       <div style={{ position: "relative", ...(isImage ? { maxWidth: "70%" } : { width: "min(78%, 300px)" }) }} {...pressHandlers(item.id)}>
+                        {renderQuote(item, false)}
                         {isImage ? (
                           <button onClick={() => setLightbox(item.media.url)} aria-label="Open photo" style={{ width: "100%", padding: 0, border: `1px solid ${C.border}`, borderRadius: 18, borderBottomRightRadius: isMe ? 5 : 18, borderBottomLeftRadius: isMe ? 18 : 5, overflow: "hidden", background: C.surface, cursor: "pointer", display: "block", WebkitTouchCallout: "none", userSelect: "none" }}>
                             <img src={item.media.url} alt="Photo" loading="lazy" draggable={false} style={{ display: "block", width: "100%", maxHeight: 320, objectFit: "cover" }} />
@@ -1176,13 +1219,22 @@ function ChatThread({ match, onBack }) {
                           </>
                         )}
                       </div>
-                      <button onClick={() => setReactFor(open ? null : item.id)} aria-label="Add a reaction" style={{ width: 30, height: 30, borderRadius: 15, border: "none", background: C.surface, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}>
-                        <SmilePlus size={15} color={C.sub} strokeWidth={1.8} />
-                      </button>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6, flexShrink: 0 }}>
+                        <button onClick={() => setReactFor(open ? null : item.id)} aria-label="Add a reaction" style={{ width: 30, height: 30, borderRadius: 15, border: "none", background: C.surface, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                          <SmilePlus size={15} color={C.sub} strokeWidth={1.8} />
+                        </button>
+                        {canReply(item) && (
+                          <button onClick={() => startReply(item)} aria-label="Reply" style={{ width: 30, height: 30, borderRadius: 15, border: "none", background: C.surface, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                            <Reply size={15} color={C.sub} strokeWidth={1.8} />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   );
                 })() : (
                 <div
+                  onClick={() => startReply(item)}
+                  title={canReply(item) ? "Tap to reply" : undefined}
                   style={{
                     maxWidth: "78%",
                     padding: "10px 14px",
@@ -1192,8 +1244,12 @@ function ChatThread({ match, onBack }) {
                     background: isMe ? C.text : C.bg,
                     color: isMe ? "#fff" : C.text,
                     border: isMe ? "1px solid " + C.text : `1px solid ${isDoveMsg ? C.primary : C.border}`,
+                    cursor: canReply(item) && !chatLocked ? "pointer" : "default",
+                    outline: replyTo?.id === item.id ? `2px solid ${C.primary}` : "none",
+                    outlineOffset: 2,
                   }}
                 >
+                  {renderQuote(item, isMe)}
                   <p style={{ fontSize: 15, lineHeight: 1.45, fontFamily: FONT, margin: 0, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{displayText}</p>
                 </div>
                 )}
@@ -1325,6 +1381,18 @@ function ChatThread({ match, onBack }) {
             </div>
 
             {mediaError && <p style={{ fontSize: 12, color: "#EF4444", fontFamily: FONT, margin: "0 0 6px 4px" }}>{mediaError}</p>}
+            {replyTo && (
+              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", marginBottom: 8, borderRadius: 12, background: C.surface, borderLeft: `3px solid ${C.primary}` }}>
+                {replyTo.media?.type === "image" && <img src={replyTo.media.url} alt="" style={{ width: 36, height: 36, borderRadius: 6, objectFit: "cover", flexShrink: 0 }} />}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: 12, fontWeight: 700, color: C.primary, fontFamily: FONT, margin: 0 }}>Replying to {replyTo.sender === currentUserId ? "yourself" : profile.name}</p>
+                  <p style={{ fontSize: 13, color: C.sub, fontFamily: FONT, margin: "1px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{previewOf(replyTo)}</p>
+                </div>
+                <button onClick={() => setReplyTo(null)} aria-label="Cancel reply" style={{ width: 28, height: 28, borderRadius: 14, border: "none", background: "transparent", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}>
+                  <X size={16} color={C.sub} />
+                </button>
+              </div>
+            )}
             {recording ? (
               <VoiceRecorder autoStart maxSeconds={60} confirmLabel="Send" busy={uploading === "audio"} onDone={sendVoice} onCancel={() => setRecording(false)} />
             ) : (
@@ -1339,8 +1407,9 @@ function ChatThread({ match, onBack }) {
                   <ImageIcon size={21} color={C.sub} strokeWidth={1.8} />
                 </button>
                 <input
+                  ref={inputRef}
                   style={{ flex: 1, fontSize: 15, padding: "11px 16px", borderRadius: 22, background: C.bg, border: `1px solid ${C.border}`, outline: "none", color: C.text, fontFamily: FONT, minWidth: 0 }}
-                  placeholder={uploading === "image" ? "Sending photo…" : "Message"}
+                  placeholder={uploading === "image" ? "Sending photo…" : replyTo ? "Write a reply" : "Message"}
                   value={text}
                   onChange={(e) => setText(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && send()}

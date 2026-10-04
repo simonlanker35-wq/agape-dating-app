@@ -10,18 +10,20 @@ const SERIF = "'Lora', Georgia, serif";
 // The one verified mark used everywhere a profile is shown: a gold seal with a white tick.
 // `label` adds the word "Verified" in a pill, for the larger profile views.
 // Tapping it explains what verification means.
-export default function VerifiedBadge({ size = 20, label = false, style }) {
+// `empty` is the outline version shown only to the owner of a profile that is not verified yet.
+export default function VerifiedBadge({ size = 20, label = false, empty = false, style }) {
   const { state, dispatch } = useApp();
   const [open, setOpen] = useState(false);
 
   const mine = state.myVerifications || {};
   const iAmVerified = mine.church?.status === "approved" || mine.bible?.status === "approved";
+  const iAmPending = !iAmVerified && (mine.church?.status === "pending" || mine.bible?.status === "pending");
 
   const show = (e) => {
     // The badge often sits inside a tappable row or card: keep the tap from opening that too
     e.stopPropagation();
     e.preventDefault();
-    track("verified_badge_tapped");
+    track("verified_badge_tapped", { empty });
     setOpen(true);
   };
   const onKey = (e) => { if (e.key === "Enter" || e.key === " ") show(e); };
@@ -34,7 +36,9 @@ export default function VerifiedBadge({ size = 20, label = false, style }) {
     dispatch({ type: "OPEN_PHOTO_EDITOR" });
   };
 
-  const seal = (
+  const seal = empty ? (
+    <BadgeCheck size={size} fill="none" color="#B8AFA3" strokeWidth={1.8} aria-hidden="true" style={{ flexShrink: 0, display: "block" }} />
+  ) : (
     <BadgeCheck
       size={size}
       fill="#B8912A"
@@ -48,8 +52,8 @@ export default function VerifiedBadge({ size = 20, label = false, style }) {
   const trigger = {
     role: "button",
     tabIndex: 0,
-    "aria-label": "Verified by Agape. Tap for details.",
-    title: "Verified by Agape",
+    "aria-label": empty ? "Not verified yet. Tap for details." : "Verified by Agape. Tap for details.",
+    title: empty ? "Not verified yet" : "Verified by Agape",
     onClick: show,
     onKeyDown: onKey,
   };
@@ -90,29 +94,55 @@ export default function VerifiedBadge({ size = 20, label = false, style }) {
             style={{ width: "100%", maxWidth: 340, background: "#FFFFFF", borderRadius: 24, padding: "26px 24px 18px", textAlign: "center", boxShadow: "0 24px 60px rgba(0,0,0,0.3)", animation: "sheetSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)" }}
           >
             <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
-              <BadgeCheck size={52} fill="#B8912A" color="#FFFFFF" strokeWidth={1.8} aria-hidden="true" />
+              {empty
+                ? <BadgeCheck size={52} fill="none" color="#B8AFA3" strokeWidth={1.6} aria-hidden="true" />
+                : <BadgeCheck size={52} fill="#B8912A" color="#FFFFFF" strokeWidth={1.8} aria-hidden="true" />}
             </div>
-            <p style={{ fontFamily: SERIF, fontSize: 21, fontWeight: 600, color: "#1A1612", margin: "0 0 10px" }}>Verified by Agape</p>
-            <p style={{ fontFamily: FONT, fontSize: 14, color: "#5F5A53", lineHeight: 1.55, margin: 0 }}>
-              This person sent us a selfie with a church or a Bible. Someone on the Agape team looked at it and confirmed it is the same person as in the profile photos.
-            </p>
-            <p style={{ fontFamily: FONT, fontSize: 13, color: "#8C857C", lineHeight: 1.5, margin: "10px 0 0" }}>
-              It shows the photos are real. It is not a background check, so still meet in a public place.
-            </p>
+            {empty ? (
+              <>
+                <p style={{ fontFamily: SERIF, fontSize: 21, fontWeight: 600, color: "#1A1612", margin: "0 0 10px" }}>
+                  {iAmPending ? "Your selfie is in review" : "You are not verified yet"}
+                </p>
+                <p style={{ fontFamily: FONT, fontSize: 14, color: "#5F5A53", lineHeight: 1.55, margin: 0 }}>
+                  {iAmPending
+                    ? "The Agape team is checking your selfie by hand. As soon as it is approved, this badge turns gold and everyone sees it on your profile."
+                    : "Take a selfie with a church or a Bible. The Agape team checks it by hand, and once it is approved a gold badge shows on your profile for everyone."}
+                </p>
+                <p style={{ fontFamily: FONT, fontSize: 13, color: "#8C857C", lineHeight: 1.5, margin: "10px 0 0" }}>
+                  Only you can see this empty badge. A gold badge tells others your photos are really you.
+                </p>
+                <button onClick={getVerified} style={{ width: "100%", padding: 14, marginTop: 20, borderRadius: 14, background: "#111111", color: "#fff", border: "none", fontFamily: FONT, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
+                  {iAmPending ? "View my selfies" : "Verify my profile"}
+                </button>
+                <button onClick={close} style={{ width: "100%", padding: 12, marginTop: 4, background: "none", border: "none", fontFamily: FONT, fontSize: 14, fontWeight: 600, color: "#8C857C", cursor: "pointer" }}>
+                  Not now
+                </button>
+              </>
+            ) : (
+              <>
+                <p style={{ fontFamily: SERIF, fontSize: 21, fontWeight: 600, color: "#1A1612", margin: "0 0 10px" }}>Verified by Agape</p>
+                <p style={{ fontFamily: FONT, fontSize: 14, color: "#5F5A53", lineHeight: 1.55, margin: 0 }}>
+                  This person sent us a selfie with a church or a Bible. Someone on the Agape team looked at it and confirmed it is the same person as in the profile photos.
+                </p>
+                <p style={{ fontFamily: FONT, fontSize: 13, color: "#8C857C", lineHeight: 1.5, margin: "10px 0 0" }}>
+                  It shows the photos are real. It is not a background check, so still meet in a public place.
+                </p>
 
-            {!iAmVerified && (
-              <button onClick={getVerified} style={{ width: "100%", padding: 14, marginTop: 20, borderRadius: 14, background: "#111111", color: "#fff", border: "none", fontFamily: FONT, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
-                Verify my profile too
-              </button>
+                {!iAmVerified && (
+                  <button onClick={getVerified} style={{ width: "100%", padding: 14, marginTop: 20, borderRadius: 14, background: "#111111", color: "#fff", border: "none", fontFamily: FONT, fontSize: 15, fontWeight: 700, cursor: "pointer" }}>
+                    Verify my profile too
+                  </button>
+                )}
+                <button
+                  onClick={close}
+                  style={iAmVerified
+                    ? { width: "100%", padding: 14, marginTop: 20, borderRadius: 14, background: "#111111", color: "#fff", border: "none", fontFamily: FONT, fontSize: 15, fontWeight: 700, cursor: "pointer" }
+                    : { width: "100%", padding: 12, marginTop: 4, background: "none", border: "none", fontFamily: FONT, fontSize: 14, fontWeight: 600, color: "#8C857C", cursor: "pointer" }}
+                >
+                  {iAmVerified ? "Got it" : "Close"}
+                </button>
+              </>
             )}
-            <button
-              onClick={close}
-              style={iAmVerified
-                ? { width: "100%", padding: 14, marginTop: 20, borderRadius: 14, background: "#111111", color: "#fff", border: "none", fontFamily: FONT, fontSize: 15, fontWeight: 700, cursor: "pointer" }
-                : { width: "100%", padding: 12, marginTop: 4, background: "none", border: "none", fontFamily: FONT, fontSize: 14, fontWeight: 600, color: "#8C857C", cursor: "pointer" }}
-            >
-              {iAmVerified ? "Got it" : "Close"}
-            </button>
           </div>
         </div>,
         document.body
