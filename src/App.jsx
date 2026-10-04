@@ -12,6 +12,7 @@ import RoseAlert from "./components/RoseAlert";
 import MatchAlert from "./components/MatchAlert";
 import ReviewAlert from "./components/ReviewAlert";
 import ErrorBoundary from "./components/ErrorBoundary";
+import UpdateBanner from "./components/UpdateBanner";
 import { useState } from "react";
 import "./App.css";
 
@@ -99,6 +100,7 @@ function AppContent() {
 export default function App() {
   return (
     <ErrorBoundary name="app">
+      <UpdateBanner />
       <AppProvider>
         <ErrorBoundary name="content">
           <AppContent />
