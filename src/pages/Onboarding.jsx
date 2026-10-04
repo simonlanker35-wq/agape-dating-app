@@ -225,6 +225,12 @@ export default function Onboarding() {
   const [resetStep, setResetStep] = useState("phone");
   const [resetPhone, setResetPhone] = useState("+48");
   const [resetError, setResetError] = useState("");
+  const [resendWait, setResendWait] = useState(0); // seconds until another reset email can be requested
+  useEffect(() => {
+    if (resendWait <= 0) return;
+    const t = setTimeout(() => setResendWait((s) => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [resendWait]);
   const [emailSignup, setEmailSignup] = useState({ email: "", password: "", confirm: "", error: "", checkInbox: false });
 
   // Signed in via Google/Apple/email but no profile yet: continue from the consent step
@@ -463,6 +469,7 @@ export default function Onboarding() {
     try {
       if (resetPhone.includes("@")) {
         await actions.sendPasswordResetEmail(resetPhone.trim());
+        setResendWait(60);
         setResetStep("emailSent");
         setSubmitting(false);
         return;
@@ -789,7 +796,7 @@ export default function Onboarding() {
           <p style={{ color: S.sub, fontSize: 14, marginBottom: 28, lineHeight: 1.5 }}>
             {resetStep === "phone" ? "Enter your phone number to get a code by SMS, or your email to get a reset link"
               : resetStep === "code" ? `Sent to ${resetPhone}`
-              : resetStep === "emailSent" ? `We sent a password reset link to ${resetPhone.trim()}. Open it on this device to choose a new password.`
+              : resetStep === "emailSent" ? `If an Agape account uses ${resetPhone.trim()}, a reset link is on its way. It can take a minute, and it may land in your spam folder. Open it on this device to choose a new password.`
               : "Choose a new password for your account"}
           </p>
 
@@ -801,7 +808,22 @@ export default function Onboarding() {
             />
           )}
           {resetStep === "emailSent" && (
-            <BigBtn onClick={() => { setMode("login"); setLoginPhone(resetPhone.trim()); }} style={{ marginTop: 0 }}>Back to sign in</BigBtn>
+            <>
+              <BigBtn onClick={() => { setMode("login"); setLoginPhone(resetPhone.trim()); }} style={{ marginTop: 0 }}>Back to sign in</BigBtn>
+              <button
+                onClick={handleResetSendOtp}
+                disabled={submitting || resendWait > 0}
+                style={{ width: "100%", marginTop: 14, padding: "12px 0", background: "none", border: "none", color: resendWait > 0 ? S.sub : S.primary, fontSize: 14, fontWeight: 600, cursor: resendWait > 0 ? "default" : "pointer", fontFamily: "'Outfit', system-ui, sans-serif" }}
+              >
+                {submitting ? "Sending..." : resendWait > 0 ? `Send again in ${resendWait}s` : "Nothing arrived? Send again"}
+              </button>
+              <button
+                onClick={() => { setResetPhone(""); setResetError(""); setResetStep("phone"); }}
+                style={{ width: "100%", padding: "8px 0", background: "none", border: "none", color: S.sub, fontSize: 13.5, fontWeight: 500, cursor: "pointer", fontFamily: "'Outfit', system-ui, sans-serif" }}
+              >
+                Signed up with your phone number? Get a code by SMS instead
+              </button>
+            </>
           )}
 
           {resetStep === "code" && (

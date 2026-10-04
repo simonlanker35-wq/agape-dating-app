@@ -192,9 +192,37 @@ export async function signInWithProvider(provider) {
   if (error) throw new Error(error.message);
 }
 
+// Sends a reset link. Goes through the password-reset function, which also works for accounts
+// created with a phone number (their email lives on the profile, not on the login).
 export async function sendPasswordResetEmail(email) {
-  const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin });
-  if (error) throw new Error(error.message);
+  const clean = String(email || "").trim().toLowerCase();
+  const redirectTo = window.location.origin;
+  let unreachable = false;
+  try {
+    const { data, error } = await withTimeout(
+      supabase.functions.invoke("password-reset", { body: { email: clean, redirectTo } }),
+      25000
+    );
+    if (!error && data?.ok) return;
+    if (error) {
+      // The function answered with an error status: show its message
+      const status = error.context?.status;
+      let detail = null;
+      try { detail = await error.context?.json?.(); } catch (_) {}
+      if (detail?.error) throw new Error(detail.error);
+      if (status === 404 || !status) unreachable = true;
+      else throw new Error("Could not send the reset email. Please try again.");
+    } else if (data?.error) {
+      throw new Error(data.error);
+    }
+  } catch (err) {
+    if (!unreachable && !/timed out|Failed to fetch|Failed to send a request/i.test(err.message || "")) throw err;
+    unreachable = true;
+  }
+  if (unreachable) {
+    const { error } = await supabase.auth.resetPasswordForEmail(clean, { redirectTo });
+    if (error) throw new Error(error.message);
+  }
 }
 
 export async function getSessionUser() {
