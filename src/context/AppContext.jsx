@@ -266,10 +266,26 @@ export function AppProvider({ children }) {
       loadLikesReceived();
       loadMatches();
       api.touchActivity();
+      // Live updates refresh instantly. Polling stays as a safety net and slows down
+      // once a live event has proven that realtime is switched on for this project.
+      const uid = state.currentUser?.id;
+      let live = false;
+      let tick = 0;
+      let debounce = 0;
+      const refresh = () => { loadLikesReceived(); loadMatches(); };
       const poll = setInterval(() => {
-        loadLikesReceived();
-        loadMatches();
+        tick += 1;
+        if (live && tick % 6 !== 0) return;
+        refresh();
       }, 10000);
+      const stopLive = uid
+        ? api.subscribeLive(`user-${uid}`, [
+            { table: "likes", filter: `to_user=eq.${uid}` },
+            { table: "matches", filter: `user1=eq.${uid}` },
+            { table: "matches", filter: `user2=eq.${uid}` },
+            { table: "messages" },
+          ], () => { live = true; clearTimeout(debounce); debounce = setTimeout(refresh, 250); })
+        : () => {};
       const heartbeat = setInterval(() => { if (document.visibilityState === "visible") api.touchActivity(); }, 2 * 60 * 1000);
       const refreshProfile = async () => {
         if (document.visibilityState === "visible") {
@@ -281,7 +297,7 @@ export function AppProvider({ children }) {
         }
       };
       document.addEventListener("visibilitychange", refreshProfile);
-      return () => { clearInterval(poll); clearInterval(heartbeat); document.removeEventListener("visibilitychange", refreshProfile); };
+      return () => { clearInterval(poll); clearInterval(heartbeat); clearTimeout(debounce); stopLive(); document.removeEventListener("visibilitychange", refreshProfile); };
     }
   }, [state.onboardingComplete, state.currentUser?.id]);
 

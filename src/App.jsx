@@ -10,6 +10,7 @@ import PasswordInput from "./components/PasswordInput";
 import TutorialOverlay from "./components/TutorialOverlay";
 import RoseAlert from "./components/RoseAlert";
 import MatchAlert from "./components/MatchAlert";
+import ErrorBoundary from "./components/ErrorBoundary";
 import { useState } from "react";
 import "./App.css";
 
@@ -80,7 +81,10 @@ function AppContent() {
 
   return (
     <div className="app-container">
-      <main className="app-main no-header">{renderPage()}</main>
+      <main className="app-main no-header">
+        {/* A crash on one tab keeps the navigation usable; switching tabs resets it */}
+        <ErrorBoundary key={state.activeTab} name={state.activeTab} compact>{renderPage()}</ErrorBoundary>
+      </main>
       <Navigation />
       <TutorialOverlay screen={state.activeTab} />
       <RecoveryModal />
@@ -92,8 +96,12 @@ function AppContent() {
 
 export default function App() {
   return (
-    <AppProvider>
-      <AppContent />
-    </AppProvider>
+    <ErrorBoundary name="app">
+      <AppProvider>
+        <ErrorBoundary name="content">
+          <AppContent />
+        </ErrorBoundary>
+      </AppProvider>
+    </ErrorBoundary>
   );
 }

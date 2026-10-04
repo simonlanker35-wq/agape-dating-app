@@ -731,13 +731,26 @@ function ChatThread({ match, onBack }) {
 
 
   useEffect(() => {
-    actions.loadMessages(match.id).catch(console.error);
-    api.getDateInvitations(match.id).then(setDateInvitations).catch(console.error);
-    const poll = setInterval(() => {
+    const refresh = () => {
       actions.loadMessages(match.id).catch(console.error);
       api.getDateInvitations(match.id).then(setDateInvitations).catch(console.error);
+    };
+    refresh();
+    // New messages, reactions and date changes arrive live. Polling stays as a safety net and
+    // slows down once a live event has proven that realtime is switched on.
+    let live = false;
+    let tick = 0;
+    let debounce = 0;
+    const poll = setInterval(() => {
+      tick += 1;
+      if (live && tick % 6 !== 0) return;
+      refresh();
     }, 5000);
-    return () => clearInterval(poll);
+    const stopLive = api.subscribeLive(`chat-${match.id}`, [
+      { table: "messages", filter: `match_id=eq.${match.id}` },
+      { table: "date_invitations", filter: `match_id=eq.${match.id}` },
+    ], () => { live = true; clearTimeout(debounce); debounce = setTimeout(refresh, 120); });
+    return () => { clearInterval(poll); clearTimeout(debounce); stopLive(); };
   }, [match.id]);
 
   useEffect(() => {

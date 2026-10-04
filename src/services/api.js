@@ -41,7 +41,9 @@ function mapProfile(p) {
     lng: loc.lng,
     denomination: p.denomination || "",
     distance: null,
-    photos: p.photos || [],
+    // Team-approved verification selfies are shown after the regular photos
+    photos: [...(p.photos || []), ...["church", "bible"].map((k) => p.verified_photos?.[k]).filter(Boolean)],
+    isVerified: ["church", "bible"].some((k) => !!p.verified_photos?.[k]),
     prompts: p.prompts || [],
     interests: p.interests || [],
     traits: p.traits || [],
@@ -580,6 +582,61 @@ export async function reactToMessage(messageId, emoji) {
   if (error) throw new Error(error.message);
   if (data == null) throw new Error("Could not save the reaction");
   return data;
+}
+
+// ─── VERIFICATION SELFIES ───
+
+// My own selfies and their review state: { church: { url, status, note }, bible: { ... } }
+export async function getMyVerifications() {
+  const user = await currentUser();
+  if (!user) return {};
+  const { data, error } = await supabase.from("photo_verifications").select("kind, url, status, note").eq("user_id", user.id);
+  if (error) throw new Error(error.message);
+  return Object.fromEntries((data || []).map((r) => [r.kind, { url: r.url, status: r.status, note: r.note }]));
+}
+
+// Upload a selfie for review. It is private and "pending" until the team approves it.
+export async function submitVerification(kind, dataUrl) {
+  const user = await currentUser();
+  if (!user) throw new Error("Not signed in");
+  let url = dataUrl;
+  try {
+    const blob = await (await fetch(dataUrl)).blob();
+    url = await uploadMedia(blob, "verify", "jpg", "image/jpeg");
+  } catch (_) {
+    // Storage bucket not available: keep the compressed image inline so the upload still works
+  }
+  const { data, error } = await withTimeout(
+    supabase.from("photo_verifications").upsert({ user_id: user.id, kind, url, status: "pending" }, { onConflict: "user_id,kind" }).select("kind, url, status, note").single(),
+    30000
+  );
+  if (error) throw new Error(error.message);
+  return { url: data.url, status: data.status, note: data.note };
+}
+
+export async function removeVerification(kind) {
+  const user = await currentUser();
+  if (!user) throw new Error("Not signed in");
+  const { error } = await supabase.from("photo_verifications").delete().eq("user_id", user.id).eq("kind", kind);
+  if (error) throw new Error(error.message);
+}
+
+// ─── LIVE UPDATES (Supabase Realtime) ───
+
+// Calls onEvent whenever one of the listed tables changes. Returns a function that stops listening.
+// specs: [{ table, filter? }] — filter uses the realtime syntax, e.g. "match_id=eq.<id>".
+export function subscribeLive(name, specs, onEvent) {
+  let channel;
+  try {
+    channel = supabase.channel(name);
+    specs.forEach((spec) => {
+      channel.on("postgres_changes", { event: "*", schema: "public", table: spec.table, ...(spec.filter ? { filter: spec.filter } : {}) }, (payload) => onEvent(spec.table, payload));
+    });
+    channel.subscribe();
+  } catch (err) {
+    console.warn("Live updates unavailable:", err?.message || err);
+  }
+  return () => { try { if (channel) supabase.removeChannel(channel); } catch (_) {} };
 }
 
 // ─── MEDIA (Supabase Storage bucket "media") ───

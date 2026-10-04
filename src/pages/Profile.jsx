@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useApp } from "../context/AppContext";
-import { compressPhoto, sendTestPush, getPhotoOriginals, savePhotoOriginals, downscaleDataUrl, uploadMedia } from "../services/api";
+import { compressPhoto, sendTestPush, getPhotoOriginals, savePhotoOriginals, downscaleDataUrl, uploadMedia, getMyVerifications, submitVerification, removeVerification } from "../services/api";
+import { Hourglass, Check, X as XIcon, Plus } from "lucide-react";
 import { PROMPT_CATEGORIES, TRAITS_POOL, LOOKING_FOR_POOL, DETAIL_FIELDS } from "../data/profiles";
 
 // Details editable on the profile page (lifestyle ones are answered in onboarding and required there)
@@ -43,7 +44,7 @@ import NumberField from "../components/NumberField";
 import AudioPlayer from "../components/AudioPlayer";
 import VoiceRecorder from "../components/VoiceRecorder";
 import { extForMime } from "../services/media";
-import { redirectToCheckout, getSubscriptionStatus } from "../services/stripe";
+import { redirectToCheckout, getSubscriptionStatus, cancelSubscription, resumeSubscription } from "../services/stripe";
 import { getDovesRemaining } from "../services/limits";
 import { track } from "../services/posthog";
 import { enablePush, disablePush, isPushEnabled, isPushSupported, getPermission, needsHomeScreenInstall } from "../services/push";
@@ -183,6 +184,72 @@ const PLANS = [
   { name: "12 Months", price: "CHF 6.99", period: "/month", priceId: "price_1UF5McCBLGZ7l0PdmGpUGONs", popular: false, billing: "annually" },
 ];
 
+const fmtDate = (unix) => new Date(unix * 1000).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+
+// Active subscription: which plan, when it was bought, when it renews or ends, and a way to stop or keep it
+function SubscriptionStatusCard({ subStatus, onChange }) {
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+
+  const plan = PLANS.find((pl) => pl.priceId === subStatus.plan);
+  const planName = plan ? `${plan.name} plan` : "Agape+ plan";
+  const end = subStatus.currentPeriodEnd ? fmtDate(subStatus.currentPeriodEnd) : null;
+  const started = subStatus.startedAt ? fmtDate(subStatus.startedAt) : null;
+  const ending = !!subStatus.cancelAtPeriodEnd;
+
+  const run = async (fn, event) => {
+    setBusy(true);
+    setErr("");
+    try {
+      const next = await fn();
+      track(event, { plan: plan?.name || "unknown" });
+      onChange(next);
+      setConfirming(false);
+    } catch (e) {
+      setErr(e.message || "Something went wrong. Please try again.");
+    }
+    setBusy(false);
+  };
+
+  return (
+    <div style={{ borderRadius: 16, padding: 16, background: ending ? "#FFF8E6" : "#E8F5E9", marginTop: 4 }}>
+      <p style={{ fontSize: 15, fontWeight: 700, color: ending ? "#8A6A12" : "#2E7D32", margin: 0 }}>{ending ? "Agape+ is ending" : "Agape+ active"}</p>
+      <p style={{ fontSize: 13, color: ending ? "#8A6A12" : "#3C8D40", marginTop: 6, lineHeight: 1.5 }}>
+        {planName}{started ? `, purchased on ${started}` : ""}.
+        {end && (ending
+          ? ` You keep Agape+ until ${end}. After that you are back on the free plan and will not be charged again.`
+          : ` It renews automatically on ${end}.`)}
+      </p>
+
+      {err && <p style={{ fontSize: 12.5, color: "#D32F2F", marginTop: 8 }}>{err}</p>}
+
+      {!end ? null : ending ? (
+        <button onClick={() => run(resumeSubscription, "subscription_resumed")} disabled={busy} style={{ marginTop: 12, width: "100%", padding: 12, borderRadius: 12, background: "#111111", color: "#fff", border: "none", fontSize: 14, fontWeight: 700, cursor: "pointer", opacity: busy ? 0.6 : 1 }}>
+          {busy ? "One moment…" : "Keep Agape+"}
+        </button>
+      ) : !confirming ? (
+        <button onClick={() => { track("subscription_cancel_tapped"); setConfirming(true); }} style={{ marginTop: 12, width: "100%", padding: 12, borderRadius: 12, background: "transparent", color: "#B3261E", border: "1.5px solid #E7B4AE", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
+          Stop Agape+
+        </button>
+      ) : (
+        <div style={{ marginTop: 12, padding: 14, borderRadius: 12, background: "#fff", border: "1px solid #E8E4DF" }}>
+          <p style={{ fontSize: 14, fontWeight: 700, color: "#1A1612", margin: "0 0 6px" }}>Stop Agape+?</p>
+          <p style={{ fontSize: 13, color: "#5F5A53", lineHeight: 1.5, margin: "0 0 12px" }}>
+            Your {planName}{started ? ` was purchased on ${started}` : ""} and is paid until <strong>{end}</strong>. If you stop now you keep 15 likes a day, 3 Doves a week and everything else until that date. After {end} you return to the free plan and are not charged again.
+          </p>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={() => setConfirming(false)} disabled={busy} style={{ flex: 1, padding: 12, borderRadius: 12, background: "#F4F2EE", color: "#1A1612", border: "none", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Keep it</button>
+            <button onClick={() => run(cancelSubscription, "subscription_cancelled")} disabled={busy} style={{ flex: 1, padding: 12, borderRadius: 12, background: "#B3261E", color: "#fff", border: "none", fontSize: 14, fontWeight: 700, cursor: "pointer", opacity: busy ? 0.6 : 1 }}>
+              {busy ? "Stopping…" : "Stop Agape+"}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SubscriptionPlans({ initialStatus }) {
   const [loading, setLoading] = useState(null);
   const [subStatus, setSubStatus] = useState(initialStatus === "active" ? { status: "active" } : null);
@@ -213,12 +280,7 @@ function SubscriptionPlans({ initialStatus }) {
           <p style={{ color: "rgba(255,255,255,0.7)", fontSize: 14 }}>From CHF 6.99/month</p>
         </div>
       </div>
-      {subStatus?.status === "active" && (
-        <div style={{ borderRadius: 16, padding: 16, background: "#E8F5E9", marginTop: 4 }}>
-          <p style={{ fontSize: 14, fontWeight: 700, color: "#2E7D32" }}>Active subscription</p>
-          <p style={{ fontSize: 12, color: "#4CAF50", marginTop: 4 }}>Your plan renews {subStatus.cancelAtPeriodEnd ? "and will cancel" : "automatically"} on {new Date(subStatus.currentPeriodEnd * 1000).toLocaleDateString()}</p>
-        </div>
-      )}
+      {subStatus?.status === "active" && <SubscriptionStatusCard subStatus={subStatus} onChange={setSubStatus} />}
       {error && (
         <div style={{ borderRadius: 12, padding: 12, background: "#FFF3F0", marginTop: 4 }}>
           <p style={{ fontSize: 13, color: "#D32F2F" }}>{error}</p>
@@ -283,15 +345,7 @@ function BillingSection({ onViewPlans, initialStatus }) {
   if (subStatus?.status === "active") {
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        <div style={{ borderRadius: 16, padding: 16, background: "#E8F5E9" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-            {I.sparkle}
-            <p style={{ fontSize: 16, fontWeight: 700, color: "#2E7D32" }}>Agape+ Active</p>
-          </div>
-          <p style={{ fontSize: 13, color: "#4CAF50", lineHeight: 1.5 }}>
-            Your subscription renews {subStatus.cancelAtPeriodEnd ? "and will cancel" : "automatically"} on {new Date(subStatus.currentPeriodEnd * 1000).toLocaleDateString()}
-          </p>
-        </div>
+        <SubscriptionStatusCard subStatus={subStatus} onChange={setSubStatus} />
         <div style={{ borderRadius: 16, padding: 16, background: C.card }}>
           <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: C.sub, marginBottom: 12 }}>Your plan includes</p>
           {["15 likes per day", "See all who like you", "3 Doves per week", "Advanced filters"].map((feat) => (
@@ -858,6 +912,15 @@ export default function Profile() {
   const [saving, setSaving] = useState(false);
   const [voiceUploading, setVoiceUploading] = useState(false);
   const [voiceError, setVoiceError] = useState("");
+  const [verif, setVerif] = useState({});            // my verification selfies: { church: { url, status }, bible: { ... } }
+  const [verifDraft, setVerifDraft] = useState(null); // { kind, dataUrl } waiting for the user to confirm
+  const [verifBusy, setVerifBusy] = useState(false);
+  const [verifMsg, setVerifMsg] = useState("");
+  const verifInputRef = useRef(null);
+  const verifKindRef = useRef(null);
+  useEffect(() => {
+    if (currentUser?.id) getMyVerifications().then(setVerif).catch(() => {});
+  }, [currentUser?.id]);
   const [uploading, setUploading] = useState(false);
   const [editPhotos, setEditPhotos] = useState(false);
   const [editingPromptIdx, setEditingPromptIdx] = useState(null);
@@ -1086,6 +1149,45 @@ export default function Profile() {
     setCropOffset({ x: e.clientX - cropStart.x, y: e.clientY - cropStart.y });
   };
   const handleCropPointerUp = () => setCropDragging(false);
+
+  // ── Verification selfies ──
+  const pickVerification = (kind) => {
+    verifKindRef.current = kind;
+    setVerifMsg("");
+    verifInputRef.current?.click();
+  };
+  const handleVerifFile = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    try {
+      const dataUrl = await compressPhoto(file, 900, 0.82);
+      setVerifDraft({ kind: verifKindRef.current, dataUrl });
+    } catch (_) {
+      setVerifMsg("That image could not be read. Try another one.");
+    }
+  };
+  const confirmVerification = async () => {
+    if (!verifDraft) return;
+    setVerifBusy(true);
+    try {
+      const saved = await submitVerification(verifDraft.kind, verifDraft.dataUrl);
+      setVerif((v) => ({ ...v, [verifDraft.kind]: saved }));
+      track("verification_selfie_submitted", { kind: verifDraft.kind });
+      setVerifDraft(null);
+    } catch (err) {
+      console.error("Selfie upload failed:", err);
+      setVerifMsg(/photo_verifications|schema cache|relation/i.test(err.message || "") ? "Verification isn't set up yet on the server." : "Couldn't upload the selfie. Try again.");
+      setVerifDraft(null);
+    }
+    setVerifBusy(false);
+  };
+  const deleteVerification = async (kind) => {
+    const before = verif;
+    setVerif((v) => { const n = { ...v }; delete n[kind]; return n; });
+    try { await removeVerification(kind); track("verification_selfie_removed", { kind }); }
+    catch (err) { console.error("Selfie remove failed:", err); setVerif(before); }
+  };
 
   const handleRemovePhoto = async (idx) => {
     if (idx >= 4) return;
@@ -1381,44 +1483,63 @@ export default function Profile() {
                 </button>
               )}
 
-              {/* Verified photo slot 5 — Selfie with Church */}
-              <div style={{ position: "relative", aspectRatio: "3/4", borderRadius: 12, overflow: "hidden", border: `2px dashed ${C.primary}40`, background: `linear-gradient(145deg, ${C.primarySoft}, ${C.surface})` }}>
-                {photos[4] ? (
-                  <>
-                    <img src={photos[4]} alt="Church selfie" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                    <div style={{ position: "absolute", top: 4, left: 4, display: "flex", alignItems: "center", gap: 3, padding: "2px 6px", borderRadius: 6, background: "#22C55E", color: "white" }}>
-                      <svg width={8} height={8} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={3}><path d="M20 6L9 17l-5-5" /></svg>
-                      <span style={{ fontSize: 8, fontWeight: 700, textTransform: "uppercase" }}>Verified</span>
-                    </div>
-                  </>
-                ) : (
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 4, padding: 8 }}>
-                    <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={C.primary} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><path d="M18 2H6a2 2 0 0 0-2 2v16l8-4 8 4V4a2 2 0 0 0-2-2z"/><path d="M12 6v4M10 8h4"/></svg>
-                    <span style={{ fontSize: 8, fontWeight: 700, color: C.primary, textTransform: "uppercase", letterSpacing: "0.05em", textAlign: "center", lineHeight: 1.2 }}>Selfie with Church</span>
-                    <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke={C.sub} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              {/* Verification selfies: private until the Agape team has approved them */}
+              {[
+                { kind: "church", label: "Selfie with Church", icon: <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={C.primary} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><path d="M18 2H6a2 2 0 0 0-2 2v16l8-4 8 4V4a2 2 0 0 0-2-2z"/><path d="M12 6v4M10 8h4"/></svg> },
+                { kind: "bible", label: "Selfie with Bible", icon: <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={C.primary} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M12 6v6M9.5 8.5h5"/></svg> },
+              ].map(({ kind, label, icon }) => {
+                const v = verif[kind];
+                const pending = v?.status === "pending";
+                const rejected = v?.status === "rejected";
+                const approved = v?.status === "approved";
+                return (
+                  <div key={kind} style={{ position: "relative", aspectRatio: "3/4", borderRadius: 12, overflow: "hidden", border: v ? `1px solid ${C.border}` : `2px dashed ${C.primary}40`, background: `linear-gradient(145deg, ${C.primarySoft}, ${C.surface})` }}>
+                    {v ? (
+                      <>
+                        <img src={v.url} alt={label} style={{ width: "100%", height: "100%", objectFit: "cover", filter: approved ? "none" : "brightness(0.55)" }} />
+                        {pending && (
+                          <div title="Waiting for review" style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, pointerEvents: "none" }}>
+                            <div style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(255,255,255,0.92)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                              <Hourglass size={18} color={C.primary} strokeWidth={2} />
+                            </div>
+                            <span style={{ fontSize: 9, fontWeight: 700, color: "#fff", textTransform: "uppercase", letterSpacing: "0.06em", textShadow: "0 1px 3px rgba(0,0,0,0.5)" }}>In review</span>
+                          </div>
+                        )}
+                        {rejected && (
+                          <button onClick={() => pickVerification(kind)} style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, background: "none", border: "none", cursor: "pointer", padding: 6 }}>
+                            <span style={{ fontSize: 9, fontWeight: 700, color: "#fff", background: "#DC2626", padding: "3px 7px", borderRadius: 6, textTransform: "uppercase", letterSpacing: "0.05em" }}>Not approved</span>
+                            <span style={{ fontSize: 9, fontWeight: 600, color: "#fff", textShadow: "0 1px 3px rgba(0,0,0,0.5)" }}>Tap to try again</span>
+                          </button>
+                        )}
+                        {approved && (
+                          <div style={{ position: "absolute", top: 4, left: 4, display: "flex", alignItems: "center", gap: 3, padding: "2px 6px", borderRadius: 6, background: "#22C55E", color: "white" }}>
+                            <Check size={8} color="#fff" strokeWidth={3.5} />
+                            <span style={{ fontSize: 8, fontWeight: 700, textTransform: "uppercase" }}>Verified</span>
+                          </div>
+                        )}
+                        <button onClick={() => deleteVerification(kind)} aria-label={`Remove ${label}`} style={{ position: "absolute", top: 4, right: 4, width: 22, height: 22, borderRadius: "50%", background: "rgba(0,0,0,0.55)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                          <XIcon size={12} color="#fff" strokeWidth={2.5} />
+                        </button>
+                      </>
+                    ) : (
+                      <button onClick={() => pickVerification(kind)} aria-label={`Upload ${label}`} style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", width: "100%", height: "100%", gap: 4, padding: 8, background: "none", border: "none", cursor: "pointer" }}>
+                        {icon}
+                        <span style={{ fontSize: 8, fontWeight: 700, color: C.primary, textTransform: "uppercase", letterSpacing: "0.05em", textAlign: "center", lineHeight: 1.2 }}>{label}</span>
+                        <Plus size={13} color={C.sub} strokeWidth={2.2} />
+                      </button>
+                    )}
                   </div>
-                )}
-              </div>
-
-              {/* Verified photo slot 6 — Selfie with Bible */}
-              <div style={{ position: "relative", aspectRatio: "3/4", borderRadius: 12, overflow: "hidden", border: `2px dashed ${C.primary}40`, background: `linear-gradient(145deg, ${C.primarySoft}, ${C.surface})` }}>
-                {photos[5] ? (
-                  <>
-                    <img src={photos[5]} alt="Bible selfie" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                    <div style={{ position: "absolute", top: 4, left: 4, display: "flex", alignItems: "center", gap: 3, padding: "2px 6px", borderRadius: 6, background: "#22C55E", color: "white" }}>
-                      <svg width={8} height={8} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={3}><path d="M20 6L9 17l-5-5" /></svg>
-                      <span style={{ fontSize: 8, fontWeight: 700, textTransform: "uppercase" }}>Verified</span>
-                    </div>
-                  </>
-                ) : (
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 4, padding: 8 }}>
-                    <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={C.primary} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M12 6v4M10 8h4"/></svg>
-                    <span style={{ fontSize: 8, fontWeight: 700, color: C.primary, textTransform: "uppercase", letterSpacing: "0.05em", textAlign: "center", lineHeight: 1.2 }}>Selfie with Bible</span>
-                    <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke={C.sub} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                  </div>
-                )}
-              </div>
+                );
+              })}
             </div>
+            <input ref={verifInputRef} type="file" accept="image/*" capture="user" onChange={handleVerifFile} style={{ display: "none" }} />
+            {(verif.church?.status === "pending" || verif.bible?.status === "pending") && (
+              <p style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: C.sub, marginTop: 10, lineHeight: 1.4 }}>
+                <Hourglass size={13} color={C.primary} style={{ flexShrink: 0 }} />
+                Selfies with the hourglass are waiting for the Agape team. Nobody else can see them until they are verified.
+              </p>
+            )}
+            {verifMsg && <p style={{ fontSize: 12, color: "#DC2626", marginTop: 8 }}>{verifMsg}</p>}
             <input ref={fileInputRef} type="file" accept="image/*" onChange={handleAddPhoto} style={{ display: "none" }} />
             <button
               onClick={() => setEditPhotos(false)}
@@ -1823,6 +1944,33 @@ export default function Profile() {
             <span style={{ fontSize: 11, color: "rgba(255,255,255,0.6)" }}>+</span>
           </div>
           <p style={{ textAlign: "center", fontSize: 12, color: "rgba(255,255,255,0.5)", paddingBottom: 16 }}>Drag to move · Slide to zoom</p>
+        </div>
+      )}
+
+      {/* Verification selfie: confirm before sending for review */}
+      {verifDraft && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", flexDirection: "column", justifyContent: "flex-end" }} onClick={() => !verifBusy && setVerifDraft(null)}>
+          <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)" }} />
+          <div onClick={(e) => e.stopPropagation()} style={{ position: "relative", background: C.bg, borderRadius: "24px 24px 0 0", padding: "20px 20px calc(env(safe-area-inset-bottom, 0px) + 20px)" }}>
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: C.border, margin: "0 auto 16px" }} />
+            <div style={{ display: "flex", gap: 14, alignItems: "flex-start", marginBottom: 16 }}>
+              <img src={verifDraft.dataUrl} alt="Your selfie" style={{ width: 84, aspectRatio: "3/4", objectFit: "cover", borderRadius: 12, flexShrink: 0 }} />
+              <div>
+                <p style={{ fontSize: 17, fontWeight: 700, color: C.text, fontFamily: FONT, margin: "0 0 6px" }}>
+                  {verifDraft.kind === "church" ? "Selfie with a church" : "Selfie with a Bible"}
+                </p>
+                <p style={{ fontSize: 13.5, color: C.sub, lineHeight: 1.5, margin: 0 }}>
+                  The Agape team checks every verification selfie by hand. <strong style={{ color: C.text }}>Other people will not see this photo until it has been verified.</strong> Until then it shows an hourglass on your profile.
+                </p>
+              </div>
+            </div>
+            <button onClick={confirmVerification} disabled={verifBusy} style={{ width: "100%", padding: 14, borderRadius: 14, background: C.sent, color: "#fff", border: "none", fontSize: 15, fontWeight: 700, fontFamily: FONT, cursor: "pointer", opacity: verifBusy ? 0.6 : 1 }}>
+              {verifBusy ? "Uploading…" : "Send for review"}
+            </button>
+            <button onClick={() => setVerifDraft(null)} disabled={verifBusy} style={{ width: "100%", padding: 12, marginTop: 4, background: "none", border: "none", fontSize: 14, fontWeight: 600, color: C.sub, fontFamily: FONT, cursor: "pointer" }}>
+              Cancel
+            </button>
+          </div>
         </div>
       )}
 

@@ -305,10 +305,12 @@ export default function Standouts() {
                 <div className="id-line1">
                   <span className="id-name">{profile.name},</span>
                   <span className="id-age">{profile.age}</span>
-                  <svg className="id-verified" width={15} height={15} viewBox="0 0 24 24">
-                    <circle cx="12" cy="12" r="10" fill="#B8912A" />
-                    <path d="M9 12l2 2 4-4" stroke="white" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" fill="none" />
-                  </svg>
+                  {profile.isVerified && (
+                    <svg className="id-verified" width={15} height={15} viewBox="0 0 24 24">
+                      <circle cx="12" cy="12" r="10" fill="#B8912A" />
+                      <path d="M9 12l2 2 4-4" stroke="white" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+                    </svg>
+                  )}
                 </div>
                 <div className="id-line2">
                   {profile.location && (
