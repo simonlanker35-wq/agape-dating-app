@@ -105,13 +105,13 @@ src/
 - **Alles in AppContext**: Gesamter State in einem einzigen `useReducer` — kein Redux, kein Zustand
 - **api.js ist die zentrale Schnittstelle**: Alle Supabase-Aufrufe laufen über `api.js`, nie direkt aus Komponenten
 - **Haversine client-seitig**: Distanzfilter berechnet Entfernungen im Frontend nach DB-Query (`haversineKm` in api.js)
-- **Polling statt Realtime**: Chat-Messages werden alle 5s gepollt — Supabase Realtime ist nicht eingerichtet
-- **Matches.jsx ist überproportional gross**: Enthält den gesamten Chat, Date-Builder (4-Step), DateCard, MiniMap — Refactoring-Kandidat
+- **Realtime + Polling**: Chat, Matches und Likes kommen per Supabase Realtime; Polling (5s Chat, 10s Listen) bleibt als Fallback und wird langsamer, sobald Live-Events ankommen
+- **Matches.jsx ist überproportional gross**: Enthält den gesamten Chat, Date-Builder (3-Step), DateCard, MiniMap — Refactoring-Kandidat
 - **Farbkonstanten**: `const C = { bg, card, surface, primary, primarySoft, text, sub, border, sent }` — in Matches.jsx inline definiert, in anderen Dateien via CSS
 - **Supabase-URL und Anon-Key** sind hardcoded als Fallback in `supabase.js` (kein Secret, publishable)
 - **Stripe Secret Key**: nur als Env-Var in Supabase Edge Functions, nie im Frontend
 - **Seed-Script** (`seed-supabase.mjs`): braucht `SUPABASE_SERVICE_KEY` als Env-Var
-- **3-Tage-Deadline + Nudge**: Nach der ersten Nachricht hat der Mann 3 Tage, um ein Date zu setzen. Frau kann "nudgen" (+36h). Danach schliesst der Chat.
+- **5-Tage-Deadline + Rose**: Der Chat öffnet sofort nach dem Match. Nach der ersten echten Nachricht hat der Mann 5 Tage, um ein Date zu planen. Die Frau kann eine Rose senden (+36h); ein geplanter Videocall pausiert die Uhr bis 2h nach dem Call; eine abgesagte Planung gibt 5 neue Tage. Danach schliesst der Chat.
 
 ## 6. Aktueller Status
 
@@ -122,11 +122,11 @@ src/
 - Sparks (eingehende Likes ansehen, matchen, ablehnen)
 - Standouts (hervorgehobene Profile)
 - Chat (Nachrichten senden/empfangen, 5s Polling)
-- Date-Einladungssystem (4-Step: Typ → Ort mit Karte → Dresscode → Zeiten)
+- Date-Einladungssystem (3-Step: Typ → Ort mit Karte → Dresscode; sie wählt Zeiten, er bestätigt eine)
 - Date-Response (Frau wählt Zeiten) + Confirm (Mann bestätigt)
 - Date-Decline mit Gründen (Checkboxen)
-- Nudge-Button (Frau → +36h Deadline)
-- 3-Tage-Deadline mit Chat-Lock
+- Rose (Frau → +36h Deadline)
+- 5-Tage-Deadline mit Chat-Lock
 - Distanzfilter (Haversine, server-seitig gefiltert)
 - Alters-/Konfessions-Filter
 - Profil bearbeiten (Name, Fotos, Prompts, Interests, Location)
@@ -137,7 +137,7 @@ src/
 ### Unvollständig / Ausstehend
 - **Stripe Live-Modus**: Aktuell Test-Keys — Live-Keys + Live-Produkte + Webhook-Secret nötig
 - **Email-Bestätigung**: Deaktiviert für Testing — muss aktiviert werden
-- **Supabase Realtime**: Kein Realtime-Subscription — nur Polling (5s Chat, 10s Nudge)
+- **Supabase Realtime**: aktiv für messages/matches/likes/date_invitations (supabase/realtime.sql); Polling bleibt als Fallback
 - **Foto-Upload**: Onboarding hat Upload-UI, aber Bilder gehen als Base64/Data-URL ins Array — kein Supabase Storage
 - **Legacy-Server**: `server/` + `render.yaml` referenzieren alten Express/MongoDB-Stack — aufräumen
 - **Stock-Bild für Onboarding-Welcome**: User möchte iStock-Bild einsetzen (noch nicht gekauft)

@@ -8,27 +8,27 @@ const C = { primary: "#B8912A", text: "#1A1612", sub: "#8C857C", border: "#E8E4D
 // One tour per tab; steps with a selector spotlight that element, `full` steps are a centered intro card
 const TOURS = {
   discover: [
-    { selector: 'button[aria-label="Like"]', title: "Send a heart", text: "Like this person. You have 8 likes a day — 15 with Agape+. The number on the button is what's left today." },
+    { selector: 'button[aria-label="Like"]', title: "Like", text: "Like this person. You have 8 likes a day — 15 with Agape+. The number on the button is what's left today." },
     { selector: 'button[aria-label="Send a Dove"]', title: "Send a Dove", text: "A Dove says you're serious: you're revealed to them instantly, ahead of everyone else. Send it on its own or with a comment. 1 per week, 3 with Agape+." },
-    { selector: ".prompt-heart", title: "Like a prompt or photo", text: "Tap the heart on a prompt to like that exact thing and add a comment. Comments get about 3× more matches." },
+    { selector: ".prompt-heart", title: "Like a prompt", text: "Tap the heart on a prompt to like that exact thing and add a comment. A comment gives them something to answer." },
     { selector: ".discover-skip-btn", title: "Not for you?", text: "Skip and move on — they won't know." },
-    { selector: 'button[aria-label="Safety"]', title: "Safety", text: "Report or block anyone, at any time. Reports go to our team." },
-    { selector: 'button[aria-label="Filters"]', title: "Filters", text: "Set the age range, distance and denominations you want to see." },
+    { selector: 'button[aria-label="Safety"]', title: "Safety", text: "Report or block anyone, at any time. Reports reach our team." },
+    { selector: 'button[aria-label="Filters"]', title: "Filters", text: "Set the age range, distance and denominations you want to see, and preferences such as children or church attendance." },
   ],
   chat: [
     { selector: 'button[aria-label="Safety options"]', title: "Safety options", text: "Report, block or unmatch from here — anytime." },
     { selector: 'button[aria-label="Plan a date"]', title: "Plan a date", text: "Pick what, where and the dress code. She then says when she's free and you choose one of her times. You have 5 days after the first message." },
     { selector: 'button[aria-label="Send a rose"]', title: "Send a rose", text: "Tell him you'd love to go on a date — it gives him 36 extra hours to plan one." },
-    { selector: 'button[aria-label="Video call"]', title: "Video call", text: "Rather meet on a call first? Schedule one here — it pauses the deadline." },
+    { selector: 'button[aria-label="Video call"]', title: "Video call", text: "Rather meet on a call first? Schedule one here — the planning clock pauses until after the call." },
   ],
   standouts: [
-    { full: true, title: "Chosen", text: "Every Wednesday we pick the one profile that matches you best on faith, values and what you're both looking for. Tap the ring to see why. Send them a Dove if you like what you see." },
+    { full: true, title: "Chosen", text: "Every Wednesday we pick the one profile that matches you best on faith, what you both want, lifestyle and shared interests. Tap the ring to see why. Send them a Dove if you like what you see." },
   ],
   likes: [
     { full: true, title: "Sparks", text: "People who liked you land here. Free members reveal one a week — with Agape+ you see everyone. Like back to match." },
   ],
   matches: [
-    { full: true, title: "Messages", text: "No small talk on Agape. He plans the date, she says when she's free, he picks one of her times — and only then does the chat open." },
+    { full: true, title: "Messages", text: "The chat opens as soon as you match. After the first message he has 5 days to plan a date: he picks what and where, she says when she's free, he picks one of her times." },
   ],
 };
 

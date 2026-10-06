@@ -1,6 +1,6 @@
 const PROMPT_CATEGORIES = {
   "Faith": [
-    "My faith means to me",
+    "What my faith means to me",
     "A Bible verse I live by",
     "How I live out my faith",
     "My church community is",
@@ -106,7 +106,7 @@ const LOOKING_FOR_POOL = [
 ];
 
 const PROMPT_ANSWERS = {
-  "My faith means to me": [
+  "What my faith means to me": [
     "Everything. It's the foundation I build my life on",
     "A constant source of peace, even when life gets chaotic",
     "Community, purpose, and the courage to love deeply",
@@ -390,7 +390,7 @@ const DETAIL_FIELDS = [
   { key: "exercise", label: "Exercise", options: ["Daily", "Almost daily", "Sometimes", "Never"] },
   { key: "drinking", label: "Drinking", options: ["Not for me", "Sober curious", "On special occasions", "Socially", "Most nights"] },
   { key: "smoking", label: "Smoking", options: ["Non-smoker", "Social smoker", "Smoker when drinking", "Smoker"] },
-  { key: "pets", label: "Pets", options: ["Dog", "Cat", "Fish", "Bird", "Hamster", "Reptile", "Don't have but love", "Allergic", "Other", "Pet-free"] },
+  { key: "pets", label: "Pets", options: ["Dog", "Cat", "Fish", "Bird", "Hamster", "Reptile", "No pets, but I love them", "Allergic", "Other", "Pet-free"] },
   { key: "education", label: "Education", options: ["High school", "Apprenticeship", "Bachelor's", "Master's", "Doctorate"] },
   { key: "relocate", label: "Open to relocating", options: ["Yes", "Within my country", "No"] },
 ];

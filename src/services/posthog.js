@@ -7,12 +7,10 @@ posthog.init("phc_xro6ot7Wxs8Nrd7t4gL6yQKWK8n6LA4i8w4Q883jvHh8", {
   capture_pageleave: true,
   persistence: "localStorage",
   disable_session_recording: false,
+  // Recordings never contain what people type or write to each other
   session_recording: {
-    maskAllInputs: false,
-    maskInputFn: (text, element) => {
-      if (element?.type === "password") return "•".repeat(text.length);
-      return text;
-    },
+    maskAllInputs: true,
+    maskTextSelector: ".thread-panel, [data-private], textarea",
   },
 });
 

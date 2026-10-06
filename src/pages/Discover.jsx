@@ -422,12 +422,12 @@ export default function Discover() {
             <div className="like-choice-sheet" onClick={(e) => e.stopPropagation()}>
               {theyCommented && (
                 <p style={{ fontSize: 12, color: "#8C857C", textAlign: "center", margin: "0 0 8px", fontFamily: "'Outfit', system-ui, sans-serif" }}>
-                  {profile.name} already commented on your profile
+                  {profile.name} already sent you a comment
                 </p>
               )}
               <button className="like-choice-btn heart-choice" onClick={onSendHeart}>
                 <Heart size={20} fill="white" stroke="white" />
-                <span>Send Heart</span>
+                <span>Send a like</span>
               </button>
               {!theyCommented && (
                 <button className="like-choice-btn comment-choice" onClick={onAddComment}>
@@ -448,7 +448,7 @@ export default function Discover() {
               <div>
                 <p style={{ fontSize: 16, fontWeight: 700, color: "#1A1612", margin: 0, fontFamily: "'Outfit', system-ui, sans-serif" }}>Send {profile.name} a Dove</p>
                 <p style={{ fontSize: 12, color: "#8C857C", margin: "2px 0 0", fontFamily: "'Outfit', system-ui, sans-serif" }}>
-                  {dovesLeft > 0 ? `${dovesLeft} left this week · you're shown to them instantly` : "No Doves left this week"}
+                  {dovesLeft > 0 ? `${dovesLeft} Dove${dovesLeft === 1 ? "" : "s"} left this week · they see you right away` : "No Doves left this week"}
                 </p>
               </div>
             </div>
@@ -473,18 +473,18 @@ export default function Discover() {
               style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 9999, fontSize: 12, fontWeight: 700, marginBottom: 10, cursor: "pointer", fontFamily: "'Outfit', system-ui, sans-serif", background: showDove ? "#B8912A" : "#F4F2EE", color: showDove ? "white" : "#8C857C", border: "none", opacity: dovesLeft <= 0 && !showDove ? 0.5 : 1 }}
             >
               <DoveIcon size={14} strokeWidth={2.2} />
-              {showDove ? "Sending as a Dove" : `Send as a Dove · ${dovesLeft} left`}
+              {showDove ? "Sending with a Dove" : `Send with a Dove · ${dovesLeft} left`}
             </button>
             <h3>
               {commentTarget.type === "prompt"
                 ? profile.prompts[commentTarget.index]?.prompt
                 : `Say something to ${profile.name}...`}
             </h3>
-            <p className="comment-hint">Commenting has a 3x higher chance for a match than just liking</p>
+            <p className="comment-hint">A comment gives them something to answer</p>
             <textarea
               value={commentText}
               onChange={(e) => setCommentText(e.target.value)}
-              placeholder="Add a comment..."
+              placeholder="Add a comment…"
               maxLength={300}
               autoFocus
               rows={3}

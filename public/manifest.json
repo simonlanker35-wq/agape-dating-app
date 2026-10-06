@@ -4,7 +4,7 @@
   "description": "Find love rooted in faith",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#FFFFFF",
+  "background_color": "#F5F0E8",
   "theme_color": "#B8912A",
   "orientation": "portrait",
   "icons": [

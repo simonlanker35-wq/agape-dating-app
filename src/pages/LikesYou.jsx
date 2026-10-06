@@ -67,7 +67,7 @@ export default function LikesYou() {
     return (
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", padding: "60px 20px", textAlign: "center" }}>
         <Heart size={48} strokeWidth={1.4} color={C.primary} style={{ marginBottom: 16 }} />
-        <h2 style={{ color: C.text, fontFamily: FONT, fontSize: 20, fontWeight: 700 }}>No likes yet</h2>
+        <h2 style={{ color: C.text, fontFamily: FONT, fontSize: 20, fontWeight: 700 }}>No new likes</h2>
         <p style={{ color: C.sub, fontSize: 14, marginTop: 4 }}>Keep exploring! When someone likes you, they'll appear here.</p>
       </div>
     );
@@ -82,7 +82,7 @@ export default function LikesYou() {
         </p>
         {!isPremium && (
           <p style={{ color: C.primary, fontSize: 12, fontWeight: 600, marginTop: 6, fontFamily: FONT, lineHeight: 1.4 }}>
-            We only reveal 1 a week so you get the chance to truly get to know your match.
+            Free members reveal one new like a week. With Agape+ you see everyone right away.
           </p>
         )}
       </div>

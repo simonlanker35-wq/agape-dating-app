@@ -281,7 +281,7 @@ export function AppProvider({ children }) {
         if (!exists) { dispatch({ type: "NEEDS_PROFILE" }); return; }
         const user = await withStripeFallback(await api.getMe());
         dispatch({ type: "SET_USER", payload: user });
-        identify(user.id, { name: user.name, email: user.email, gender: user.gender, denomination: user.denomination, location: user.location?.city, subscriptionStatus: user.subscriptionStatus });
+        identify(user.id, { gender: user.gender, subscriptionStatus: user.subscriptionStatus });
       } catch (_) {}
     };
     loadSessionUser();
@@ -507,7 +507,7 @@ export function AppProvider({ children }) {
         return { needsProfile: true };
       }
       dispatch({ type: "SET_USER", payload: user });
-      identify(user.id, { name: user.name, email: user.email, gender: user.gender, subscriptionStatus: user.subscriptionStatus });
+      identify(user.id, { gender: user.gender, subscriptionStatus: user.subscriptionStatus });
       track("login", { method: "email" });
       return user;
     },
@@ -531,14 +531,14 @@ export function AppProvider({ children }) {
       await api.setPassword(password);
       const user = await withStripeFallback(await api.getMe());
       dispatch({ type: "SET_USER", payload: user });
-      identify(user.id, { name: user.name, email: user.email, gender: user.gender, subscriptionStatus: user.subscriptionStatus });
+      identify(user.id, { gender: user.gender, subscriptionStatus: user.subscriptionStatus });
       return user;
     },
 
     register: async (data) => {
       const user = await api.createProfile(data);
       dispatch({ type: "COMPLETE_ONBOARDING", payload: user });
-      identify(user.id, { name: user.name, email: user.email, gender: user.gender, denomination: user.denomination });
+      identify(user.id, { gender: user.gender });
       track("signup_completed", { gender: user.gender, denomination: user.denomination });
       return user;
     },
@@ -550,7 +550,7 @@ export function AppProvider({ children }) {
         return { needsProfile: true };
       }
       dispatch({ type: "SET_USER", payload: user });
-      identify(user.id, { name: user.name, email: user.email, gender: user.gender, subscriptionStatus: user.subscriptionStatus });
+      identify(user.id, { gender: user.gender, subscriptionStatus: user.subscriptionStatus });
       track("login", { method: "phone" });
       return user;
     },
@@ -558,7 +558,7 @@ export function AppProvider({ children }) {
     login: async (email, password) => {
       const user = await api.login(email, password);
       dispatch({ type: "SET_USER", payload: user });
-      identify(user.id, { name: user.name, email: user.email, gender: user.gender, subscriptionStatus: user.subscriptionStatus });
+      identify(user.id, { gender: user.gender, subscriptionStatus: user.subscriptionStatus });
       track("login", { method: "email" });
       return user;
     },
@@ -578,7 +578,7 @@ export function AppProvider({ children }) {
         const matches = await api.getMatches();
         dispatch({ type: "SET_MATCHES", payload: matches });
         matchData = matches.find((m) => m.profileId === profileId) || null;
-        api.notifyUser(profileId, { title: "It's a match", body: `You and ${state.currentUser?.name || "someone"} liked each other. Time to plan a date.`, url: "/?tab=matches", tag: "match" });
+        api.notifyUser(profileId, { title: "It's a match", body: `You and ${state.currentUser?.name || "someone"} liked each other. Say hello and plan a date together.`, url: "/?tab=matches", tag: "match" });
       } else {
         api.notifyUser(profileId, { title: isDove ? "You received a Dove" : "Someone new likes you", body: "Open Sparks to see who.", url: "/?tab=likes", tag: "like" });
       }
@@ -608,7 +608,7 @@ export function AppProvider({ children }) {
       }
       if (res.matched) {
         track("match_created", { fromSparks: true });
-        api.notifyUser(like.fromId, { title: "It's a match", body: `${state.currentUser?.name || "Someone"} liked you back. Time to plan a date.`, url: "/?tab=matches", tag: "match" });
+        api.notifyUser(like.fromId, { title: "It's a match", body: `${state.currentUser?.name || "Someone"} liked you back. Say hello and plan a date together.`, url: "/?tab=matches", tag: "match" });
         try {
           const matches = await api.getMatches();
           dispatch({ type: "SET_MATCHES", payload: matches });

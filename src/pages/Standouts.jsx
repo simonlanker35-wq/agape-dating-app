@@ -431,11 +431,11 @@ export default function Standouts() {
                 ? profile.prompts[commentTarget.index]?.prompt
                 : `Say something to ${profile.name}...`}
             </h3>
-            <p className="comment-hint">Commenting has a 3x higher chance for a match than just liking</p>
+            <p className="comment-hint">A comment gives them something to answer</p>
             <textarea
               value={commentText}
               onChange={(e) => setCommentText(e.target.value)}
-              placeholder="Add a comment..."
+              placeholder="Add a comment…"
               maxLength={300}
               autoFocus
               rows={3}

@@ -311,7 +311,7 @@ function DateBuilder({ profileName, userLocation, onSend, onClose }) {
                 setLocation(item.display);
                 setMapCenter({ lat: item.lat, lng: item.lng });
               }}
-              placeholder="e.g. Café Central, Schwyz"
+              placeholder="e.g. Café Camelot, Kraków"
               inputStyle={{
                 width: "100%",
                 padding: "14px 16px",
@@ -397,7 +397,7 @@ function DateBuilder({ profileName, userLocation, onSend, onClose }) {
 }
 
 const DECLINE_REASONS = [
-  "Times don't work for me",
+  "The place doesn't work for me",
   "Not comfortable with the location",
   "Not the right time for me yet",
   "I'd prefer a different kind of date",
@@ -449,7 +449,7 @@ function DateCard({ invitation, isMe, isMale, onRespond, onConfirm, onDecline, o
     }
     setSelectedTimes(merged);
   };
-  const pickerTitle = `When can you go for ${(DATE_TYPES.find((d) => d.id === invitation.date_type)?.label || "a date").toLowerCase()} with ${themName}?`;
+  const pickerTitle = `When can you ${{ dinner: "have dinner", walk: "go for a walk", coffee: "get a coffee", adventure: "go on an adventure" }[invitation.date_type] || "go on a date"} with ${themName}?`;
   const primaryBtn = { width: "100%", padding: "13px 0", borderRadius: 12, fontSize: 14.5, fontWeight: 600, fontFamily: FONT, background: C.text, color: "white", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 };
   const secondaryBtn = { ...primaryBtn, background: C.bg, color: C.text, border: `1px solid ${C.border}` };
   const dt = DATE_TYPES.find((d) => d.id === invitation.date_type);
@@ -545,7 +545,7 @@ function DateCard({ invitation, isMe, isMale, onRespond, onConfirm, onDecline, o
                     disabled={selectedTimes.length === 0 || sending}
                     style={{ ...primaryBtn, background: selectedTimes.length > 0 ? C.primary : C.border, cursor: selectedTimes.length > 0 ? "pointer" : "default" }}
                   >
-                    {sending ? "Sending..." : selectedTimes.length > 0 ? `Send ${selectedTimes.length} time${selectedTimes.length === 1 ? "" : "s"}` : "Select at least one time"}
+                    {sending ? "Sending…" : selectedTimes.length > 0 ? `Send ${selectedTimes.length} time${selectedTimes.length === 1 ? "" : "s"}` : "Select at least one time"}
                   </button>
                 }
               >
@@ -653,7 +653,7 @@ function DateCard({ invitation, isMe, isMale, onRespond, onConfirm, onDecline, o
             {showPicker && (
               <AvailabilitySheet
                 title={pickerTitle}
-                subtitle={`These are the times ${themName} is free. Tap one to confirm it.`}
+                subtitle={`These are the times ${themName} is free. Tap one, then confirm.`}
                 onClose={() => setShowPicker(false)}
                 footer={
                   confirming ? (
@@ -703,7 +703,7 @@ function DateCard({ invitation, isMe, isMale, onRespond, onConfirm, onDecline, o
                     disabled={selectedTimes.length === 0 || sending}
                     style={{ ...primaryBtn, background: selectedTimes.length > 0 ? C.primary : C.border, cursor: selectedTimes.length > 0 ? "pointer" : "default" }}
                   >
-                    {sending ? "Saving..." : selectedTimes.length > 0 ? `Update — ${selectedTimes.length} time${selectedTimes.length === 1 ? "" : "s"}` : "Select at least one time"}
+                    {sending ? "Saving…" : selectedTimes.length > 0 ? `Update — ${selectedTimes.length} time${selectedTimes.length === 1 ? "" : "s"}` : "Select at least one time"}
                   </button>
                 }
               >
@@ -947,7 +947,7 @@ function ChatThread({ match, onBack }) {
       await actions.reactToMessage(match.id, message, mine === emoji ? "" : emoji);
     } catch (err) {
       console.error("Reaction failed:", err);
-      failMedia(/react_to_message|function|schema cache|reactions/i.test(err.message || "") ? "Reactions aren't set up yet on the server." : "Couldn't save the reaction. Try again.");
+      failMedia(/react_to_message|function|schema cache|reactions/i.test(err.message || "") ? "Reactions isn't available right now. Please try again later." : "Couldn't save the reaction. Try again.");
     }
   };
 
@@ -962,7 +962,7 @@ function ChatThread({ match, onBack }) {
       track("chat_photo_sent");
     } catch (err) {
       console.error("Photo send failed:", err);
-      failMedia(/bucket|not found|storage/i.test(err.message || "") ? "Photos aren't set up yet on the server." : "Couldn't send the photo. Try again.");
+      failMedia(/bucket|not found|storage/i.test(err.message || "") ? "Photos isn't available right now. Please try again later." : "Couldn't send the photo. Try again.");
     }
     setUploading(null);
   };
@@ -977,7 +977,7 @@ function ChatThread({ match, onBack }) {
       setRecording(false);
     } catch (err) {
       console.error("Voice send failed:", err);
-      failMedia(/bucket|not found|storage/i.test(err.message || "") ? "Voice notes aren't set up yet on the server." : "Couldn't send the voice note. Try again.");
+      failMedia(/bucket|not found|storage/i.test(err.message || "") ? "Voice notes isn't available right now. Please try again later." : "Couldn't send the voice note. Try again.");
     }
     setUploading(null);
   };
@@ -989,7 +989,7 @@ function ChatThread({ match, onBack }) {
       await api.sendNudge(match.id);
       await actions.sendMessage(match.id, "🌹");
       setNudgeSent(true);
-      notifyThem(`${myName} sent you a rose`, "She'd love to go on a date — you have extra time to plan one.", "rose");
+      notifyThem(`${myName} sent you a rose`, "She'd love to go on a date — you have 36 extra hours to plan one.", "rose");
     } catch (err) {
       console.error("Nudge failed:", err);
     }
@@ -1109,7 +1109,7 @@ function ChatThread({ match, onBack }) {
       {(() => {
         let status = profile.denomination || "";
         let statusColor = C.sub;
-        if (chatLocked) { status = "Chat closed · no date was set in time"; statusColor = "#B91C1C"; }
+        if (chatLocked) { status = "Chat closed · no date was planned in time"; statusColor = "#B91C1C"; }
         else if (confirmedDate && !datePassed) { status = `Date set · ${longDay(confirmedDate.confirmed_time?.date)} · ${confirmedDate.confirmed_time?.time || ""}`; statusColor = "#15803D"; }
         else if (openInvite) {
           status = openInvite.status === "pending"
@@ -1325,7 +1325,7 @@ function ChatThread({ match, onBack }) {
               </p>
             </div>
             <p style={{ fontSize: 12.5, color: C.sub, fontFamily: FONT, margin: "0 0 12px", lineHeight: 1.5 }}>
-              {myRating.showed_up ? "Counted towards their reliability score. Keep chatting, or plan the next one." : "It now shows on their profile. You can unmatch below."}
+              {myRating.showed_up ? "Counted towards their reliability score. Keep chatting — the next date can follow." : "It now shows on their profile. You can unmatch below."}
             </p>
             <div style={{ display: "flex", gap: 8 }}>
               {myRating.showed_up && isMale && !openInvite && (
@@ -1334,7 +1334,7 @@ function ChatThread({ match, onBack }) {
                 </button>
               )}
               <button onClick={() => setShowReportMenu(true)} style={{ flex: 1, padding: "11px 0", borderRadius: 12, fontSize: 13.5, fontWeight: 600, fontFamily: FONT, background: C.bg, color: C.sub, border: `1px solid ${C.border}`, cursor: "pointer" }}>
-                {myRating.showed_up ? "Unmatch or report" : "Unmatch"}
+                {"Unmatch, report or block"}
               </button>
             </div>
           </div>
@@ -1347,7 +1347,7 @@ function ChatThread({ match, onBack }) {
         {chatLocked ? (
           <div style={{ textAlign: "center", padding: "12px 0", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
             <Lock size={14} color={C.sub} strokeWidth={1.8} />
-            <p style={{ fontSize: 13, color: C.sub, fontFamily: FONT, margin: 0 }}>This conversation has closed</p>
+            <p style={{ fontSize: 13, color: C.sub, fontFamily: FONT, margin: 0 }}>This chat has closed · no date was planned in time</p>
           </div>
         ) : (
           <>
@@ -1368,7 +1368,7 @@ function ChatThread({ match, onBack }) {
             {showVideoCallScheduler && (
               <div style={{ padding: "14px", marginBottom: 8, borderRadius: 14, background: C.card, border: `1px solid ${C.border}` }}>
                 <p style={{ fontSize: 14, fontWeight: 600, color: C.text, fontFamily: FONT, margin: "0 0 2px" }}>Schedule a video call</p>
-                <p style={{ fontSize: 12, color: C.sub, fontFamily: FONT, margin: "0 0 12px" }}>Pick a day and time. The deadline pauses.</p>
+                <p style={{ fontSize: 12, color: C.sub, fontFamily: FONT, margin: "0 0 12px" }}>Pick a day and time. The planning clock pauses until after the call.</p>
                 <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 8, marginBottom: 6, scrollbarWidth: "none" }}>
                   {vcDays.map((d) => (
                     <button
@@ -1432,7 +1432,7 @@ function ChatThread({ match, onBack }) {
               <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", marginBottom: 8, borderRadius: 12, background: C.surface, borderLeft: `3px solid ${C.primary}` }}>
                 {replyTo.media?.type === "image" && <img src={replyTo.media.url} alt="" style={{ width: 36, height: 36, borderRadius: 6, objectFit: "cover", flexShrink: 0 }} />}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: 12, fontWeight: 700, color: C.primary, fontFamily: FONT, margin: 0 }}>Replying to {replyTo.sender === currentUserId ? "yourself" : profile.name}</p>
+                  <p style={{ fontSize: 12, fontWeight: 700, color: C.primary, fontFamily: FONT, margin: 0 }}>Replying to {replyTo.sender === currentUserId ? "your message" : profile.name}</p>
                   <p style={{ fontSize: 13, color: C.sub, fontFamily: FONT, margin: "1px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{previewOf(replyTo)}</p>
                 </div>
                 <button onClick={() => setReplyTo(null)} aria-label="Cancel reply" style={{ width: 28, height: 28, borderRadius: 14, border: "none", background: "transparent", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}>
@@ -1687,8 +1687,15 @@ export default function Matches() {
                           ? `You commented on their ${lastMsg.targetType === "photo" ? "photo" : lastMsg.targetType === "prompt" ? "prompt" : "profile"}`
                           : `${profile.name} commented on your ${lastMsg.targetType === "photo" ? "photo" : lastMsg.targetType === "prompt" ? "prompt" : "profile"} · unlocks after your date`)
                       : lastMsg
-                      ? (lastMsg.sender === currentUserId ? "You: " : "") + lastMsg.text.slice(0, 35) + (lastMsg.text.length > 35 ? "..." : "")
-                      : state.currentUser?.gender === "male" ? "New match · plan your date" : "New match · waiting for his plan"}
+                      ? (() => {
+                          const who = lastMsg.sender === currentUserId ? "You" : profile.name;
+                          const t = lastMsg.text || "";
+                          if (t.trim() === "🌹") return `${who} sent a rose`;
+                          if (t.startsWith("📹")) return t.replace(/^📹\s*/, "").replace("Video call scheduled:", "Video call ·");
+                          if (t.startsWith("🗓️")) return `${who} ${t.includes("cancelled") ? "cancelled the date" : "withdrew the plan"}`;
+                          return (lastMsg.sender === currentUserId ? "You: " : "") + t.slice(0, 35) + (t.length > 35 ? "…" : "");
+                        })()
+                      : "New match · say hello"}
                   </p>
                 </div>
                 {hasUnread && <div style={{ width: 12, height: 12, borderRadius: "50%", background: C.primary, flexShrink: 0 }} />}

@@ -304,7 +304,7 @@ function SubscriptionPlans({ initialStatus }) {
               textAlign: "left",
             }}
           >
-            {plan.popular && (
+            {false && plan.popular && (
               <span style={{ position: "absolute", top: -10, right: 16, fontSize: 10, fontWeight: 700, padding: "3px 10px", borderRadius: 9999, background: C.primary, color: "white", textTransform: "uppercase", letterSpacing: "0.05em" }}>Most popular</span>
             )}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -314,7 +314,7 @@ function SubscriptionPlans({ initialStatus }) {
               </div>
               <div style={{ textAlign: "right" }}>
                 {loading === plan.name ? (
-                  <span style={{ fontSize: 13, fontWeight: 600, color: C.sub }}>Loading...</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: C.sub }}>Loading…</span>
                 ) : (
                   <>
                     <span style={{ fontSize: 20, fontWeight: 700, color: C.primary }}>{plan.price}</span>
@@ -364,7 +364,7 @@ function BillingSection({ onViewPlans, initialStatus }) {
     <div style={{ textAlign: "center", padding: "40px 20px" }}>
       <svg width={48} height={48} viewBox="0 0 24 24" fill="none" stroke={C.sub} strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
       <p style={{ fontSize: 16, fontWeight: 700, color: C.text, marginTop: 16 }}>No active subscription</p>
-      <p style={{ fontSize: 13, color: C.sub, marginTop: 4 }}>Upgrade to Agape+ to manage billing and payments.</p>
+      <p style={{ fontSize: 13, color: C.sub, marginTop: 4 }}>Your Agape+ plan and payments will appear here.</p>
       <button onClick={() => { track("upgrade_tapped", { source: "billing" }); onViewPlans(); }} style={{ marginTop: 16, padding: "12px 24px", borderRadius: 12, fontSize: 14, fontWeight: 700, background: C.primary, color: "white", border: "none", cursor: "pointer" }}>View plans</button>
     </div>
   );
@@ -381,7 +381,7 @@ function SettingsScreen({ onBack, initialSection = null }) {
     track("notification_toggled", { type: key, enabled: on });
     setPrefMsg("");
     try { await actions.updateProfile({ notificationPrefs: { ...prefs, [key]: on } }); }
-    catch (err) { setPrefMsg(/notification_prefs|schema cache/i.test(err.message || "") ? "Notification settings aren't set up on the server yet." : err.message); }
+    catch (err) { setPrefMsg(/notification_prefs|schema cache/i.test(err.message || "") ? "Notification settings isn't available right now. Please try again later." : err.message); }
   };
   const [pushOn, setPushOn] = useState(false);
   const [pushMsg, setPushMsg] = useState("");
@@ -393,7 +393,7 @@ function SettingsScreen({ onBack, initialSection = null }) {
     track("profile_paused_toggled", { paused: on });
     setPauseMsg("");
     try { await actions.updateProfile({ paused: on }); }
-    catch (err) { setPauseMsg(/paused|schema cache/i.test(err.message || "") ? "Pausing isn't set up on the server yet." : err.message); }
+    catch (err) { setPauseMsg(/paused|schema cache/i.test(err.message || "") ? "Pausing isn't available right now. Please try again later." : err.message); }
   };
   // "Only my denomination" is just the saved denomination filter
   const myDenom = currentUser?.denomination || "";
@@ -435,17 +435,17 @@ function SettingsScreen({ onBack, initialSection = null }) {
   if (section) {
     const titles = {
       notifications: "Notifications",
-      faith: "Faith Preferences",
+      faith: "Faith preferences",
       location: "Location",
       privacy: "Privacy",
-      safety: "Safety Centre",
+      safety: "Safety centre",
       subscription: "Agape+",
-      account: "Personal Info",
-      blocked: "Blocked Users",
+      account: "Personal info",
+      blocked: "Blocked users",
       reports: "Reports",
-      guidelines: "Community Guidelines",
-      billing: "Billing & Payments",
-      help: "Help & Feedback",
+      guidelines: "Community guidelines",
+      billing: "Billing & payments",
+      help: "Help & feedback",
       terms: "Terms of Service",
       privacypolicy: "Privacy Policy",
     };
@@ -489,7 +489,7 @@ function SettingsScreen({ onBack, initialSection = null }) {
                       label="Send a test notification"
                       sub={pushMsg || "Checks that this device receives pushes"}
                       onPress={async () => {
-                        setPushMsg("Sending...");
+                        setPushMsg("Sending…");
                         try {
                           const r = await sendTestPush();
                           const err = r.errors?.[0];
@@ -498,9 +498,9 @@ function SettingsScreen({ onBack, initialSection = null }) {
                               ? `Sent to ${r.sent} device${r.sent === 1 ? "" : "s"} — check your notifications`
                               : r.devices === 0
                               ? "No device registered — turn notifications off and on again"
-                              : `Delivery failed (${err?.status || "?"}) ${err?.message || ""}`
+                              : "Delivery failed. Turn notifications off and on again, then try once more."
                           );
-                        } catch (err) { setPushMsg(`Error: ${err.message}`); }
+                        } catch (err) { setPushMsg("Something went wrong. Please try again."); }
                       }}
                     />
                   )}
@@ -661,8 +661,8 @@ function SettingsScreen({ onBack, initialSection = null }) {
                 { icon: I.cross, title: "Honour your faith", text: "This is a faith-based community. Be authentic about who you are and what you believe." },
                 { icon: I.user, title: "Be genuine", text: "Use recent photos of yourself. No fake profiles, catfishing, or misleading information." },
                 { icon: I.lock, title: "Protect your privacy", text: "Don't share personal information like your address, financial details, or passwords with anyone." },
-                { icon: I.ban, title: "No inappropriate content", text: "Keep conversations respectful. Explicit, vulgar, or offensive content will result in a ban." },
-                { icon: I.shield, title: "Report concerns", text: "If someone makes you feel uncomfortable or unsafe, use the report feature. We review every report." },
+                { icon: I.ban, title: "No inappropriate content", text: "Keep conversations respectful. Explicit, vulgar, or offensive content can lead to your account being suspended." },
+                { icon: I.shield, title: "Report concerns", text: "If someone makes you feel uncomfortable or unsafe, use the report feature. Our team reviews every report." },
               ].map((item) => (
                 <div key={item.title} style={{ borderRadius: 16, padding: 16, background: C.card, display: "flex", gap: 12 }}>
                   <span style={{ fontSize: 24, flexShrink: 0 }}>{item.icon}</span>
@@ -696,29 +696,32 @@ function SettingsScreen({ onBack, initialSection = null }) {
           {section === "terms" && (
             <div style={{ borderRadius: 16, padding: 20, background: C.card }}>
               <p style={{ fontSize: 14, lineHeight: 1.7, color: C.text }}>
-                By using Agape, you agree to our terms of service. Agape is a faith-based dating platform designed to connect Christians seeking meaningful relationships.
+                Agape is a dating app for Christians looking for a serious relationship. By using it you agree to these terms and to the community guidelines.
               </p>
               <p style={{ fontSize: 14, lineHeight: 1.7, color: C.text, marginTop: 12 }}>
-                Users must be 18 or older. You are responsible for maintaining the confidentiality of your account. We reserve the right to suspend accounts that violate our community guidelines.
+                You must be 18 or older and use your real name, age and recent photos of yourself. You are responsible for what you post and for keeping your login to yourself. We may suspend or remove accounts that break the guidelines or put others at risk.
               </p>
               <p style={{ fontSize: 14, lineHeight: 1.7, color: C.text, marginTop: 12 }}>
-                Content you post remains yours, but you grant Agape a licence to display it within the platform. We do not sell your data to third parties.
+                Agape+ is a subscription that renews automatically until you stop it under Settings → Agape+. Your plan stays active until the end of the period you paid for. Payments are handled by Stripe; refunds follow Stripe's rules and the law in your country.
               </p>
-              <p style={{ fontSize: 12, color: C.sub, marginTop: 16 }}>Last updated: September 2026</p>
+              <p style={{ fontSize: 14, lineHeight: 1.7, color: C.text, marginTop: 12 }}>
+                What you post stays yours. You allow Agape to show it to other members inside the app. We do not sell your data.
+              </p>
+              <p style={{ fontSize: 12, color: C.sub, marginTop: 16 }}>Last updated: October 2026</p>
             </div>
           )}
           {section === "privacypolicy" && (
             <div style={{ borderRadius: 16, padding: 20, background: C.card }}>
               <p style={{ fontSize: 14, lineHeight: 1.7, color: C.text }}>
-                Agape collects only the data necessary to provide our service: your profile information, preferences, and messages with your matches.
+                We store what you give us: your profile, photos and voice answers, prompts, preferences and filters, your phone number or email, your location, and your messages, photos and voice notes in chats. Your location is shown to others only as a city and a rounded distance. Verification selfies are seen by the Agape team only until they are approved.
               </p>
               <p style={{ fontSize: 14, lineHeight: 1.7, color: C.text, marginTop: 12 }}>
-                We use industry-standard encryption to protect your data. Your photos and messages are stored securely and never shared with third parties for advertising.
+                To run Agape we rely on a few providers who process data on our behalf: Supabase (database and file storage, EU), Stripe (payments), Twilio (SMS codes), Resend (emails), OpenStreetMap (place search) and PostHog (usage statistics, EU). We do not sell your data and do not share it for advertising.
               </p>
               <p style={{ fontSize: 14, lineHeight: 1.7, color: C.text, marginTop: 12 }}>
-                You can request deletion of all your data at any time through the Delete Account option in settings. We will remove your data within 30 days.
+                You can delete your account under Settings → Delete account. This removes your profile, files, matches, messages and login right away; backups are cleared within 30 days. Reports you were involved in may be kept for safety reasons. For questions, write to agape_dating@outlook.com.
               </p>
-              <p style={{ fontSize: 12, color: C.sub, marginTop: 16 }}>Last updated: September 2026</p>
+              <p style={{ fontSize: 12, color: C.sub, marginTop: 16 }}>Last updated: October 2026</p>
             </div>
           )}
           {section === "location" && (
@@ -744,7 +747,7 @@ function SettingsScreen({ onBack, initialSection = null }) {
                       value={editValue}
                       onChange={(text) => { setEditValue(text); setEditLocationData(null); }}
                       onSelect={(item) => { setEditValue(item.city || item.display.split(",")[0]); setEditLocationData(item); }}
-                      placeholder="Search city..."
+                      placeholder="Search city…"
                       inputStyle={{ width: "100%", padding: "12px 14px", fontSize: 16, fontWeight: 600, fontFamily: FONT, borderRadius: 12, border: `1.5px solid ${C.border}`, background: C.surface, outline: "none", color: C.text }}
                     />
                     <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
@@ -764,7 +767,7 @@ function SettingsScreen({ onBack, initialSection = null }) {
                           setEditField(null); setEditValue(""); setEditLocationData(null);
                         } catch (err) { setSaveError(err.message); }
                         setSaving(false);
-                      }} disabled={saving} style={{ flex: 1, padding: "10px 0", borderRadius: 12, fontSize: 14, fontWeight: 600, background: C.primary, color: "white", border: "none", cursor: "pointer", opacity: saving ? 0.5 : 1 }}>{saving ? "Saving..." : "Save"}</button>
+                      }} disabled={saving} style={{ flex: 1, padding: "10px 0", borderRadius: 12, fontSize: 14, fontWeight: 600, background: C.primary, color: "white", border: "none", cursor: "pointer", opacity: saving ? 0.5 : 1 }}>{saving ? "Saving…" : "Save"}</button>
                     </div>
                   </div>
                 )}
@@ -819,7 +822,7 @@ function SettingsScreen({ onBack, initialSection = null }) {
                       disabled={saving || !editValue.trim()}
                       style={{ flex: 1, padding: "10px 0", borderRadius: 12, fontSize: 14, fontWeight: 600, background: C.primary, color: "white", border: "none", cursor: "pointer", opacity: saving ? 0.5 : 1 }}
                     >
-                      {saving ? "Saving..." : "Save"}
+                      {saving ? "Saving…" : "Save"}
                     </button>
                   </div>
                 </div>
@@ -1065,7 +1068,7 @@ export default function Profile() {
       track("prompt_voice_recorded", { duration });
     } catch (err) {
       console.error("Voice upload failed:", err);
-      setVoiceError(/bucket|not found|storage/i.test(err.message || "") ? "Voice answers aren't set up yet on the server." : "Couldn't save the recording. Try again.");
+      setVoiceError(/bucket|not found|storage/i.test(err.message || "") ? "Voice answers isn't available right now. Please try again later." : "Couldn't save the recording. Try again.");
     }
     setVoiceUploading(false);
   };
@@ -1214,7 +1217,7 @@ export default function Profile() {
       actions.refreshVerifications?.();
     } catch (err) {
       console.error("Selfie upload failed:", err);
-      setVerifMsg(/photo_verifications|schema cache|relation/i.test(err.message || "") ? "Verification isn't set up yet on the server." : "Couldn't upload the selfie. Try again.");
+      setVerifMsg(/photo_verifications|schema cache|relation/i.test(err.message || "") ? "Verification isn't available right now. Please try again later." : "Couldn't upload the selfie. Try again.");
       setVerifDraft(null);
     }
     setVerifBusy(false);
@@ -1379,7 +1382,7 @@ export default function Profile() {
                   <p style={{ fontSize: 14, fontWeight: 700, color: C.text, margin: 0 }}>Complete your profile</p>
                   <span style={{ fontSize: 12, fontWeight: 700, color: C.primary }}>{pct}%</span>
                 </div>
-                <p style={{ fontSize: 12, color: C.sub, margin: "0 0 10px", lineHeight: 1.5 }}>Complete profiles get noticeably more matches.</p>
+                <p style={{ fontSize: 12, color: C.sub, margin: "0 0 10px", lineHeight: 1.5 }}>A complete profile helps people get to know you.</p>
                 <div style={{ height: 6, borderRadius: 3, background: C.border, overflow: "hidden", marginBottom: 12 }}>
                   <div style={{ width: `${pct}%`, height: "100%", background: C.primary, transition: "width 0.5s" }} />
                 </div>
@@ -1452,7 +1455,7 @@ export default function Profile() {
           {/* Photos — only visible after clicking hero photo */}
           {editPhotos && (
           <div ref={photosRef} style={{ borderRadius: 16, padding: 16, background: C.card, border: `1px solid ${C.border}` }}>
-            <p style={{ fontSize: 10, fontWeight: 600, color: C.primary, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 12 }}>My Photos</p>
+            <p style={{ fontSize: 10, fontWeight: 600, color: C.primary, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 12 }}>My photos</p>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
               {photos.slice(0, 4).map((url, i) => (
                 <div key={i} style={{ position: "relative", aspectRatio: "3/4", borderRadius: 12, overflow: "hidden", border: i === 0 ? `2px solid ${C.primary}` : `1px solid ${C.border}` }}>
@@ -1511,11 +1514,11 @@ export default function Profile() {
                   }}
                 >
                   {uploading ? (
-                    <span style={{ fontSize: 11, color: C.sub, fontWeight: 600 }}>Uploading...</span>
+                    <span style={{ fontSize: 11, color: C.sub, fontWeight: 600 }}>Uploading…</span>
                   ) : (
                     <>
                       <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke={C.sub} strokeWidth={2}><path d="M12 5v14M5 12h14" /></svg>
-                      <span style={{ fontSize: 10, color: C.sub, fontWeight: 600 }}>Add Photo</span>
+                      <span style={{ fontSize: 10, color: C.sub, fontWeight: 600 }}>Add photo</span>
                     </>
                   )}
                 </button>
@@ -1523,8 +1526,8 @@ export default function Profile() {
 
               {/* Verification selfies: private until the Agape team has approved them */}
               {[
-                { kind: "church", label: "Selfie with Church", icon: <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={C.primary} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><path d="M18 2H6a2 2 0 0 0-2 2v16l8-4 8 4V4a2 2 0 0 0-2-2z"/><path d="M12 6v4M10 8h4"/></svg> },
-                { kind: "bible", label: "Selfie with Bible", icon: <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={C.primary} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M12 6v6M9.5 8.5h5"/></svg> },
+                { kind: "church", label: "Selfie with a church", icon: <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={C.primary} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><path d="M18 2H6a2 2 0 0 0-2 2v16l8-4 8 4V4a2 2 0 0 0-2-2z"/><path d="M12 6v4M10 8h4"/></svg> },
+                { kind: "bible", label: "Selfie with a Bible", icon: <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={C.primary} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M12 6v6M9.5 8.5h5"/></svg> },
               ].map(({ kind, label, icon }) => {
                 const v = verif[kind];
                 const pending = v?.status === "pending";
@@ -1579,7 +1582,7 @@ export default function Profile() {
             )}
             {["church", "bible"].filter((k) => verif[k]?.status === "rejected").map((k) => (
               <p key={k} style={{ fontSize: 12, color: C.text, marginTop: 10, lineHeight: 1.45, padding: "10px 12px", borderRadius: 12, background: "#FDECEC" }}>
-                <strong>{k === "church" ? "Selfie with Church" : "Selfie with Bible"} was not approved{verif[k].note ? ":" : "."}</strong>{verif[k].note ? ` ${String(verif[k].note).replace(/[.\s]+$/, "")}.` : ""} Tap the photo to upload a new one.
+                <strong>{k === "church" ? "Selfie with a church" : "Selfie with a Bible"} was not approved{verif[k].note ? ":" : "."}</strong>{verif[k].note ? ` ${String(verif[k].note).replace(/[.\s]+$/, "")}.` : ""} Tap the photo to upload a new one.
               </p>
             ))}
             {verifMsg && <p style={{ fontSize: 12, color: "#DC2626", marginTop: 8 }}>{verifMsg}</p>}
@@ -1790,8 +1793,8 @@ export default function Profile() {
             <p style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em", color: C.sub, padding: "0 4px", marginBottom: 8 }}>Account</p>
             {[
               { icon: I.bell, label: "Notifications", section: "notifications" },
-              { icon: I.cross, label: "Faith Preferences", section: "faith" },
-              { icon: I.mapPin, label: "Location & Distance", section: "location" },
+              { icon: I.cross, label: "Faith preferences", section: "faith" },
+              { icon: I.mapPin, label: "Location", section: "location" },
               { icon: I.card, label: "Subscription", section: "subscription" },
             ].map((item) => (
               <div
@@ -1836,7 +1839,7 @@ export default function Profile() {
           <div>
             <p style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em", color: C.sub, padding: "0 4px", marginBottom: 8 }}>Safety & Privacy</p>
             {[
-              { icon: I.shield, label: "Safety Centre", section: "safety" },
+              { icon: I.shield, label: "Safety centre", section: "safety" },
               { icon: I.lock, label: "Privacy", section: "privacy" },
               { icon: I.ban, label: "Blocked users", section: "blocked" },
             ].map((item) => (
@@ -1894,8 +1897,7 @@ export default function Profile() {
               marginTop: 4,
             }}
           >
-            Sign out
-          </button>
+           Log out          </button>
         </div>
       </div>
 
@@ -1942,8 +1944,8 @@ export default function Profile() {
         <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.9)", zIndex: 9999, display: "flex", flexDirection: "column" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 16px", paddingTop: "max(16px, env(safe-area-inset-top, 48px))" }}>
             <button onClick={() => { track("photo_crop_cancelled"); setCropSrc(null); setCropIdx(null); }} style={{ fontSize: 16, fontWeight: 600, color: "white", background: "none", border: "none", cursor: "pointer", padding: "8px 4px" }}>Cancel</button>
-            <p style={{ fontSize: 16, fontWeight: 700, color: "white" }}>Crop Photo</p>
-            <button onClick={saveCrop} disabled={uploading} style={{ fontSize: 16, fontWeight: 700, color: uploading ? "#666" : "#4ADE80", background: "none", border: "none", cursor: "pointer", padding: "8px 4px" }}>{uploading ? "Saving..." : "Save"}</button>
+            <p style={{ fontSize: 16, fontWeight: 700, color: "white" }}>Crop photo</p>
+            <button onClick={saveCrop} disabled={uploading} style={{ fontSize: 16, fontWeight: 700, color: uploading ? "#666" : "#4ADE80", background: "none", border: "none", cursor: "pointer", padding: "8px 4px" }}>{uploading ? "Saving…" : "Save"}</button>
           </div>
           <div
             style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", touchAction: "none" }}
@@ -2059,7 +2061,7 @@ export default function Profile() {
                   opacity: saving ? 0.5 : 1,
                 }}
               >
-                {saving ? "Saving..." : "Save"}
+                {saving ? "Saving…" : "Save"}
               </button>
             </div>
             <div style={{ width: 36, height: 4, borderRadius: 2, background: C.border, margin: "0 auto 16px" }} />
@@ -2082,7 +2084,7 @@ export default function Profile() {
                     ref={answerRef}
                     value={editingPromptData.answer}
                     onChange={(e) => setEditingPromptData((d) => ({ ...d, answer: e.target.value }))}
-                    placeholder="Your answer..."
+                    placeholder="Your answer…"
                     maxLength={250}
                     rows={3}
                     style={{
@@ -2202,7 +2204,7 @@ export default function Profile() {
                 disabled={saving || editingChipsData.length < 3}
                 style={{ fontSize: 14, fontWeight: 700, color: saving || editingChipsData.length < 3 ? C.sub : C.primary, background: "none", border: "none", cursor: "pointer" }}
               >
-                {saving ? "Saving..." : "Save"}
+                {saving ? "Saving…" : "Save"}
               </button>
             </div>
             <p style={{ fontSize: 12, color: C.sub, marginBottom: 12 }}>Pick 3-8</p>

@@ -79,11 +79,13 @@ const LIFESTYLE_CATEGORIES = [
   },
   {
     label: "Pets",
-    options: ["Dog", "Cat", "Fish", "Bird", "Hamster", "Reptile", "Don't have but love", "Allergic", "Other", "Pet-free"],
+    options: ["Dog", "Cat", "Fish", "Bird", "Hamster", "Reptile", "No pets, but I love them", "Allergic", "Other", "Pet-free"],
   },
 ];
 
 const DEV_TEST = false;
+// Apple sign-in needs an Apple Developer account and the provider set up in Supabase; hidden until then
+const APPLE_SIGN_IN_ENABLED = false;
 const CROP_ASPECT = 3 / 4;
 
 // "+46 070-123 45 67" -> "+46701234567": strip formatting and the trunk 0 many Europeans type after the country code
@@ -153,10 +155,12 @@ function ProviderButtons({ onGoogle, onApple, dark }) {
         <svg width={18} height={18} viewBox="0 0 24 24"><path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.6v3h3.9c2.3-2.1 3.5-5.2 3.5-8.8z"/><path fill="#34A853" d="M12 24c3.2 0 6-1.1 8-2.9l-3.9-3c-1.1.7-2.5 1.2-4.1 1.2-3.1 0-5.8-2.1-6.7-5H1.2v3.1C3.2 21.3 7.3 24 12 24z"/><path fill="#FBBC05" d="M5.3 14.3c-.5-1.5-.5-3.1 0-4.6V6.6H1.2c-1.6 3.3-1.6 7.2 0 10.5l4.1-2.8z"/><path fill="#EA4335" d="M12 4.7c1.7 0 3.3.6 4.5 1.8l3.4-3.4C17.9 1.2 15.1 0 12 0 7.3 0 3.2 2.7 1.2 6.6l4.1 3.1c.9-2.9 3.6-5 6.7-5z"/></svg>
         Continue with Google
       </button>
+      {APPLE_SIGN_IN_ENABLED && (
       <button onClick={onApple} style={{ ...base, background: "#000", color: "#fff", border: "1.5px solid #000" }}>
         <svg width={18} height={18} viewBox="0 0 24 24" fill="#fff"><path d="M16.4 12.6c0-2.6 2.1-3.8 2.2-3.9-1.2-1.8-3.1-2-3.7-2-1.6-.2-3.1.9-3.9.9-.8 0-2-.9-3.4-.9-1.7 0-3.3 1-4.2 2.6-1.8 3.1-.5 7.8 1.3 10.3.9 1.2 1.9 2.6 3.2 2.6 1.3-.1 1.8-.8 3.4-.8 1.6 0 2 .8 3.4.8 1.4 0 2.3-1.3 3.1-2.5 1-1.4 1.4-2.8 1.4-2.9 0 0-2.8-1.1-2.8-4.2zM13.9 4.9c.7-.9 1.2-2.1 1.1-3.3-1 0-2.3.7-3 1.6-.7.8-1.3 2-1.1 3.2 1.1.1 2.3-.6 3-1.5z"/></svg>
         Continue with Apple
       </button>
+      )}
     </div>
   );
 }
@@ -721,7 +725,7 @@ export default function Onboarding() {
         />
         {loginError && <p style={{ color: "#e53e3e", fontSize: 14, marginTop: 8 }}>{loginError}</p>}
         <BigBtn onClick={handleLoginSubmit} disabled={submitting || loginPhone.trim().length < 5 || loginPassword.length < 6} style={{ marginTop: 24 }}>
-          {submitting ? "Signing in..." : "Sign in"}
+          {submitting ? "Signing in…" : "Sign in"}
         </BigBtn>
         <button onClick={() => { track("forgot_password_tapped"); setMode("reset"); setResetStep("phone"); setResetPhone(loginPhone || "+48"); setResetError(""); setLoginError(""); }} style={{ background: "none", border: "none", color: S.primary, fontSize: 14, fontWeight: 600, marginTop: 18, cursor: "pointer" }}>
           Forgot password?
@@ -770,7 +774,7 @@ export default function Onboarding() {
               />
               {emailSignup.error && <p style={{ color: "#e53e3e", fontSize: 14, marginTop: 10 }}>{emailSignup.error}</p>}
               <BigBtn onClick={handleEmailSignup} disabled={submitting || !emailSignup.email || emailSignup.password.length < 6 || emailSignup.password !== emailSignup.confirm}>
-                {submitting ? "Creating account..." : "Continue"}
+                {submitting ? "Creating account…" : "Continue"}
               </BigBtn>
             </>
           )}
@@ -815,7 +819,7 @@ export default function Onboarding() {
                 disabled={submitting || resendWait > 0}
                 style={{ width: "100%", marginTop: 14, padding: "12px 0", background: "none", border: "none", color: resendWait > 0 ? S.sub : S.primary, fontSize: 14, fontWeight: 600, cursor: resendWait > 0 ? "default" : "pointer", fontFamily: "'Outfit', system-ui, sans-serif" }}
               >
-                {submitting ? "Sending..." : resendWait > 0 ? `Send again in ${resendWait}s` : "Nothing arrived? Send again"}
+                {submitting ? "Sending…" : resendWait > 0 ? `Send again in ${resendWait}s` : "Nothing arrived? Send again"}
               </button>
               <button
                 onClick={() => { setResetPhone(""); setResetError(""); setResetStep("phone"); }}
@@ -875,17 +879,17 @@ export default function Onboarding() {
 
           {resetStep === "phone" && (
             <BigBtn onClick={handleResetSendOtp} disabled={submitting || resetPhone.trim().length < 5}>
-              {submitting ? "Sending..." : resetPhone.includes("@") ? "Send reset link" : "Send code"}
+              {submitting ? "Sending…" : resetPhone.includes("@") ? "Send reset link" : "Send code"}
             </BigBtn>
           )}
           {resetStep === "code" && (
             <BigBtn onClick={() => handleResetVerify()} disabled={submitting || otpDigits.some((d) => d === "")}>
-              {submitting ? "Verifying..." : "Verify"}
+              {submitting ? "Verifying…" : "Verify"}
             </BigBtn>
           )}
           {resetStep === "password" && (
             <BigBtn onClick={handleResetPassword} disabled={submitting || password.length < 6 || password !== passwordConfirm}>
-              {submitting ? "Saving..." : "Save new password"}
+              {submitting ? "Saving…" : "Save new password"}
             </BigBtn>
           )}
         </div>
@@ -916,7 +920,7 @@ export default function Onboarding() {
           <button onClick={() => { track("welcome_sign_in_tapped"); setMode("login"); }} style={{ width: "100%", marginTop: 14, padding: 8, background: "none", color: "#8C857C", border: "none", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "'Outfit', system-ui, sans-serif" }}>
             Already have an account? <span style={{ color: "#B8912A" }}>Sign in</span>
           </button>
-          <p style={{ fontSize: 11, color: "#8C857C", marginTop: 12, textAlign: "center" }}>By continuing you agree to our Terms & Privacy Policy</p>
+          <p style={{ fontSize: 11, color: "#8C857C", marginTop: 12, textAlign: "center" }}>By continuing you agree to our Terms of Service and Privacy Policy. You can read both any time under Me → Settings.</p>
         </div>
       </div>
     );
@@ -984,7 +988,7 @@ export default function Onboarding() {
 
         <div style={{ marginTop: "auto" }}>
           <BigBtn onClick={handleSendOtp} disabled={submitting || phoneNum.replace(/\D/g, "").length < 6 || countryCode.length < 2}>
-            {submitting ? "Sending..." : "Continue"}
+            {submitting ? "Sending…" : "Continue"}
           </BigBtn>
           {DEV_TEST && <button onClick={goNext} style={{ background: "none", border: "none", color: "#e53e3e", fontSize: 12, marginTop: 8, cursor: "pointer", textAlign: "center", width: "100%" }}>Skip (dev test)</button>}
         </div>
@@ -1039,7 +1043,7 @@ export default function Onboarding() {
         </button>
 
         <BigBtn onClick={() => handleVerifyOtp()} disabled={submitting || otpDigits.some(d => d === "")}>
-          {submitting ? "Verifying..." : "Verify"}
+          {submitting ? "Verifying…" : "Verify"}
         </BigBtn>
         {DEV_TEST && <button onClick={goNext} style={{ background: "none", border: "none", color: "#e53e3e", fontSize: 12, marginTop: 8, cursor: "pointer", textAlign: "center", width: "100%" }}>Skip (dev test)</button>}
       </Wrap>
@@ -1070,7 +1074,7 @@ export default function Onboarding() {
         />
         {passwordError && <p style={{ color: "#e53e3e", fontSize: 14, marginTop: 8 }}>{passwordError}</p>}
         <BigBtn onClick={handleSetPassword} disabled={submitting || !canProceed()}>
-          {submitting ? "Setting password..." : "Continue"}
+          {submitting ? "Setting password…" : "Continue"}
         </BigBtn>
         {DEV_TEST && <button onClick={goNext} style={{ background: "none", border: "none", color: "#e53e3e", fontSize: 12, marginTop: 8, cursor: "pointer", textAlign: "center", width: "100%" }}>Skip (dev test)</button>}
       </Wrap>
@@ -1088,7 +1092,7 @@ export default function Onboarding() {
             Agape is a Christian dating app. To connect you with people who share your faith, we collect and process information about your religious beliefs, including your denomination.
           </p>
           <p style={{ color: S.sub, fontSize: 14, lineHeight: 1.6, marginBottom: 24, maxWidth: 340 }}>
-            This data is used solely for matching purposes and will be visible to other users on your profile.
+            Your denomination is shown on your profile and used to find people who share your faith.
           </p>
           <button
             onClick={() => setFaithConsent(!faithConsent)}
@@ -1197,7 +1201,7 @@ export default function Onboarding() {
   if (currentStep === "gender") {
     return (
       <Wrap {...wrapProps}>
-        <h2 style={{ color: S.text, fontSize: 30, fontWeight: 800, marginBottom: 24, fontFamily: "'Outfit', system-ui, sans-serif" }}>I am a...</h2>
+        <h2 style={{ color: S.text, fontSize: 30, fontWeight: 800, marginBottom: 24, fontFamily: "'Outfit', system-ui, sans-serif" }}>I am a…</h2>
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {[{ value: "male", label: "Man" }, { value: "female", label: "Woman" }].map((g) => (
             <button
@@ -1250,7 +1254,7 @@ export default function Onboarding() {
                   onChange={(e) => { e.stopPropagation(); setCustomDenom(e.target.value); setForm({ ...form, denomination: e.target.value }); }}
                   onKeyDown={(e) => { e.stopPropagation(); if (e.key === "Enter" && customDenom.trim()) { setForm({ ...form, denomination: customDenom.trim() }); setTimeout(goNext, 300); } }}
                   onClick={(e) => e.stopPropagation()}
-                  placeholder="Other denomination..."
+                  placeholder="Other denomination…"
                   style={{ background: "transparent", border: "none", outline: "none", fontSize: 16, color: S.text, flex: 1, fontFamily: "'Outfit', system-ui, sans-serif" }}
                 />
               ) : (
@@ -1327,7 +1331,7 @@ export default function Onboarding() {
             disabled={gpsLoading}
             style={{ width: "100%", padding: "18px", background: S.primarySoft, border: `2px solid ${S.primary}`, borderRadius: 14, fontSize: 16, fontWeight: 600, color: S.text, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 10, fontFamily: "'Outfit', system-ui, sans-serif", marginBottom: 16 }}
           >
-            {gpsLoading ? "Getting location..." : "Use my current location"}
+            {gpsLoading ? "Getting location…" : "Use my current location"}
           </button>
         )}
         {gpsError && <p style={{ color: S.sub, fontSize: 13, marginBottom: 12 }}>Location permission denied. Search your city below.</p>}
@@ -1341,7 +1345,7 @@ export default function Onboarding() {
             value={form.location}
             onChange={(text) => setForm({ ...form, location: text, locationLat: null, locationLng: null })}
             onSelect={(item) => setForm({ ...form, location: item.city || item.display.split(",")[0], locationLat: item.lat, locationLng: item.lng })}
-            placeholder="Search city..."
+            placeholder="Search city…"
             className="onboarding-input"
             inputStyle={{ width: "100%", padding: "14px 16px", background: "transparent", color: S.text, border: "none", fontSize: 16, outline: "none", fontFamily: "'Outfit', system-ui, sans-serif" }}
             dropdownStyle={{ background: S.surface, border: `1px solid ${S.border}` }}
@@ -1373,8 +1377,8 @@ export default function Onboarding() {
   if (currentStep === "whoAreYou") {
     return (
       <Wrap {...wrapProps}>
-        <h2 style={{ color: S.text, fontSize: 28, fontWeight: 800, marginBottom: 4, fontFamily: "'Outfit', system-ui, sans-serif" }}>Who are you?</h2>
-        <p style={{ color: S.sub, fontSize: 14, marginBottom: 20 }}>Pick 3-8 traits that describe you</p>
+        <h2 style={{ color: S.text, fontSize: 28, fontWeight: 800, marginBottom: 4, fontFamily: "'Outfit', system-ui, sans-serif" }}>What describes you?</h2>
+        <p style={{ color: S.sub, fontSize: 14, marginBottom: 20 }}>Pick 3-8 values that describe you. They show on your profile.</p>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16, flex: 1, alignContent: "flex-start", overflowY: "auto" }}>
           {LOOKING_FOR_POOL.map((trait) => (
             <button
@@ -1456,7 +1460,7 @@ export default function Onboarding() {
                 {!photo && (
                   <>
                     <Plus size={24} style={{ color: i === 0 ? S.primary : S.sub }} />
-                    {i === 0 && <span style={{ fontSize: 10, color: S.primary, fontWeight: 600 }}>Required</span>}
+                    {i === 0 && !form.photos.some(Boolean) && <span style={{ fontSize: 10, color: S.primary, fontWeight: 600 }}>Required</span>}
                   </>
                 )}
               </button>
@@ -1476,7 +1480,7 @@ export default function Onboarding() {
 
         {cropImage && (
           <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.92)", zIndex: 1000, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
-            <p style={{ color: S.sub, fontSize: 13, marginBottom: 12 }}>Drag to reposition, pinch or slide to zoom</p>
+            <p style={{ color: S.sub, fontSize: 13, marginBottom: 12 }}>Drag to reposition, use the slider to zoom</p>
             <div ref={cropBoxRef} style={{ width: "min(85vw, 380px)", aspectRatio: "3/4", borderRadius: 16, overflow: "hidden", position: "relative", touchAction: "none", background: S.bg }}
               onPointerDown={(e) => { setDragging(true); setDragStart({ x: e.clientX - cropOffset.x, y: e.clientY - cropOffset.y }); e.currentTarget.setPointerCapture(e.pointerId); }}
               onPointerMove={(e) => { if (!dragging) return; setCropOffset(clampOffset({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y }, cropScale)); }}
@@ -1546,7 +1550,7 @@ export default function Onboarding() {
               ref={answerRef}
               value={currentPromptSelection.answer}
               onChange={(e) => updatePromptAnswer(e.target.value)}
-              placeholder="Your answer..."
+              placeholder="Your answer…"
               maxLength={250}
               rows={3}
               style={{ width: "100%", background: "transparent", border: "none", outline: "none", fontSize: 16, lineHeight: 1.5, color: S.text, resize: "none", fontFamily: "'Outfit', system-ui, sans-serif" }}
@@ -1612,7 +1616,7 @@ export default function Onboarding() {
         {signupError && <p style={{ color: "#e53e3e", fontSize: 14, marginTop: 8, textAlign: "center" }}>{signupError}</p>}
         {!canProceed() && <p style={{ color: S.sub, fontSize: 12, textAlign: "center", margin: "8px 0 0" }}>Answer all four to continue</p>}
         <BigBtn onClick={finishOnboarding} disabled={submitting || !canProceed()}>
-          {submitting ? "Creating account..." : "Start matching"}
+          {submitting ? "Creating your profile…" : "Start matching"}
         </BigBtn>
       </Wrap>
     );

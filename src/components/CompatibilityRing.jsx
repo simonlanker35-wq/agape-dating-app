@@ -15,7 +15,7 @@ const PARTS = [
   { key: "lifestyle", label: "Lifestyle", max: 10, hint: "Smoking, drinking and exercise" },
   { key: "interests", label: "Shared interests", max: 10, hint: "Interests you both picked" },
   { key: "mutualFit", label: "You fit their filters", max: 10, hint: "Your age, distance and denomination match what they're looking for" },
-  { key: "trust", label: "Trust", max: 10, hint: "Verified selfie, showed up to dates, recently active" },
+  { key: "trust", label: "Trust", max: 10, hint: "Verified selfie, showed up to dates, recently active. No-shows count against." },
   { key: "distance", label: "Distance", max: 5, hint: "Closer is a little better" },
 ];
 
@@ -37,7 +37,7 @@ export default function CompatibilityRing({ profile, size = 44, light = false, s
   const dash = circ * (pct / 100);
   const trackColor = light ? "rgba(255,255,255,0.3)" : "#E8E4DF";
   const textColor = light ? "#FFFFFF" : "#1A1612";
-  const name = profile.name || "they";
+  const name = profile.name || "this person";
 
   const show = (e) => { e.stopPropagation(); e.preventDefault(); track("compatibility_ring_tapped", { score: pct }); setOpen(true); };
   const close = (e) => { e?.stopPropagation(); setOpen(false); };
@@ -81,7 +81,7 @@ export default function CompatibilityRing({ profile, size = 44, light = false, s
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{ fontFamily: SERIF, fontSize: 21, fontWeight: 600, color: "#1A1612", margin: 0, lineHeight: 1.2 }}>{pct}% compatible</p>
                 <p style={{ fontSize: 13, color: "#8C857C", margin: "4px 0 0", lineHeight: 1.4 }}>
-                  {pct >= 80 ? "Rare. You line up on almost everything that matters." : pct >= 60 ? "A lot in common on the things that matter." : pct >= 40 ? "Some common ground, and some real differences." : "Your answers point in different directions."}
+                  {pct >= 80 ? "You line up on almost everything that matters." : pct >= 60 ? "A lot in common on the things that matter." : pct >= 40 ? "Some common ground, and some real differences." : "Your answers point in different directions."}
                 </p>
               </div>
               <button onClick={close} aria-label="Close" style={{ width: 32, height: 32, borderRadius: 16, border: "none", background: "#F4F2EE", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}>
@@ -90,7 +90,7 @@ export default function CompatibilityRing({ profile, size = 44, light = false, s
             </div>
 
             <p style={{ fontSize: 14, color: "#5F5A53", lineHeight: 1.55, margin: "0 0 16px" }}>
-              This number compares what you and {name} told Agape about yourselves: your faith, what you want from a relationship, how you live, your interests, whether you fit each other's filters, and how reliable you've both been. It does not look at photos or chats, and it is a starting point, not a verdict.
+              This number compares what you and {name} told Agape about yourselves: your faith, what you want from a relationship, how you live and your interests. It also counts whether you fit what they're looking for, how reliable they've been on dates, and how close you live. It does not look at photos or chats, and it is a starting point, not a verdict.
             </p>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
