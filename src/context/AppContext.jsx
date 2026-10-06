@@ -4,6 +4,7 @@ import { supabase } from "../services/supabase";
 import { getSubscriptionStatus } from "../services/stripe";
 import { syncPushSubscription } from "../services/push";
 import { identify, track, reset as resetPosthog } from "../services/posthog";
+import { setServerUsage } from "../services/limits";
 
 const AppContext = createContext();
 
@@ -31,6 +32,7 @@ const initialState = {
   openPhotoEditor: false,
   myVerifications: {},
   verificationsLoaded: false,
+  usage: null,
   matchesLoaded: false,
   openChatId: null,
   needsProfile: false,
@@ -86,6 +88,9 @@ function reducer(state, action) {
 
     case "SET_VERIFICATIONS":
       return { ...state, myVerifications: action.payload, verificationsLoaded: true };
+
+    case "SET_USAGE":
+      return { ...state, usage: action.payload };
 
     case "SHOW_REVIEW":
       return { ...state, reviewAlert: action.payload };
@@ -320,11 +325,12 @@ export function AppProvider({ children }) {
       let debounce = 0;
       const refresh = () => { loadLikesReceived(); loadMatches(); };
       loadVerifications();
+      loadUsage();
       api.getBlocks().then((b) => dispatch({ type: "SET_BLOCKED", payload: b })).catch(() => {});
       api.getMyReports().then((r) => dispatch({ type: "SET_REPORTS", payload: r })).catch(() => {});
       const poll = setInterval(() => {
         tick += 1;
-        if (tick % 6 === 0) loadVerifications();
+        if (tick % 6 === 0) { loadVerifications(); loadUsage(); }
         if (live && tick % 6 !== 0) return;
         refresh();
       }, 10000);
@@ -399,6 +405,17 @@ export function AppProvider({ children }) {
       dispatch({ type: "SET_LIKES_RECEIVED", payload: likes });
     } catch (err) {
       console.error("Failed to load likes:", err);
+    }
+  }, []);
+
+  // Likes, Doves and reveals used, as counted by the database
+  const loadUsage = useCallback(async () => {
+    try {
+      const u = await api.getUsage();
+      setServerUsage(u);
+      dispatch({ type: "SET_USAGE", payload: u });
+    } catch (_) {
+      // offline: the per-device counts stay in use
     }
   }, []);
 
@@ -586,7 +603,14 @@ export function AppProvider({ children }) {
         type: "LIKE_PROFILE",
         payload: { profileId, matched: res.matched, matchData, isDove },
       });
+      loadUsage();
       return res;
+    },
+
+    revealLike: async (likeId) => {
+      const stored = await api.revealLike(likeId);
+      loadUsage();
+      return stored;
     },
 
     skipProfile: async (profileId) => {
@@ -707,6 +731,7 @@ export function AppProvider({ children }) {
     },
     refreshMatches: loadMatches,
     refreshVerifications: loadVerifications,
+    refreshUsage: loadUsage,
   };
 
   return (

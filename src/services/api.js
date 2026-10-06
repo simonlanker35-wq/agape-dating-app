@@ -379,6 +379,43 @@ export async function getDiscover() {
 
 // ─── LIKES ───
 
+// The database refuses a like, Dove or reveal beyond the plan's allowance with these codes
+export function limitMessage(msg) {
+  if (/LIKE_LIMIT/.test(msg || "")) return "You've used all your likes for today";
+  if (/DOVE_LIMIT/.test(msg || "")) return "You've used all your Doves for this week";
+  if (/REVEAL_LIMIT/.test(msg || "")) return "You've used your reveal for this week";
+  return msg;
+}
+export function isLimitError(err) { return /LIKE_LIMIT|DOVE_LIMIT|REVEAL_LIMIT|all your likes|all your Doves|your reveal for this week/.test(err?.message || ""); }
+
+// How many likes, Doves and reveals are used and allowed, counted by the database
+export async function getUsage() {
+  const { data, error } = await supabase.rpc("usage_limits");
+  if (error) {
+    if (missingRelation(error) || /function/i.test(error.message || "")) return null; // usage_limits.sql not run yet
+    throw new Error(error.message);
+  }
+  if (!data) return null;
+  return {
+    premium: !!data.premium,
+    likesUsed: Number(data.likesUsed) || 0, likesLimit: Number(data.likesLimit) || 0,
+    dovesUsed: Number(data.dovesUsed) || 0, dovesLimit: Number(data.dovesLimit) || 0,
+    revealsUsed: Number(data.revealsUsed) || 0, revealsLimit: Number(data.revealsLimit) || 0,
+    likesResetAt: data.likesResetAt ? new Date(data.likesResetAt).getTime() : null,
+    dovesResetAt: data.dovesResetAt ? new Date(data.dovesResetAt).getTime() : null,
+  };
+}
+
+// Reveal who sent a blurred like in Sparks; the database counts it against the weekly allowance
+export async function revealLike(likeId) {
+  const user = await currentUser();
+  const { error } = await supabase.from("spark_reveals").insert({ user_id: user.id, like_id: likeId });
+  if (error && missingRelation(error)) return false; // usage_limits.sql not run yet: counted on this device only
+  if (error && error.code === "23505") return true; // already revealed
+  if (error) throw new Error(limitMessage(error.message));
+  return true;
+}
+
 export async function sendLike(to, targetType, targetIndex, comment = null, isDove = false) {
   const user = await currentUser();
 
@@ -400,12 +437,7 @@ export async function sendLike(to, targetType, targetIndex, comment = null, isDo
     comment: comment || null,
     is_dove: isDove || false,
   }), 20000);
-  if (error) throw new Error(error.message);
-
-  if (isDove) {
-    const { data: me } = await supabase.from("profiles").select("doves").eq("id", user.id).single();
-    await supabase.from("profiles").update({ doves: (me.doves || 3) - 1 }).eq("id", user.id);
-  }
+  if (error) throw new Error(limitMessage(error.message));
 
   // Any like from them to me (heart, comment or dove) makes this a match
   const { data: mutual } = await supabase
@@ -476,9 +508,13 @@ export async function getLikesReceived() {
 
   const senders = await fetchPublicProfiles((likes || []).map((l) => l.from_user));
   const reliability = await getReliability((likes || []).map((l) => l.from_user));
+  // Reveals are stored per account, so they survive a new device or a cleared browser
+  const { data: reveals } = await supabase.from("spark_reveals").select("like_id").eq("user_id", user.id);
+  const revealed = new Set((reveals || []).map((r) => r.like_id));
   return (likes || []).map((like) => ({
     id: like.id,
     fromId: like.from_user,
+    revealed: revealed.has(like.id),
     profile: senders[like.from_user] ? { ...mapProfile(senders[like.from_user]), reliability: reliability[like.from_user] || null } : null,
     targetType: like.target_type,
     targetIndex: like.target_index,

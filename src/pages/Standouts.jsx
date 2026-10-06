@@ -107,7 +107,7 @@ export default function Standouts() {
   const [standoutLikesLeft, setStandoutLikesLeft] = useState(getDovesRemaining(isPremium));
   useEffect(() => {
     setStandoutLikesLeft(getDovesRemaining(isPremium));
-  }, [isPremium]);
+  }, [isPremium, state.usage]);
 
   if (doveSentData) {
     const nextWed = new Date(now);

@@ -13,6 +13,7 @@ import CompatibilityRing from "../components/CompatibilityRing";
 import FilterSheet from "../components/FilterSheet";
 import ReportSheet from "../components/ReportSheet";
 import { getLikesRemaining, getDovesRemaining, recordLike, recordDove, LIMITS } from "../services/limits";
+import * as api from "../services/api";
 import { track } from "../services/posthog";
 
 function haversine(lat1, lon1, lat2, lon2) {
@@ -51,7 +52,7 @@ export default function Discover() {
   useEffect(() => {
     setLikesLeft(getLikesRemaining(isPremium));
     setDovesLeft(getDovesRemaining(isPremium));
-  }, [isPremium]);
+  }, [isPremium, state.usage]);
 
   const userLat = state.currentUser?.location?.lat;
   const userLng = state.currentUser?.location?.lng;
@@ -159,7 +160,10 @@ export default function Discover() {
         console.error("Like failed:", err);
         setLikeFlash(null);
         setLocalLikes((prev) => { const n = new Set(prev); n.delete(likedId); return n; });
-        setLikeError("Your like didn't go through — please try again");
+        // The database refused it because the allowance is used up: show that, and correct the counters
+        const limited = api.isLimitError(err);
+        setLikeError(limited ? err.message : "Your like didn't go through — please try again");
+        if (limited) { actions.refreshUsage(); }
         setTimeout(() => setLikeError(""), 4000);
       }
     }, 500);

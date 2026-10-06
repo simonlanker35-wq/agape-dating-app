@@ -8,6 +8,7 @@ import AgapeCross from "../components/AgapeCross";
 import DoveIcon from "../components/DoveIcon";
 import ReliabilityBadge from "../components/ReliabilityBadge";
 import { getRevealsRemaining, recordReveal, LIMITS } from "../services/limits";
+import * as api from "../services/api";
 import { track } from "../services/posthog";
 
 const C = { bg: "#FFFFFF", card: "#FAFAF8", surface: "#F4F2EE", primary: "#B8912A", primarySoft: "#FBF5E6", text: "#1A1612", sub: "#8C857C", border: "#E8E4DF" };
@@ -30,7 +31,7 @@ export default function LikesYou() {
 
   useEffect(() => {
     setRevealsLeft(getRevealsRemaining(isPremium));
-  }, [isPremium]);
+  }, [isPremium, state.usage]);
 
   const allLikes = state.likesReceived.filter(
     (l) => l.profile && !dismissed.has(l.id) && !likedBack.has(l.id)
@@ -93,12 +94,20 @@ export default function LikesYou() {
             const profile = like.profile;
             const matched = likedBack.has(like.id);
             const isDoveLike = like.isDove;
-            const isRevealed = isDoveLike || revealedIds.has(like.id) || isPremium;
+            const isRevealed = isDoveLike || like.revealed || revealedIds.has(like.id) || isPremium;
             const isLocked = !isRevealed;
 
-            const handleReveal = (e) => {
+            const handleReveal = async (e) => {
               e.stopPropagation();
               if (revealsLeft <= 0) return;
+              // The database records the reveal and refuses it once the weekly allowance is used
+              try {
+                await actions.revealLike(like.id);
+              } catch (err) {
+                console.error("Reveal failed:", err);
+                if (api.isLimitError(err)) setRevealsLeft(0);
+                return;
+              }
               track("sparks_reveal", { revealsLeft: revealsLeft - 1 });
               recordReveal();
               setRevealsLeft(getRevealsRemaining(isPremium));

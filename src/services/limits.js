@@ -33,20 +33,38 @@ function increment(key) {
 
 function tier(isPremium) { return isPremium ? PREMIUM : FREE; }
 
-export function getLikesUsed() { return getCount("agape_daily_likes"); }
-export function getLikesRemaining(isPremium) { return Math.max(0, tier(isPremium).dailyLikes - getLikesUsed()); }
-export function recordLike() { increment("agape_daily_likes"); }
+// Once usage_limits.sql has run, the database counts likes, Doves and reveals and refuses the one
+// too many. The counts it reports replace the per-device numbers below, which stay as a fallback.
+let server = null;
+export function setServerUsage(u) {
+  server = u && typeof u === "object" ? { ...u } : null;
+}
+export function getServerUsage() { return server; }
+export function hasServerUsage() { return !!server; }
 
-export function getDovesUsed() { return getCount("agape_weekly_doves"); }
-export function getDovesRemaining(isPremium) { return Math.max(0, tier(isPremium).weeklyDoves - getDovesUsed()); }
-export function recordDove() { increment("agape_weekly_doves"); }
+export function getLikesUsed() { return server ? server.likesUsed : getCount("agape_daily_likes"); }
+export function getLikesRemaining(isPremium) {
+  if (server) return Math.max(0, server.likesLimit - server.likesUsed);
+  return Math.max(0, tier(isPremium).dailyLikes - getLikesUsed());
+}
+export function recordLike() { if (server) server.likesUsed += 1; increment("agape_daily_likes"); }
+
+export function getDovesUsed() { return server ? server.dovesUsed : getCount("agape_weekly_doves"); }
+export function getDovesRemaining(isPremium) {
+  if (server) return Math.max(0, server.dovesLimit - server.dovesUsed);
+  return Math.max(0, tier(isPremium).weeklyDoves - getDovesUsed());
+}
+export function recordDove() { if (server) server.dovesUsed += 1; increment("agape_weekly_doves"); }
 
 export function getStandoutLikesUsed() { return getCount("agape_weekly_standout"); }
 export function getStandoutLikesRemaining(isPremium) { return Math.max(0, tier(isPremium).weeklyStandouts - getStandoutLikesUsed()); }
 export function recordStandoutLike() { increment("agape_weekly_standout"); }
 
-export function getRevealsUsed() { return getCount("agape_weekly_reveals"); }
-export function getRevealsRemaining(isPremium) { return isPremium ? Infinity : Math.max(0, FREE.weeklyReveals - getRevealsUsed()); }
-export function recordReveal() { increment("agape_weekly_reveals"); }
+export function getRevealsUsed() { return server ? server.revealsUsed : getCount("agape_weekly_reveals"); }
+export function getRevealsRemaining(isPremium) {
+  if (server) return server.revealsLimit >= 1000000 ? Infinity : Math.max(0, server.revealsLimit - server.revealsUsed);
+  return isPremium ? Infinity : Math.max(0, FREE.weeklyReveals - getRevealsUsed());
+}
+export function recordReveal() { if (server) server.revealsUsed += 1; increment("agape_weekly_reveals"); }
 
 export const LIMITS = { FREE, PREMIUM };
