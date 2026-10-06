@@ -22,7 +22,7 @@ const TOURS = {
     { selector: 'button[aria-label="Video call"]', title: "Video call", text: "Rather meet on a call first? Schedule one here — it pauses the deadline." },
   ],
   standouts: [
-    { full: true, title: "Chosen", text: "Every Wednesday we handpick one profile for you, based on your faith and values. Send them a Dove if you like what you see." },
+    { full: true, title: "Chosen", text: "Every Wednesday we pick the one profile that matches you best on faith, values and what you're both looking for. Tap the ring to see why. Send them a Dove if you like what you see." },
   ],
   likes: [
     { full: true, title: "Sparks", text: "People who liked you land here. Free members reveal one a week — with Agape+ you see everyone. Like back to match." },

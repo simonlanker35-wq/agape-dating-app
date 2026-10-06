@@ -120,7 +120,7 @@ export default function Standouts() {
             {daysLeft > 0 ? `${daysLeft}d ${hoursLeft}h remaining` : `${hoursLeft}h remaining`}
           </p>
         </div>
-        <p style={{ color: C.sub, fontSize: 12, marginTop: 16 }}>Every Wednesday you receive a handpicked match</p>
+        <p style={{ color: C.sub, fontSize: 12, marginTop: 16 }}>Every Wednesday you get the one profile that matches you best</p>
       </div>
     );
   }
@@ -136,7 +136,7 @@ export default function Standouts() {
         <p style={{ color: C.sub, fontSize: 14, marginTop: 4 }}>
           {isWednesday
             ? "Nobody new matches your filters right now. Widen your age range or distance in Seek and check back — the next pick comes next Wednesday."
-            : `Every Wednesday you get 1 handpicked profile chosen just for you. Come back ${dayName}.`}
+            : `Every Wednesday we show you the one person who matches you best on faith, values and what you're both looking for. Come back ${dayName}.`}
         </p>
       </div>
     );
