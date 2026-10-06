@@ -410,7 +410,27 @@ function DateCard({ invitation, isMe, isMale, onRespond, onConfirm, onDecline, o
   const [showDecline, setShowDecline] = useState(false);
   const [declineReasons, setDeclineReasons] = useState([]);
   const [confirming, setConfirming] = useState(null);
+  const [cancelAsk, setCancelAsk] = useState(false);
   const [internalPickerOpen, setInternalPickerOpen] = useState(false);
+
+  // "Cancel" with a confirmation step, used by both sides at every stage
+  const cancelRow = (label, question) => !onCancel ? null : cancelAsk ? (
+    <div style={{ marginTop: 10, padding: "10px 12px", borderRadius: 12, background: "#FEF2F2", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+      <span style={{ flex: 1, minWidth: 140, fontSize: 13, color: "#7F1D1D", fontFamily: FONT }}>{question}</span>
+      <button onClick={() => setCancelAsk(false)} style={{ padding: "8px 12px", borderRadius: 10, border: "none", background: "#fff", color: C.text, fontSize: 13, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>Keep it</button>
+      <button
+        onClick={async () => { track("date_cancelled"); setSending(true); await onCancel(invitation.id); setSending(false); setCancelAsk(false); }}
+        disabled={sending}
+        style={{ padding: "8px 12px", borderRadius: 10, border: "none", background: "#B91C1C", color: "#fff", fontSize: 13, fontWeight: 700, fontFamily: FONT, cursor: "pointer", opacity: sending ? 0.6 : 1 }}
+      >
+        {sending ? "..." : "Yes, cancel"}
+      </button>
+    </div>
+  ) : (
+    <button onClick={() => setCancelAsk(true)} style={{ marginTop: 8, width: "100%", padding: "9px", borderRadius: 10, border: "none", background: "none", color: C.sub, fontSize: 13, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>
+      {label}
+    </button>
+  );
   // The thread owns the picker state so its footer button can open it
   const showPicker = pickerOpen ?? internalPickerOpen;
   const setShowPicker = onPickerOpenChange || setInternalPickerOpen;
@@ -494,12 +514,15 @@ function DateCard({ invitation, isMe, isMale, onRespond, onConfirm, onDecline, o
 
       <div style={{ padding: "12px 16px 14px" }}>
         {invitation.status === "confirmed" && invitation.confirmed_time && (
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <Clock size={16} strokeWidth={1.7} color={C.sub} />
-            <span style={{ fontSize: 15, fontWeight: 600, color: C.text, fontFamily: FONT, letterSpacing: "-0.2px" }}>
-              {longDay(invitation.confirmed_time.date)} · {invitation.confirmed_time.time}
-            </span>
-          </div>
+          <>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <Clock size={16} strokeWidth={1.7} color={C.sub} />
+              <span style={{ fontSize: 15, fontWeight: 600, color: C.text, fontFamily: FONT, letterSpacing: "-0.2px" }}>
+                {longDay(invitation.confirmed_time.date)} · {invitation.confirmed_time.time}
+              </span>
+            </div>
+            {new Date(invitation.confirmed_time.date).getTime() + 24 * 3600e3 > Date.now() && cancelRow("Cancel this date", `Cancel the date with ${themName}? They will be told right away.`)}
+          </>
         )}
 
         {invitation.status === "pending" && !isMale && (
@@ -614,13 +637,7 @@ function DateCard({ invitation, isMe, isMale, onRespond, onConfirm, onDecline, o
             <p style={{ fontSize: 13, color: C.sub, textAlign: "center", fontFamily: FONT, margin: 0 }}>
               Sent to {themName} — waiting for her to say when she's free.
             </p>
-            <button
-              onClick={async () => { track("date_cancelled"); setSending(true); await onCancel(invitation.id); setSending(false); }}
-              disabled={sending}
-              style={{ width: "100%", marginTop: 10, padding: "10px 0", borderRadius: 14, fontSize: 13, fontWeight: 600, background: "none", color: C.sub, border: "none", cursor: "pointer", fontFamily: FONT }}
-            >
-              {sending ? "..." : "Cancel this plan"}
-            </button>
+            {cancelRow("Cancel this plan", `Withdraw this plan? ${themName} will be told right away.`)}
           </>
         )}
 
@@ -632,6 +649,7 @@ function DateCard({ invitation, isMe, isMale, onRespond, onConfirm, onDecline, o
             <button onClick={() => { track("date_confirm_picker_opened"); setShowPicker(true); }} style={primaryBtn}>
               <Calendar size={16} color="white" /> Pick a time
             </button>
+            {cancelRow("Cancel this plan", `Withdraw this plan? ${themName} will be told right away.`)}
             {showPicker && (
               <AvailabilitySheet
                 title={pickerTitle}
@@ -673,6 +691,7 @@ function DateCard({ invitation, isMe, isMale, onRespond, onConfirm, onDecline, o
             <button onClick={() => { track("date_times_edit_opened"); setShowPicker(true); }} style={secondaryBtn}>
               <Calendar size={16} color={C.primary} /> Change my times
             </button>
+            {cancelRow("I can't make it after all", `Withdraw your times? ${themName} will be told right away.`)}
             {showPicker && (
               <AvailabilitySheet
                 title={pickerTitle}
@@ -788,22 +807,31 @@ function ChatThread({ match, onBack }) {
     return () => clearInterval(check);
   }, [nudgeSent, isMale, match.id]);
 
-  const firstMessageTime = messages.length > 0 ? messages[0].timestamp : null;
+  // The clock starts with the first real message, not with a like comment sent before the match
+  const firstMessageTime = messages.find((msg) => !msg.isComment)?.timestamp ?? null;
   const FIVE_DAYS = 5 * 24 * 60 * 60 * 1000;
   const NUDGE_BONUS = 36 * 60 * 60 * 1000;
   const COOLDOWN_48H = 48 * 60 * 60 * 1000;
+  const CALL_GRACE = 2 * 60 * 60 * 1000;
   const deadlinePaused = match.deadlinePaused;
-  const hasVideoCall = !!match.videoCallAt || videoCallStarted;
+  // A scheduled video call pauses the clock until two hours after the call; then five fresh days start
+  const callAt = match.videoCallAt || null;
+  const hasVideoCall = videoCallStarted || (!!callAt && Date.now() < callAt + CALL_GRACE);
   const timerStopped = deadlinePaused || hasVideoCall || !!confirmedDate || !!openInvite;
 
-  const lastDeclinedAt = (() => {
-    const d = dateInvitations.filter((inv) => inv.status === "declined" && !api.isCancelledInvite(inv)).sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
-    return d ? new Date(d.created_at).getTime() : null;
-  })();
+  // The most recent closed plan restarts the clock. A decline adds a 48h cooling-off period;
+  // a cancellation gives five fresh days, so cancelling can never lock the chat on the spot.
+  const lastClosed = dateInvitations
+    .filter((inv) => inv.status === "declined")
+    .sort((x, y) => new Date(y.created_at) - new Date(x.created_at))[0] || null;
+  const lastClosedAt = lastClosed ? new Date(lastClosed.created_at).getTime() : null;
+  const lastClosedCooldown = lastClosed && !api.isCancelledInvite(lastClosed) ? COOLDOWN_48H : 0;
 
   let deadlineMs = null;
   if (!timerStopped && firstMessageTime) {
-    deadlineMs = lastDeclinedAt ? lastDeclinedAt + COOLDOWN_48H + FIVE_DAYS : firstMessageTime + FIVE_DAYS;
+    deadlineMs = firstMessageTime + FIVE_DAYS;
+    if (lastClosedAt) deadlineMs = Math.max(deadlineMs, lastClosedAt + lastClosedCooldown + FIVE_DAYS);
+    if (callAt && !hasVideoCall) deadlineMs = Math.max(deadlineMs, callAt + CALL_GRACE + FIVE_DAYS);
     if (nudgeSent || match.nudgeAt) deadlineMs += NUDGE_BONUS;
   }
   const timeLeftMs = deadlineMs ? deadlineMs - Date.now() : null;
@@ -1024,8 +1052,14 @@ function ChatThread({ match, onBack }) {
 
   const handleCancelDate = async (invId) => {
     try {
+      const inv = dateInvitations.find((x) => x.id === invId);
       const updated = await api.cancelDate(invId);
-      setDateInvitations((prev) => prev.map((inv) => (inv.id === invId ? updated : inv)));
+      setDateInvitations((prev) => prev.map((x) => (x.id === invId ? updated : x)));
+      const wasConfirmed = inv?.status === "confirmed";
+      const myName = state.currentUser?.name || "Your match";
+      await actions.sendMessage(match.id, wasConfirmed ? "🗓️ Date cancelled" : "🗓️ Plan withdrawn");
+      notifyThem(wasConfirmed ? `${myName} cancelled the date` : `${myName} withdrew the plan`, "Open the chat to talk about it.", "date-cancel");
+      track(wasConfirmed ? "date_cancelled_confirmed" : "date_plan_withdrawn");
     } catch (err) {
       console.error("Cancel failed:", err);
     }
@@ -1152,14 +1186,19 @@ function ChatThread({ match, onBack }) {
           // System-style events (rose, video call) render as quiet centered lines instead of bubbles
           const isRose = item.text?.trim() === "🌹";
           const isVideoNote = item.text?.startsWith("📹");
-          if (isRose || isVideoNote) {
-            const label = isRose ? `${isMe ? "You" : profile.name} sent a rose` : item.text.replace(/^📹\s*/, "").replace("Video call scheduled:", "Video call ·");
+          const isDateNote = item.text?.startsWith("🗓️");
+          if (isRose || isVideoNote || isDateNote) {
+            const label = isRose
+              ? `${isMe ? "You" : profile.name} sent a rose`
+              : isDateNote
+                ? `${isMe ? "You" : profile.name} ${item.text.includes("cancelled") ? "cancelled the date" : "withdrew the plan"}`
+                : item.text.replace(/^📹\s*/, "").replace("Video call scheduled:", "Video call ·");
             return (
               <div key={item.id}>
                 {divider}
                 <div style={{ display: "flex", justifyContent: "center", margin: "6px 0 12px" }}>
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 9999, background: C.card, border: `1px solid ${C.border}`, fontSize: 12, fontWeight: 500, color: C.sub, fontFamily: FONT }}>
-                    {isRose ? <Flower2 size={13} color={C.primary} strokeWidth={1.8} /> : <Video size={13} color={C.sub} strokeWidth={1.8} />}
+                    {isRose ? <Flower2 size={13} color={C.primary} strokeWidth={1.8} /> : isDateNote ? <Calendar size={13} color={C.sub} strokeWidth={1.8} /> : <Video size={13} color={C.sub} strokeWidth={1.8} />}
                     {label}
                   </span>
                 </div>

@@ -719,7 +719,7 @@ function SettingsScreen({ onBack, initialSection = null }) {
                     <LocationPicker
                       value={editValue}
                       onChange={(text) => { setEditValue(text); setEditLocationData(null); }}
-                      onSelect={(item) => { setEditValue(item.display); setEditLocationData(item); }}
+                      onSelect={(item) => { setEditValue(item.city || item.display.split(",")[0]); setEditLocationData(item); }}
                       placeholder="Search city..."
                       inputStyle={{ width: "100%", padding: "12px 14px", fontSize: 16, fontWeight: 600, fontFamily: FONT, borderRadius: 12, border: `1.5px solid ${C.border}`, background: C.surface, outline: "none", color: C.text }}
                     />

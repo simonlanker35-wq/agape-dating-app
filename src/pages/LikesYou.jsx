@@ -21,7 +21,11 @@ export default function LikesYou() {
   const [viewProfile, setViewProfile] = useState(null);
   const isPremium = state.currentUser?.subscriptionStatus === "active";
   const [revealsLeft, setRevealsLeft] = useState(getRevealsRemaining(isPremium));
-  const [revealedIds, setRevealedIds] = useState(new Set());
+  // Revealed likes are remembered per account, so a reveal is not lost on reload
+  const revealKey = `agape_revealed_${state.currentUser?.id || "anon"}`;
+  const [revealedIds, setRevealedIds] = useState(() => {
+    try { return new Set(JSON.parse(localStorage.getItem(revealKey) || "[]")); } catch (_) { return new Set(); }
+  });
   const [heartFlash, setHeartFlash] = useState(null);
 
   useEffect(() => {
@@ -98,7 +102,11 @@ export default function LikesYou() {
               track("sparks_reveal", { revealsLeft: revealsLeft - 1 });
               recordReveal();
               setRevealsLeft(getRevealsRemaining(isPremium));
-              setRevealedIds((prev) => new Set(prev).add(like.id));
+              setRevealedIds((prev) => {
+                const next = new Set(prev).add(like.id);
+                try { localStorage.setItem(revealKey, JSON.stringify([...next])); } catch (_) {}
+                return next;
+              });
             };
 
             return (

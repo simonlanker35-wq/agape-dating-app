@@ -39,6 +39,7 @@ function mapProfile(p) {
     interests: p.interests || [],
     traits: p.traits || [],
     lookingFor: p.looking_for || [],
+    whoAreYou: p.who_are_you || [],
     details: p.details || {},
     isStandout: !!p.is_standout,
     filters: p.filters || null,

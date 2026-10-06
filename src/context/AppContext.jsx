@@ -42,13 +42,24 @@ const initialState = {
 
 function reducer(state, action) {
   switch (action.type) {
-    case "SET_USER":
+    case "SET_USER": {
+      // The saved filters are the source of truth; without this they fell back to the defaults on every reload
+      const f = action.payload?.filters;
+      const saved = f ? {
+        minAge: Number(f.minAge) || 18,
+        maxAge: Number(f.maxAge) || 35,
+        maxDistance: Number(f.maxDistance) || 80,
+        denominations: Array.isArray(f.denominations) ? f.denominations : [],
+        details: f.details && typeof f.details === "object" ? f.details : {},
+      } : null;
       return {
         ...state,
         currentUser: action.payload,
+        filters: saved ? { ...state.filters, ...saved } : state.filters,
         onboardingComplete: !!action.payload,
         needsProfile: false,
       };
+    }
 
     // Signed in (e.g. via Google/Apple) but the profile row was never created — resume onboarding
     case "NEEDS_PROFILE":
@@ -330,29 +341,30 @@ export function AppProvider({ children }) {
     }
   }, [state.onboardingComplete, state.currentUser?.id]);
 
+  // GPS is only used when the profile has no coordinates yet (e.g. the city was typed without picking a
+  // suggestion). A location the user chose is never overwritten, so a typed location sticks.
   useEffect(() => {
-    if (state.currentUser && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        async (pos) => {
-          const lat = pos.coords.latitude;
-          const lng = pos.coords.longitude;
-          dispatch({
-            type: "SET_USER_LOCATION",
-            payload: { lat, lng },
-          });
+    const user = state.currentUser;
+    if (!user || !navigator.geolocation) return;
+    if (user.location?.lat && user.location?.lng) return;
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        dispatch({ type: "SET_USER_LOCATION", payload: { lat, lng } });
+        const update = { locationLat: lat, locationLng: lng };
+        if (!user.location?.city) {
           try {
             const resp = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=10`);
             const data = await resp.json();
             const city = data.address?.city || data.address?.town || data.address?.village || data.address?.municipality || "";
-            if (city) {
-              dispatch({ type: "SET_USER_LOCATION", payload: { lat, lng, city } });
-              api.updateProfile({ location: city }).catch(() => {});
-            }
+            if (city) { update.location = city; dispatch({ type: "SET_USER_LOCATION", payload: { lat, lng, city } }); }
           } catch (_) {}
-        },
-        () => {}
-      );
-    }
+        }
+        api.updateProfile(update).catch(() => {});
+      },
+      () => {}
+    );
   }, [state.currentUser?.id]);
 
   const loadDiscover = useCallback(async () => {

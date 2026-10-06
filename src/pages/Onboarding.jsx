@@ -541,7 +541,7 @@ export default function Onboarding() {
         interests: form.traits,
         traits: form.traits,
         whoAreYou: form.whoAreYou,
-        lookingFor: [],
+        lookingFor: form.whoAreYou,
         filters: {
           maxAge: 35,
           minAge: 18,
@@ -1299,11 +1299,11 @@ export default function Onboarding() {
           try {
             const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}&format=json`);
             const data = await res.json();
-            const city = data.address?.city || data.address?.town || data.address?.village || data.address?.municipality || "Unknown";
+            const city = data.address?.city || data.address?.town || data.address?.village || data.address?.municipality || data.address?.county || "Near you";
             setForm({ ...form, location: city, locationLat: pos.coords.latitude, locationLng: pos.coords.longitude });
             setGpsLoading(false);
           } catch {
-            setForm({ ...form, location: "My location", locationLat: pos.coords.latitude, locationLng: pos.coords.longitude });
+            setForm({ ...form, location: "Near you", locationLat: pos.coords.latitude, locationLng: pos.coords.longitude });
             setGpsLoading(false);
           }
         },
@@ -1340,7 +1340,7 @@ export default function Onboarding() {
           <LocationPicker
             value={form.location}
             onChange={(text) => setForm({ ...form, location: text, locationLat: null, locationLng: null })}
-            onSelect={(item) => setForm({ ...form, location: item.display, locationLat: item.lat, locationLng: item.lng })}
+            onSelect={(item) => setForm({ ...form, location: item.city || item.display.split(",")[0], locationLat: item.lat, locationLng: item.lng })}
             placeholder="Search city..."
             className="onboarding-input"
             inputStyle={{ width: "100%", padding: "14px 16px", background: "transparent", color: S.text, border: "none", fontSize: 16, outline: "none", fontFamily: "'Outfit', system-ui, sans-serif" }}

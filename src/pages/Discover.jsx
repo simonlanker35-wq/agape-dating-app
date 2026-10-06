@@ -38,6 +38,7 @@ export default function Discover() {
   const [cardEnter, setCardEnter] = useState(true);
   const [photoIdx, setPhotoIdx] = useState(0);
   const [likeChoice, setLikeChoice] = useState(null);
+  const [doveBrowse, setDoveBrowse] = useState(false); // keep browsing for a Dove after the daily likes are gone
   const [localSkips, setLocalSkips] = useState(new Set());
   const [localLikes, setLocalLikes] = useState(new Set());
   const [showFilter, setShowFilter] = useState(false);
@@ -93,13 +94,18 @@ export default function Discover() {
     return () => clearTimeout(t);
   }, [profile?.id]);
 
-  if (likesLeft <= 0) {
+  if (likesLeft <= 0 && !(doveBrowse && dovesLeft > 0)) {
     const limit = isPremium ? LIMITS.PREMIUM.dailyLikes : LIMITS.FREE.dailyLikes;
     return (
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", padding: "60px 20px", textAlign: "center" }}>
         <Heart size={48} strokeWidth={1.4} color="#B8912A" style={{ marginBottom: 16 }} />
         <h2 style={{ color: "#1A1612", fontFamily: "'Outfit', system-ui, sans-serif", fontSize: 20, fontWeight: 700, margin: 0 }}>No likes left today</h2>
         <p style={{ color: "#8C857C", fontSize: 14, marginTop: 4 }}>You've used all {limit} {isPremium ? "" : "free "}likes for today. Come back tomorrow!</p>
+        {dovesLeft > 0 && (
+          <button className="filter-apply-btn" style={{ marginTop: 16, flex: "none" }} onClick={() => { track("dove_browse_after_limit"); setDoveBrowse(true); }}>
+            You still have {dovesLeft} Dove{dovesLeft === 1 ? "" : "s"} this week · keep browsing
+          </button>
+        )}
         {!isPremium && (
           <button className="filter-apply-btn" style={{ marginTop: 16, flex: "none", background: "#B8912A" }} onClick={() => { track("upgrade_tapped", { source: "no_likes_left" }); dispatch({ type: "SET_TAB", payload: "profile" }); }}>
             Get Agape+ for {LIMITS.PREMIUM.dailyLikes} likes/day
@@ -131,7 +137,7 @@ export default function Discover() {
 
   const handleLike = async (targetType, targetIndex, comment = null, isDove = false) => {
     if (isDove && dovesLeft <= 0) return;
-    if (likesLeft <= 0) return;
+    if (!isDove && likesLeft <= 0) return;
     const flashType = comment ? "comment" : isDove ? "dove" : "heart";
     const likedId = profile.id;
     const likedProfile = profile;
@@ -139,9 +145,9 @@ export default function Discover() {
     setCommentText("");
     setShowDove(false);
     setLikeFlash(flashType);
-    recordLike();
-    setLikesLeft(getLikesRemaining(isPremium));
+    // Doves come from their own weekly allowance and do not use up a daily like
     if (isDove) { recordDove(); setDovesLeft(getDovesRemaining(isPremium)); }
+    else { recordLike(); setLikesLeft(getLikesRemaining(isPremium)); }
 
     setTimeout(async () => {
       setLocalLikes((prev) => new Set(prev).add(likedId));
@@ -336,9 +342,9 @@ export default function Discover() {
               <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
                 <div style={{ display: "flex", gap: 20 }}>
                   <button
-                    onClick={() => onHeartPress("profile", 0)}
+                    onClick={() => likesLeft > 0 && onHeartPress("profile", 0)}
                     aria-label="Like"
-                    style={{ width: 56, height: 38, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", background: "#B8912A", border: "none", cursor: "pointer", boxShadow: "0 3px 12px rgba(184,145,42,0.45)", opacity: likesLeft > 0 ? 1 : 0.5, position: "relative" }}
+                    style={{ width: 56, height: 38, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", background: "#B8912A", opacity: likesLeft > 0 ? 1 : 0.4, border: "none", cursor: "pointer", boxShadow: "0 3px 12px rgba(184,145,42,0.45)", opacity: likesLeft > 0 ? 1 : 0.5, position: "relative" }}
                   >
                     <Heart size={18} fill="white" stroke="white" />
                     <span style={{ position: "absolute", top: -6, right: -6, minWidth: 18, height: 18, padding: "0 5px", borderRadius: 9, background: "white", color: "#B8912A", fontSize: 11, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Outfit', system-ui, sans-serif", boxShadow: "0 1px 4px rgba(0,0,0,0.2)" }}>{likesLeft}</span>
