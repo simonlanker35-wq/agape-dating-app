@@ -9,6 +9,7 @@ import WaveformBar from "../components/WaveformBar";
 import { rankProfiles } from "../utils/algorithm";
 import AudioPlayer from "../components/AudioPlayer";
 import VerifiedBadge from "../components/VerifiedBadge";
+import CompatibilityRing from "../components/CompatibilityRing";
 import FilterSheet from "../components/FilterSheet";
 import ReportSheet from "../components/ReportSheet";
 import { getLikesRemaining, getDovesRemaining, recordLike, recordDove, LIMITS } from "../services/limits";
@@ -305,7 +306,10 @@ export default function Discover() {
             {/* Identity block — pinned to bottom of photo */}
             <div className="id-block">
               <div className="id-info">
-                {profile.isVerified && <div style={{ marginBottom: 6 }}><VerifiedBadge size={18} label /></div>}
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                  <CompatibilityRing profile={profile} size={46} light />
+                  {profile.isVerified && <VerifiedBadge size={18} label />}
+                </div>
                 <div className="id-line1">
                   <span className="id-name">{profile.name},</span>
                   <span className="id-age">{profile.age}</span>

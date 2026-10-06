@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { Heart, X, Lock } from "lucide-react";
 import AudioPlayer from "../components/AudioPlayer";
 import VerifiedBadge from "../components/VerifiedBadge";
+import CompatibilityRing from "../components/CompatibilityRing";
 import AgapeCross from "../components/AgapeCross";
 import DoveIcon from "../components/DoveIcon";
 import ReliabilityBadge from "../components/ReliabilityBadge";
@@ -159,6 +160,9 @@ export default function LikesYou() {
                   </div>
                 ) : (
                   <>
+                    <div style={{ position: "absolute", top: 10, right: 10 }}>
+                      <CompatibilityRing profile={profile} size={40} light />
+                    </div>
                     <div style={{ position: "absolute", bottom: 56, left: 12, right: 12 }}>
                       <p style={{ color: "white", fontSize: 19, fontWeight: 600, fontFamily: SERIF, margin: 0, textShadow: "0 1px 4px rgba(0,0,0,0.4)", display: "flex", alignItems: "center", gap: 6 }}>
                         <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{profile.name}, {profile.age}</span>
@@ -223,6 +227,7 @@ export default function LikesYou() {
                 <span style={{ color: "white", fontSize: 28, fontWeight: 600, fontFamily: SERIF }}>{viewProfile.name}</span>
                 <span style={{ color: "rgba(255,255,255,0.8)", fontSize: 22, fontWeight: 300 }}>{viewProfile.age}</span>
                 {viewProfile.isVerified && <VerifiedBadge size={20} label />}
+                <CompatibilityRing profile={viewProfile} size={44} light style={{ marginLeft: "auto" }} />
               </div>
               <p style={{ color: "rgba(255,255,255,0.7)", fontSize: 12, marginTop: 4 }}>{viewProfile.denomination}{viewProfile.location ? ` · ${viewProfile.location}` : ""}</p>
               {viewProfile.reliability?.dates > 0 && <div style={{ marginTop: 8 }}><ReliabilityBadge reliability={viewProfile.reliability} light /></div>}
