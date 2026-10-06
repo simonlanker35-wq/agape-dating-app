@@ -78,9 +78,19 @@ export default function Standouts() {
       }
       return true;
     });
-    // The most compatible person who fits the filters (see utils/algorithm.js). No shuffle, so the
-    // pick stays the same all week; weekKey is a dependency so it is re-evaluated when the week turns.
-    return mostCompatible(matching, state.currentUser, filters);
+    // The most compatible person who fits the filters (see utils/algorithm.js). The first pick of the
+    // week is pinned on this device, so activity changes or profile edits during the day cannot swap
+    // it. It only moves on if that person leaves the pool (liked, blocked, filtered out, deactivated).
+    const uid = state.currentUser?.id || "";
+    const pinKey = `agape_chosen_${uid}_${weekKey}`;
+    let pinnedId = null;
+    try { pinnedId = localStorage.getItem(pinKey); } catch (_) {}
+    const pinned = pinnedId ? matching.find((p) => p.id === pinnedId) : null;
+    const pick = pinned
+      ? mostCompatible([pinned], state.currentUser, filters)
+      : mostCompatible(matching, state.currentUser, filters);
+    if (pick && pick.id !== pinnedId) { try { localStorage.setItem(pinKey, pick.id); } catch (_) {} }
+    return pick;
   }, [state.profiles, state.likes, state.blocked, localLikes, filters, userLat, userLng, weekKey, state.currentUser]);
 
   const profile = isWednesday ? weeklyPick : null;
