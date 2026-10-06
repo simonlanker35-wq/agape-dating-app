@@ -1,14 +1,6 @@
 import { supabase } from "./supabase";
 
-const compatibilityReasons = [
-  "You both love hiking and share the same denomination",
-  "Similar faith values and both enjoy worship music",
-  "You're both in the same area and share key interests",
-  "Strong faith alignment and shared love of travel",
-  "Compatible denomination and mutual interests in community",
-];
 
-let standoutCounter = 0;
 
 // Some rows have a GeoJSON blob saved in location_city by an earlier onboarding build — unpack it
 function parseLocation(p) {
@@ -26,7 +18,6 @@ function parseLocation(p) {
 }
 
 function mapProfile(p) {
-  const isStandout = p.is_standout || standoutCounter++ % 3 === 0;
   const loc = parseLocation(p);
   return {
     id: p.id,
@@ -49,8 +40,9 @@ function mapProfile(p) {
     traits: p.traits || [],
     lookingFor: p.looking_for || [],
     details: p.details || {},
-    isStandout: isStandout,
-    compatibilityReason: isStandout ? compatibilityReasons[standoutCounter % compatibilityReasons.length] : null,
+    isStandout: !!p.is_standout,
+    filters: p.filters || null,
+    createdAt: p.created_at || null,
     lastActive: p.last_active || null,
   };
 }

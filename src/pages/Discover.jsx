@@ -6,6 +6,7 @@ import ReliabilityBadge from "../components/ReliabilityBadge";
 import AgapeCross from "../components/AgapeCross";
 import { DETAIL_FIELDS } from "../data/profiles";
 import WaveformBar from "../components/WaveformBar";
+import { rankProfiles } from "../utils/algorithm";
 import AudioPlayer from "../components/AudioPlayer";
 import VerifiedBadge from "../components/VerifiedBadge";
 import FilterSheet from "../components/FilterSheet";
@@ -55,7 +56,7 @@ export default function Discover() {
   const filters = state.filters;
 
   const filteredProfiles = useMemo(() => {
-    return state.profiles.filter((p) => {
+    const passing = state.profiles.filter((p) => {
       if (state.likes.some((l) => l.profileId === p.id)) return false;
       if (state.blocked.some((b) => (b.id || b) === p.id)) return false;
       if (localSkips.has(p.id)) return false;
@@ -71,7 +72,9 @@ export default function Discover() {
       }
       return true;
     });
-  }, [state.profiles, state.likes, state.blocked, localSkips, localLikes, filters, userLat, userLng]);
+    // Most compatible first (see utils/algorithm.js)
+    return rankProfiles(passing, state.currentUser, filters);
+  }, [state.profiles, state.likes, state.blocked, localSkips, localLikes, filters, userLat, userLng, state.currentUser]);
 
   const profile = filteredProfiles[0];
 

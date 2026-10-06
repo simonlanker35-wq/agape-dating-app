@@ -5,6 +5,7 @@ import AgapeCross from "../components/AgapeCross";
 import DoveIcon from "../components/DoveIcon";
 import ReliabilityBadge from "../components/ReliabilityBadge";
 import WaveformBar from "../components/WaveformBar";
+import { mostCompatible } from "../utils/algorithm";
 import AudioPlayer from "../components/AudioPlayer";
 import VerifiedBadge from "../components/VerifiedBadge";
 import ReportSheet from "../components/ReportSheet";
@@ -76,15 +77,10 @@ export default function Standouts() {
       }
       return true;
     });
-    // Prefer standout profiles, but with a small pool fall back to anyone who fits the filters
-    const standouts = matching.filter((p) => p.isStandout);
-    const eligible = standouts.length ? standouts : matching;
-    if (eligible.length === 0) return null;
-    const seed = weekKey + (state.currentUser?.id || "");
-    let hash = 0;
-    for (let i = 0; i < seed.length; i++) hash = ((hash << 5) - hash + seed.charCodeAt(i)) | 0;
-    return eligible[Math.abs(hash) % eligible.length];
-  }, [state.profiles, state.likes, state.blocked, localLikes, filters, userLat, userLng, weekKey, state.currentUser?.id]);
+    // The most compatible person who fits the filters (see utils/algorithm.js). No shuffle, so the
+    // pick stays the same all week; weekKey is a dependency so it is re-evaluated when the week turns.
+    return mostCompatible(matching, state.currentUser, filters);
+  }, [state.profiles, state.likes, state.blocked, localLikes, filters, userLat, userLng, weekKey, state.currentUser]);
 
   const profile = isWednesday ? weeklyPick : null;
 
@@ -347,7 +343,7 @@ export default function Standouts() {
               <div className="hinge-prompt-inner">
                 <div className="hinge-prompt-accent" />
                 <div className="hinge-prompt-content">
-                  <div className="hinge-prompt-label">✦ Why they were chosen</div>
+                  <div className="hinge-prompt-label">Why they were chosen{profile.compatibilityScore ? ` · ${profile.compatibilityScore}% compatible` : ""}</div>
                   <div className="hinge-prompt-answer">{profile.compatibilityReason}</div>
                 </div>
               </div>
