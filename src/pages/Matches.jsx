@@ -742,6 +742,12 @@ function ChatThread({ match, onBack }) {
   const [reportDone, setReportDone] = useState(null);
   const [blockFlash, setBlockFlash] = useState(false);
   const [showDateBuilder, setShowDateBuilder] = useState(false);
+  // Opened from the rose popup: go straight into planning
+  useEffect(() => {
+    if (!state.openDateBuilder) return;
+    dispatch({ type: "CLEAR_OPEN_DATE_BUILDER" });
+    if (state.currentUser?.gender === "male") setShowDateBuilder(true);
+  }, [state.openDateBuilder]);
   const [dateInvitations, setDateInvitations] = useState([]);
   const bottomRef = useRef(null);
 
@@ -1520,8 +1526,8 @@ function ChatThread({ match, onBack }) {
                 <div style={{ width: 36, height: 4, borderRadius: 2, background: C.border, margin: "0 auto 16px" }} />
                 <p style={{ fontSize: 17, fontWeight: 600, color: C.text, fontFamily: SERIF, textAlign: "center", marginBottom: 16 }}>{profile.name}</p>
                 {[
-                  { icon: <Flag size={18} strokeWidth={1.8} color="#EF4444" />, label: "Report", desc: "Flag inappropriate behaviour", color: "#EF4444", action: async () => { track("profile_reported", { source: "chat" }); dispatch({ type: "ADD_REPORT", payload: { profileId: profile.id, name: profile.name, photo: profile.photos?.[0], reason: "Inappropriate behaviour", timestamp: Date.now() } }); setReportDone("report"); } },
-                  { icon: <Ban size={18} strokeWidth={1.8} color="#EF4444" />, label: "Block", desc: "They won't be able to see you", color: "#EF4444", action: async () => { track("profile_blocked", { source: "chat" }); dispatch({ type: "BLOCK_PROFILE", payload: { id: profile.id, name: profile.name, photo: profile.photos?.[0] } }); setShowReportMenu(false); setBlockFlash(true); try { await actions.unmatch(match.id); } catch (_) {} setTimeout(() => { setBlockFlash(false); setShowReportMenu(true); setReportDone("block"); }, 1500); } },
+                  { icon: <Flag size={18} strokeWidth={1.8} color="#EF4444" />, label: "Report", desc: "Flag inappropriate behaviour", color: "#EF4444", action: async () => { track("profile_reported", { source: "chat" }); try { await actions.reportProfile(profile, "Inappropriate behaviour", "chat"); setReportDone("report"); } catch (err) { setMediaError(err.message); setShowReportMenu(false); } } },
+                  { icon: <Ban size={18} strokeWidth={1.8} color="#EF4444" />, label: "Block", desc: "They won't be able to see you", color: "#EF4444", action: async () => { track("profile_blocked", { source: "chat" }); setShowReportMenu(false); setBlockFlash(true); try { await actions.blockProfile(profile); await actions.unmatch(match.id); } catch (err) { console.error("Block failed:", err); } setTimeout(() => { setBlockFlash(false); setShowReportMenu(true); setReportDone("block"); }, 1500); } },
                   { icon: <UserMinus size={18} strokeWidth={1.8} color={C.text} />, label: "Unmatch", desc: "Remove this match", color: C.text, action: async () => { track("unmatch_from_chat"); try { await actions.unmatch(match.id); } catch (_) {} setReportDone("unmatch"); } },
                 ].map((item) => (
                   <button key={item.label} onClick={item.action} style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "14px 12px", borderRadius: 12, background: "none", border: "none", cursor: "pointer", textAlign: "left", marginBottom: 4 }}>

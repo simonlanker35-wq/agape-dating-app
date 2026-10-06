@@ -178,8 +178,14 @@ function reducer(state, action) {
     case "DISMISS_ROSE":
       return { ...state, roseAlert: null };
 
-    case "OPEN_CHAT":
-      return { ...state, activeTab: "matches", openChatId: action.payload };
+    case "OPEN_CHAT": {
+      const p = action.payload;
+      const id = typeof p === "object" && p ? p.id : p;
+      return { ...state, activeTab: "matches", openChatId: id, openDateBuilder: !!(typeof p === "object" && p?.planDate) };
+    }
+
+    case "CLEAR_OPEN_DATE_BUILDER":
+      return { ...state, openDateBuilder: false };
 
     case "CLEAR_OPEN_CHAT":
       return { ...state, openChatId: null };
@@ -196,8 +202,17 @@ function reducer(state, action) {
         },
       };
 
-    case "BLOCK_PROFILE":
-      return { ...state, blocked: [...state.blocked, typeof action.payload === "string" ? { id: action.payload } : action.payload] };
+    case "BLOCK_PROFILE": {
+      const b = typeof action.payload === "string" ? { id: action.payload } : action.payload;
+      if (state.blocked.some((x) => (x.id || x) === b.id)) return state;
+      return { ...state, blocked: [...state.blocked, b] };
+    }
+
+    case "SET_BLOCKED":
+      return { ...state, blocked: action.payload };
+
+    case "SET_REPORTS":
+      return { ...state, reports: action.payload };
 
     case "UNBLOCK_PROFILE":
       return { ...state, blocked: state.blocked.filter((b) => (b.id || b) !== action.payload) };
@@ -305,6 +320,8 @@ export function AppProvider({ children }) {
       let debounce = 0;
       const refresh = () => { loadLikesReceived(); loadMatches(); };
       loadVerifications();
+      api.getBlocks().then((b) => dispatch({ type: "SET_BLOCKED", payload: b })).catch(() => {});
+      api.getMyReports().then((r) => dispatch({ type: "SET_REPORTS", payload: r })).catch(() => {});
       const poll = setInterval(() => {
         tick += 1;
         if (tick % 6 === 0) loadVerifications();
@@ -672,6 +689,22 @@ export function AppProvider({ children }) {
 
     refreshDiscover: loadDiscover,
     refreshLikes: loadLikesReceived,
+    // Blocks and reports are saved on the server; the lists update immediately
+    blockProfile: async (profile) => {
+      dispatch({ type: "BLOCK_PROFILE", payload: { id: profile.id, name: profile.name, photo: profile.photos?.[0] } });
+      await api.blockUser(profile);
+      loadDiscover();
+    },
+    unblockProfile: async (id) => {
+      dispatch({ type: "UNBLOCK_PROFILE", payload: id });
+      await api.unblockUser(id);
+      loadDiscover();
+    },
+    reportProfile: async (profile, reason, source, details = null) => {
+      const report = await api.reportUser({ profile, reason, details, source });
+      dispatch({ type: "ADD_REPORT", payload: report });
+      return report;
+    },
     refreshMatches: loadMatches,
     refreshVerifications: loadVerifications,
   };

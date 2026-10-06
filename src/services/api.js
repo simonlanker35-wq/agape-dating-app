@@ -274,6 +274,8 @@ export async function updateProfile(data) {
   if (data.bio !== undefined) updates.bio = data.bio;
   if (data.details !== undefined) updates.details = data.details;
   if (data.filters !== undefined) updates.filters = data.filters;
+  if (data.notificationPrefs !== undefined) updates.notification_prefs = data.notificationPrefs;
+  if (data.paused !== undefined) updates.paused = !!data.paused;
   if (data.photos !== undefined) updates.photos = data.photos;
 
   const { data: profile, error } = await withTimeout(
@@ -314,20 +316,23 @@ export async function getDiscover() {
     ...(skippedIds || []).map((s) => s.to_user),
   ];
 
-  let query = supabase
-    .from("profiles")
-    .select("*")
-    .eq("gender", targetGender)
-    .eq("is_active", true)
-    .gte("age", minAge)
-    .lte("age", maxAge)
-    .limit(100);
+  const buildQuery = (hidePaused) => {
+    let q = supabase
+      .from("profiles")
+      .select("*")
+      .eq("gender", targetGender)
+      .eq("is_active", true)
+      .gte("age", minAge)
+      .lte("age", maxAge)
+      .limit(100);
+    if (hidePaused) q = q.eq("paused", false);
+    if (excludeIds.length > 0) q = q.not("id", "in", `(${excludeIds.join(",")})`);
+    return q;
+  };
 
-  if (excludeIds.length > 0) {
-    query = query.not("id", "in", `(${excludeIds.join(",")})`);
-  }
-
-  const { data: profiles, error } = await query;
+  let { data: profiles, error } = await buildQuery(true);
+  // The "paused" column arrives with settings_safety.sql; until then show everyone
+  if (error && /paused/i.test(error.message || "")) ({ data: profiles, error } = await buildQuery(false));
   if (error) throw new Error(error.message);
 
   let filtered = (profiles || []).map(mapProfile);
@@ -668,6 +673,67 @@ export function subscribeLive(name, specs, onEvent) {
   return () => { try { if (channel) supabase.removeChannel(channel); } catch (_) {} };
 }
 
+// ─── SAFETY: blocks and reports ───
+
+const notSetUp = (err) => /relation .* does not exist|schema cache|Could not find the table/i.test(err?.message || "");
+
+// People I blocked, with the name and photo saved at the time (their profile is hidden from me afterwards)
+export async function getBlocks() {
+  const user = await currentUser();
+  if (!user) return [];
+  const { data, error } = await supabase.from("blocks").select("blocked, blocked_name, blocked_photo, created_at").eq("blocker", user.id).order("created_at", { ascending: false });
+  if (error) { if (notSetUp(error)) return []; throw new Error(error.message); }
+  return (data || []).map((b) => ({ id: b.blocked, name: b.blocked_name, photo: b.blocked_photo, timestamp: new Date(b.created_at).getTime() }));
+}
+
+export async function blockUser(profile) {
+  const user = await currentUser();
+  if (!user) throw new Error("Not signed in");
+  const { error } = await supabase.from("blocks").upsert(
+    { blocker: user.id, blocked: profile.id, blocked_name: profile.name || null, blocked_photo: profile.photos?.[0] || null },
+    { onConflict: "blocker,blocked" }
+  );
+  if (error) throw new Error(notSetUp(error) ? "Blocking isn't set up on the server yet." : error.message);
+}
+
+export async function unblockUser(blockedId) {
+  const user = await currentUser();
+  if (!user) throw new Error("Not signed in");
+  const { error } = await supabase.from("blocks").delete().eq("blocker", user.id).eq("blocked", blockedId);
+  if (error) throw new Error(error.message);
+}
+
+export async function reportUser({ profile, reason, details = null, source = "app" }) {
+  const user = await currentUser();
+  if (!user) throw new Error("Not signed in");
+  const { data, error } = await supabase.from("reports").insert({
+    reporter: user.id, reported: profile.id, reported_name: profile.name || null, reported_photo: profile.photos?.[0] || null,
+    reason, details, source,
+  }).select("id, created_at, status").single();
+  if (error) throw new Error(notSetUp(error) ? "Reporting isn't set up on the server yet." : error.message);
+  return { id: data.id, profileId: profile.id, name: profile.name, photo: profile.photos?.[0], reason, status: data.status, timestamp: new Date(data.created_at).getTime() };
+}
+
+export async function getMyReports() {
+  const user = await currentUser();
+  if (!user) return [];
+  const { data, error } = await supabase.from("reports").select("id, reported, reported_name, reported_photo, reason, status, created_at").eq("reporter", user.id).order("created_at", { ascending: false });
+  if (error) { if (notSetUp(error)) return []; throw new Error(error.message); }
+  return (data || []).map((r) => ({ id: r.id, profileId: r.reported, name: r.reported_name, photo: r.reported_photo, reason: r.reason, status: r.status, timestamp: new Date(r.created_at).getTime() }));
+}
+
+// Deletes everything about the account through the delete-account function, then signs out
+export async function deleteAccount() {
+  const { data, error } = await withTimeout(supabase.functions.invoke("delete-account", { body: {} }), 60000);
+  if (error) {
+    let detail = null;
+    try { detail = await error.context?.json?.(); } catch (_) {}
+    throw new Error(detail?.error || "The account could not be deleted right now. Please try again or email us.");
+  }
+  if (!data?.ok) throw new Error(data?.error || "The account could not be deleted right now.");
+  try { await supabase.auth.signOut(); } catch (_) {}
+}
+
 // ─── MEDIA (Supabase Storage bucket "media") ───
 
 // Uploads a Blob to <my id>/<kind>/<random>.<ext> and returns its public URL.
@@ -892,6 +958,8 @@ function mapProfileToUser(p, authPhone) {
     isActive: p.is_active,
     lastActive: p.last_active,
     subscriptionStatus: p.subscription_status || "none",
+    notificationPrefs: p.notification_prefs || {},
+    paused: !!p.paused,
   };
 }
 

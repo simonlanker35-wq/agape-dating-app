@@ -262,6 +262,16 @@ export default function LikesYou() {
               </div>
             )}
           </div>
+          {(() => {
+            const like = likesWithProfiles.find((lk) => lk.profile?.id === viewProfile.id);
+            if (!like) return null;
+            return (
+              <div style={{ position: "sticky", bottom: 0, display: "flex", gap: 10, padding: "12px 16px calc(env(safe-area-inset-bottom, 0px) + 16px)", background: C.bg, borderTop: `1px solid ${C.border}` }}>
+                <button onClick={() => { handleDismiss(like); setViewProfile(null); }} style={{ flex: 1, padding: 14, borderRadius: 14, border: `1px solid ${C.border}`, background: C.bg, color: C.text, fontSize: 15, fontWeight: 600, fontFamily: FONT, cursor: "pointer" }}>Not for me</button>
+                <button onClick={() => { handleLikeBack(like); setViewProfile(null); }} style={{ flex: 2, padding: 14, borderRadius: 14, border: "none", background: C.primary, color: "#fff", fontSize: 15, fontWeight: 700, fontFamily: FONT, cursor: "pointer" }}>Like back</button>
+              </div>
+            );
+          })()}
         </div>
       )}
 

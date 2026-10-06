@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useApp } from "../context/AppContext";
-import { compressPhoto, sendTestPush, getPhotoOriginals, savePhotoOriginals, downscaleDataUrl, uploadMedia, submitVerification, removeVerification } from "../services/api";
+import { compressPhoto, sendTestPush, getPhotoOriginals, savePhotoOriginals, downscaleDataUrl, uploadMedia, submitVerification, removeVerification, deleteAccount } from "../services/api";
 import { Hourglass, Check, X as XIcon, Plus } from "lucide-react";
 import { PROMPT_CATEGORIES, TRAITS_POOL, LOOKING_FOR_POOL, DETAIL_FIELDS } from "../data/profiles";
 
@@ -277,7 +277,7 @@ function SubscriptionPlans({ initialStatus }) {
       <div style={{ borderRadius: 16, overflow: "hidden" }}>
         <div style={{ padding: 20, background: C.primary }}>
           <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(255,255,255,0.6)", marginBottom: 4 }}>Agape+</p>
-          <p style={{ color: "white", fontWeight: 700, fontSize: 20, lineHeight: 1.3, marginBottom: 4 }}>15 likes/day, 3 doves, see all who like you</p>
+          <p style={{ color: "white", fontWeight: 700, fontSize: 20, lineHeight: 1.3, marginBottom: 4 }}>15 likes a day · 3 Doves a week · see everyone who likes you</p>
           <p style={{ color: "rgba(255,255,255,0.7)", fontSize: 14 }}>From CHF 6.99/month</p>
         </div>
       </div>
@@ -328,7 +328,7 @@ function SubscriptionPlans({ initialStatus }) {
       </div>
       <div style={{ padding: "8px 0" }}>
         <p style={{ fontSize: 10, fontWeight: 600, color: C.sub, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>What you get</p>
-        {["15 likes per day", "See all who like you", "3 Doves per week", "Advanced filters"].map((feat) => (
+        {["15 likes per day", "3 Doves per week", "See everyone who likes you, right away"].map((feat) => (
           <div key={feat} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0" }}>
             <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={C.primary} strokeWidth={2.5}><path d="M20 6L9 17l-5-5" /></svg>
             <span style={{ fontSize: 13, color: C.text }}>{feat}</span>
@@ -349,7 +349,7 @@ function BillingSection({ onViewPlans, initialStatus }) {
         <SubscriptionStatusCard subStatus={subStatus} onChange={setSubStatus} />
         <div style={{ borderRadius: 16, padding: 16, background: C.card }}>
           <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: C.sub, marginBottom: 12 }}>Your plan includes</p>
-          {["15 likes per day", "See all who like you", "3 Doves per week", "Advanced filters"].map((feat) => (
+          {["15 likes per day", "3 Doves per week", "See everyone who likes you, right away"].map((feat) => (
             <div key={feat} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 0" }}>
               <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={C.primary} strokeWidth={2.5}><path d="M20 6L9 17l-5-5" /></svg>
               <span style={{ fontSize: 13, color: C.text }}>{feat}</span>
@@ -373,14 +373,39 @@ function BillingSection({ onViewPlans, initialStatus }) {
 function SettingsScreen({ onBack, initialSection = null }) {
   const { state, dispatch, actions } = useApp();
   const { currentUser } = state;
-  const [notifs, setNotifs] = useState({ matches: true, likes: true, messages: true, doves: true, prompts: false });
+  // Notification preferences live on the profile (default: everything on)
+  const prefs = currentUser?.notificationPrefs || {};
+  const notifOn = (key) => prefs[key] !== false;
+  const [prefMsg, setPrefMsg] = useState("");
+  const setPref = async (key, on) => {
+    track("notification_toggled", { type: key, enabled: on });
+    setPrefMsg("");
+    try { await actions.updateProfile({ notificationPrefs: { ...prefs, [key]: on } }); }
+    catch (err) { setPrefMsg(/notification_prefs|schema cache/i.test(err.message || "") ? "Notification settings aren't set up on the server yet." : err.message); }
+  };
   const [pushOn, setPushOn] = useState(false);
   const [pushMsg, setPushMsg] = useState("");
   const [pushStatus, setPushStatus] = useState(() => (!isPushSupported() ? "unsupported" : needsHomeScreenInstall() ? "install" : getPermission() === "denied" ? "denied" : "ok"));
   useEffect(() => { isPushEnabled().then(setPushOn).catch(() => {}); }, []);
-  const [privacy, setPrivacy] = useState({ activeStatus: true, readReceipts: true, showDistance: true, incognito: false });
-  const [faithPref, setFaithPref] = useState({ sameOnly: (state.filters?.denominations || []).length > 0, openToAll: (state.filters?.denominations || []).length === 0 });
-  const [paused, setPaused] = useState(false);
+  const [pauseMsg, setPauseMsg] = useState("");
+  const paused = !!currentUser?.paused;
+  const setPaused = async (on) => {
+    track("profile_paused_toggled", { paused: on });
+    setPauseMsg("");
+    try { await actions.updateProfile({ paused: on }); }
+    catch (err) { setPauseMsg(/paused|schema cache/i.test(err.message || "") ? "Pausing isn't set up on the server yet." : err.message); }
+  };
+  // "Only my denomination" is just the saved denomination filter
+  const myDenom = currentUser?.denomination || "";
+  const sameFaithOnly = (state.filters?.denominations || []).length > 0 && (state.filters.denominations || []).every((d) => d === myDenom);
+  const setSameFaithOnly = async (on) => {
+    track("faith_pref_toggled", { type: "same_only", enabled: on });
+    const denominations = on && myDenom ? [myDenom] : [];
+    dispatch({ type: "UPDATE_FILTERS", payload: { denominations } });
+    try { await actions.updateProfile({ filters: { ...(currentUser?.filters || {}), ...state.filters, denominations } }); } catch (_) {}
+  };
+  const [deleteError, setDeleteError] = useState("");
+  const [deleting, setDeleting] = useState(false);
   const [section, setSection] = useState(initialSection);
   const [editField, setEditField] = useState(null);
   const [editValue, setEditValue] = useState("");
@@ -483,19 +508,16 @@ function SettingsScreen({ onBack, initialSection = null }) {
                 </div>
               </div>
               <div>
-                <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: C.sub, padding: "0 4px", marginBottom: 8 }}>Match & Like alerts</p>
+                <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: C.sub, padding: "0 4px", marginBottom: 8 }}>What to notify me about</p>
                 <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
-                  <SettingsRow icon={I.heart} label="New matches" toggle={{ on: notifs.matches, onToggle: () => { track("notification_toggled", { type: "matches", enabled: !notifs.matches }); toggle(notifs, "matches", setNotifs); } }} />
-                  <SettingsRow icon={I.heartFill} label="New likes" toggle={{ on: notifs.likes, onToggle: () => { track("notification_toggled", { type: "likes", enabled: !notifs.likes }); toggle(notifs, "likes", setNotifs); } }} />
-                  <SettingsRow icon={I.dove} label="Doves received" toggle={{ on: notifs.doves, onToggle: () => { track("notification_toggled", { type: "doves", enabled: !notifs.doves }); toggle(notifs, "doves", setNotifs); } }} />
+                  <SettingsRow icon={I.heart} label="New matches" toggle={{ on: notifOn("matches"), onToggle: () => setPref("matches", !notifOn("matches")) }} />
+                  <SettingsRow icon={I.heartFill} label="New likes and comments" toggle={{ on: notifOn("likes"), onToggle: () => setPref("likes", !notifOn("likes")) }} />
+                  <SettingsRow icon={I.dove} label="Doves received" toggle={{ on: notifOn("doves"), onToggle: () => setPref("doves", !notifOn("doves")) }} />
+                  <SettingsRow icon={I.msg} label="New messages and reactions" toggle={{ on: notifOn("messages"), onToggle: () => setPref("messages", !notifOn("messages")) }} />
+                  <SettingsRow icon={I.pray} label="Dates, roses and video calls" toggle={{ on: notifOn("dates"), onToggle: () => setPref("dates", !notifOn("dates")) }} />
                 </div>
-              </div>
-              <div>
-                <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: C.sub, padding: "0 4px", marginBottom: 8 }}>Message alerts</p>
-                <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
-                  <SettingsRow icon={I.msg} label="New messages" toggle={{ on: notifs.messages, onToggle: () => { track("notification_toggled", { type: "messages", enabled: !notifs.messages }); toggle(notifs, "messages", setNotifs); } }} />
-                  <SettingsRow icon={I.pray} label="Prompt comments" toggle={{ on: notifs.prompts, onToggle: () => { track("notification_toggled", { type: "prompts", enabled: !notifs.prompts }); toggle(notifs, "prompts", setNotifs); } }} />
-                </div>
+                {prefMsg && <p style={{ fontSize: 12, color: "#DC2626", padding: "8px 4px 0" }}>{prefMsg}</p>}
+                <p style={{ fontSize: 12, color: C.sub, padding: "8px 4px 0", lineHeight: 1.5 }}>These apply to every device where you have notifications on.</p>
               </div>
             </>
           )}
@@ -504,38 +526,41 @@ function SettingsScreen({ onBack, initialSection = null }) {
               <div>
                 <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: C.sub, padding: "0 4px", marginBottom: 8 }}>Visibility</p>
                 <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
-                  <SettingsRow icon={I.check} label="Read receipts" sub="Let matches see when you've read messages" toggle={{ on: privacy.readReceipts, onToggle: () => { track("privacy_toggled", { type: "read_receipts", enabled: !privacy.readReceipts }); toggle(privacy, "readReceipts", setPrivacy); } }} />
-                  <SettingsRow icon={I.mapPin} label="Show distance" toggle={{ on: privacy.showDistance, onToggle: () => { track("privacy_toggled", { type: "show_distance", enabled: !privacy.showDistance }); toggle(privacy, "showDistance", setPrivacy); } }} />
+                  <SettingsRow icon={I.pause} label="Pause my profile" sub={paused ? "Hidden from Seek and Chosen. Your matches can still write to you." : "Hide me from Seek and Chosen for a while"} toggle={{ on: paused, onToggle: () => setPaused(!paused) }} />
+
                 </div>
+                {pauseMsg && <p style={{ fontSize: 12, color: "#DC2626", padding: "8px 4px 0" }}>{pauseMsg}</p>}
               </div>
               <div>
-                <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: C.sub, padding: "0 4px", marginBottom: 8 }}>Browse mode</p>
-                <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
-                  <SettingsRow icon={I.eye} label="Incognito mode" sub="Only people you like can see you" toggle={{ on: privacy.incognito, onToggle: () => { track("privacy_toggled", { type: "incognito", enabled: !privacy.incognito }); toggle(privacy, "incognito", setPrivacy); } }} />
+                <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: C.sub, padding: "0 4px", marginBottom: 8 }}>What others can see</p>
+                <div style={{ borderRadius: 16, padding: 16, background: C.card }}>
+                  {[
+                    ["Shown", "Your first name, age, photos, prompts, interests, denomination and the details you add."],
+                    ["Blurred", "Your location is shown as a city and a distance rounded to about 2 km, never your exact position."],
+                    ["Never shown", "Your phone number, email, birthday and verification selfies that are still in review."],
+                  ].map(([k, v]) => (
+                    <div key={k} style={{ display: "flex", gap: 12, padding: "6px 0" }}>
+                      <span style={{ width: 92, flexShrink: 0, fontSize: 12, fontWeight: 700, color: C.primary, textTransform: "uppercase", letterSpacing: "0.06em", paddingTop: 2 }}>{k}</span>
+                      <span style={{ fontSize: 13, color: C.text, lineHeight: 1.5 }}>{v}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
             </>
           )}
           {section === "faith" && (
-            <>
-              <div>
-                <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: C.sub, padding: "0 4px", marginBottom: 8 }}>Who you see</p>
-                <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
-                  <SettingsRow icon={I.cross} label="Show same faith only" sub={`Only show ${currentUser.denomination || "your denomination"}`} toggle={{ on: faithPref.sameOnly, onToggle: () => {
-                    const newVal = !faithPref.sameOnly;
-                    track("faith_pref_toggled", { type: "same_only", enabled: newVal });
-                    setFaithPref({ sameOnly: newVal, openToAll: !newVal });
-                    dispatch({ type: "UPDATE_FILTERS", payload: { denominations: newVal ? [currentUser.denomination] : [] } });
-                  } }} />
-                  <SettingsRow icon={I.globe} label="Open to all Christians" sub="Any denomination welcome" toggle={{ on: faithPref.openToAll, onToggle: () => {
-                    const newVal = !faithPref.openToAll;
-                    track("faith_pref_toggled", { type: "open_to_all", enabled: newVal });
-                    setFaithPref({ sameOnly: !newVal, openToAll: newVal });
-                    dispatch({ type: "UPDATE_FILTERS", payload: { denominations: newVal ? [] : [currentUser.denomination] } });
-                  } }} />
-                </div>
+            <div>
+              <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: C.sub, padding: "0 4px", marginBottom: 8 }}>Who you see</p>
+              <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
+                <SettingsRow
+                  icon={I.cross}
+                  label={myDenom ? `Only show ${myDenom}` : "Only show my denomination"}
+                  sub={!myDenom ? "Set your denomination first" : sameFaithOnly ? "Other denominations are hidden in Seek and Chosen" : "All Christian denominations are shown"}
+                  toggle={myDenom ? { on: sameFaithOnly, onToggle: () => setSameFaithOnly(!sameFaithOnly) } : undefined}
+                />
               </div>
-            </>
+              <p style={{ fontSize: 12, color: C.sub, padding: "8px 4px 0", lineHeight: 1.5 }}>This is the same as the denomination filter in Seek. You can pick several denominations there.</p>
+            </div>
           )}
           {section === "safety" && (
             <>
@@ -551,7 +576,6 @@ function SettingsScreen({ onBack, initialSection = null }) {
                 <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
                   <SettingsRow icon={I.ban} label="Blocked users" sub="Manage blocked profiles" onPress={() => setSection("blocked")} />
                   <SettingsRow icon={I.flag} label="Reports submitted" sub="View your reports" onPress={() => setSection("reports")} />
-                  <SettingsRow icon={I.pause} label="Pause my profile" sub={paused ? "Your profile is hidden" : "Temporarily hide your profile"} toggle={{ on: paused, onToggle: () => { track("profile_paused_toggled", { paused: !paused }); setPaused((p) => !p); } }} />
                 </div>
               </div>
             </>
@@ -586,9 +610,9 @@ function SettingsScreen({ onBack, initialSection = null }) {
                       )}
                       <div style={{ flex: 1 }}>
                         <p style={{ fontSize: 14, fontWeight: 600, color: C.text }}>{item.name || "Blocked user"}</p>
-                        <p style={{ fontSize: 12, color: C.sub }}>Can no longer see you</p>
+                        <p style={{ fontSize: 12, color: C.sub }}>You no longer see each other</p>
                       </div>
-                      <button onClick={() => { track("user_unblocked"); dispatch({ type: "UNBLOCK_PROFILE", payload: item.id }); }} style={{ padding: "6px 12px", borderRadius: 9999, fontSize: 12, fontWeight: 600, background: C.surface, color: C.sub, border: "none", cursor: "pointer" }}>Unblock</button>
+                      <button onClick={() => { track("user_unblocked"); actions.unblockProfile(item.id).catch((err) => console.error("Unblock failed:", err)); }} style={{ padding: "6px 12px", borderRadius: 9999, fontSize: 12, fontWeight: 600, background: C.surface, color: C.sub, border: "none", cursor: "pointer" }}>Unblock</button>
                     </div>
                   );
                 })}
@@ -605,7 +629,7 @@ function SettingsScreen({ onBack, initialSection = null }) {
                   </svg>
                 </div>
                 <p style={{ fontSize: 16, fontWeight: 700, color: C.text, marginTop: 16 }}>No reports submitted</p>
-                <p style={{ fontSize: 13, color: C.sub, marginTop: 4 }}>Reports you submit will appear here for your records.</p>
+                <p style={{ fontSize: 13, color: C.sub, marginTop: 4 }}>Reports you send are listed here with their review status.</p>
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -623,7 +647,7 @@ function SettingsScreen({ onBack, initialSection = null }) {
                     )}
                     <div style={{ flex: 1 }}>
                       <p style={{ fontSize: 14, fontWeight: 600, color: C.text }}>{r.name || "Reported user"}</p>
-                      <p style={{ fontSize: 12, color: C.sub }}>{r.reason || "Report submitted"} · Under review</p>
+                      <p style={{ fontSize: 12, color: C.sub }}>{r.reason || "Report submitted"} · {r.status === "reviewed" ? "Reviewed by the team" : r.status === "dismissed" ? "Reviewed, no action" : "Received, waiting for review"}</p>
                     </div>
                   </div>
                 ))}
@@ -665,7 +689,7 @@ function SettingsScreen({ onBack, initialSection = null }) {
                 <SettingsRow icon={I.bulb} label="Suggest a feature" sub="We'd love to hear your ideas" onPress={() => { track("help_suggest_feature_tapped"); window.location.href = "mailto:agape_dating@outlook.com?subject=Feature%20Suggestion"; }} />
               </div>
               <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
-                <SettingsRow icon={I.star} label="Rate Agape" sub="Tell us what you think — it helps us improve" onPress={() => { track("help_rate_app_tapped"); window.location.href = "mailto:agape_dating@outlook.com?subject=My%20thoughts%20on%20Agape"; }} />
+                <SettingsRow icon={I.star} label="Send feedback" sub="Tell us what you think — it helps us improve" onPress={() => { track("help_rate_app_tapped"); window.location.href = "mailto:agape_dating@outlook.com?subject=My%20thoughts%20on%20Agape"; }} />
               </div>
             </div>
           )}
@@ -826,7 +850,7 @@ function SettingsScreen({ onBack, initialSection = null }) {
           <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: C.sub, padding: "0 4px", marginBottom: 8 }}>Account</p>
           <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
             <SettingsRow icon={I.user} label="Personal info" sub="Name, phone, denomination" onPress={() => setSection("account")} />
-            <SettingsRow icon={I.cross} label="Faith preferences" sub="Denomination, values" onPress={() => setSection("faith")} />
+            <SettingsRow icon={I.cross} label="Faith preferences" sub="Only show my denomination" onPress={() => setSection("faith")} />
             <SettingsRow icon={I.mapPin} label="Location" sub="Distance, visibility" onPress={() => setSection("location")} />
           </div>
         </div>
@@ -839,13 +863,13 @@ function SettingsScreen({ onBack, initialSection = null }) {
         <div>
           <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: C.sub, padding: "0 4px", marginBottom: 8 }}>Privacy</p>
           <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
-            <SettingsRow icon={I.lock} label="Privacy settings" sub="Read receipts, visibility" onPress={() => setSection("privacy")} />
+            <SettingsRow icon={I.lock} label="Privacy" sub="Pause profile, what others can see" onPress={() => setSection("privacy")} />
           </div>
         </div>
         <div>
           <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: C.sub, padding: "0 4px", marginBottom: 8 }}>Safety</p>
           <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
-            <SettingsRow icon={I.shield} label="Safety centre" sub="Block list, reports, tips" onPress={() => setSection("safety")} />
+            <SettingsRow icon={I.shield} label="Safety centre" sub="Blocked users, your reports" onPress={() => setSection("safety")} />
             <SettingsRow icon={I.list} label="Community guidelines" onPress={() => setSection("guidelines")} />
           </div>
         </div>
@@ -873,25 +897,21 @@ function SettingsScreen({ onBack, initialSection = null }) {
             <div style={{ background: C.bg, borderRadius: 20, padding: 24, maxWidth: 320, width: "100%", textAlign: "center" }}>
               <svg width={40} height={40} viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
               <p style={{ fontSize: 18, fontWeight: 700, color: C.text, marginTop: 12 }}>Delete your account?</p>
-              <p style={{ fontSize: 13, color: C.sub, marginTop: 8, lineHeight: 1.5 }}>This will permanently delete your profile, matches, and messages. This action cannot be undone.</p>
+              <p style={{ fontSize: 13, color: C.sub, marginTop: 8, lineHeight: 1.5 }}>This deletes your profile, photos, voice notes, matches, messages, dates and ratings right away, ends any Agape+ subscription, and removes your login. It cannot be undone.</p>
+              {deleteError && <p style={{ fontSize: 13, color: "#DC2626", marginTop: 8 }}>{deleteError}</p>}
               <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 20 }}>
-                <button onClick={async () => {
+                <button disabled={deleting} onClick={async () => {
                   track("delete_account_confirmed");
+                  setDeleting(true);
+                  setDeleteError("");
                   try {
-                    const { supabase } = await import("../services/supabase");
-                    const { data: { user: u } } = await supabase.auth.getUser();
-                    if (u) {
-                      await supabase.from("messages").delete().or(`match_id.in.(select id from matches where user1=eq.${u.id} or user2=eq.${u.id})`);
-                      await supabase.from("matches").delete().or(`user1.eq.${u.id},user2.eq.${u.id}`);
-                      await supabase.from("likes").delete().or(`from_user.eq.${u.id},to_user.eq.${u.id}`);
-                      await supabase.from("skips").delete().or(`from_user.eq.${u.id},to_user.eq.${u.id}`);
-                      await supabase.from("profiles").delete().eq("id", u.id);
-                    }
+                    await deleteAccount();
                     await actions.logout();
                   } catch (err) {
-                    alert("Failed to delete account: " + err.message);
+                    setDeleteError(err.message);
+                    setDeleting(false);
                   }
-                }} style={{ padding: "14px 20px", borderRadius: 12, fontSize: 15, fontWeight: 700, background: "#e53e3e", color: "white", border: "none", cursor: "pointer" }}>Delete my account</button>
+                }} style={{ padding: "14px 20px", borderRadius: 12, fontSize: 15, fontWeight: 700, background: "#e53e3e", color: "white", border: "none", cursor: "pointer" }}>{deleting ? "Deleting…" : "Delete my account"}</button>
                 <button onClick={() => { track("delete_account_cancelled"); setShowDeleteConfirm(false); }} style={{ padding: "14px 20px", borderRadius: 12, fontSize: 15, fontWeight: 600, background: C.card, color: C.text, border: "none", cursor: "pointer" }}>Cancel</button>
               </div>
             </div>
@@ -1376,7 +1396,8 @@ export default function Profile() {
             );
           })()}
 
-          {/* Agape+ banner */}
+          {/* Agape+ banner (not for subscribers) */}
+          {currentUser.subscriptionStatus !== "active" && (
           <div
             style={{
               borderRadius: 16,
@@ -1389,7 +1410,7 @@ export default function Profile() {
           >
             <div>
               <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "rgba(255,255,255,0.6)", marginBottom: 2 }}>Agape+</p>
-              <p style={{ color: "white", fontWeight: 700, fontSize: 14, lineHeight: 1.3 }}>15 likes/day, 3 doves, see all who like you</p>
+              <p style={{ color: "white", fontWeight: 700, fontSize: 14, lineHeight: 1.3 }}>15 likes a day · 3 Doves a week · see everyone who likes you</p>
             </div>
             <button
               onClick={() => { track("upgrade_tapped", { source: "profile_banner" }); openSettings("subscription"); }}
@@ -1407,6 +1428,7 @@ export default function Profile() {
               Upgrade
             </button>
           </div>
+          )}
 
           {/* Doves stat */}
           <div
@@ -1816,7 +1838,7 @@ export default function Profile() {
             {[
               { icon: I.shield, label: "Safety Centre", section: "safety" },
               { icon: I.lock, label: "Privacy", section: "privacy" },
-              { icon: I.ban, label: "Blocked Profiles", section: "safety" },
+              { icon: I.ban, label: "Blocked users", section: "blocked" },
             ].map((item) => (
               <div
                 key={item.label}

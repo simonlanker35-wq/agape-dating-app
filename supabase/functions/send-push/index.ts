@@ -53,6 +53,25 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Respect the recipient's notification settings (profiles.notification_prefs, keys default to on)
+    const prefKey = (() => {
+      const t = String(tag || "");
+      if (t === "match") return "matches";
+      if (t === "like") return /dove/i.test(String(title)) ? "doves" : "likes";
+      if (t.startsWith("msg-") || t.startsWith("react-")) return "messages";
+      if (t.startsWith("date") || t.startsWith("rose") || t.startsWith("video")) return "dates";
+      return null;
+    })();
+    if (prefKey && userId !== user.id) {
+      try {
+        const { data: prefRow } = await supabase.from("profiles").select("notification_prefs").eq("id", userId).maybeSingle();
+        const prefs = (prefRow?.notification_prefs as Record<string, boolean> | null) || {};
+        if (prefs[prefKey] === false) return json({ sent: 0, skipped: prefKey });
+      } catch (_) {
+        // column not set up yet: send as before
+      }
+    }
+
     const { data: subs } = await supabase
       .from("push_subscriptions")
       .select("id, endpoint, p256dh, auth")

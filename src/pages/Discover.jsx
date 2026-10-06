@@ -219,7 +219,7 @@ export default function Discover() {
     setLikeFlash("block");
     setTimeout(() => {
       setLikeFlash(null);
-      dispatch({ type: "BLOCK_PROFILE", payload: { id: profile.id, name: profile.name, photo: profile.photos?.[0] } });
+      actions.blockProfile(profile).catch((err) => console.error("Block failed:", err));
       actions.skipProfile(profile.id).catch(() => {});
     }, 1200);
   };
@@ -229,8 +229,8 @@ export default function Discover() {
     setLikeFlash("report");
     setTimeout(() => {
       setLikeFlash(null);
-      dispatch({ type: "BLOCK_PROFILE", payload: { id: profile.id, name: profile.name, photo: profile.photos?.[0] } });
-      dispatch({ type: "ADD_REPORT", payload: { profileId: profile.id, name: profile.name, photo: profile.photos?.[0], reason, timestamp: Date.now() } });
+      actions.blockProfile(profile).catch((err) => console.error("Block failed:", err));
+      actions.reportProfile(profile, reason, "discover").catch((err) => console.error("Report failed:", err));
       actions.skipProfile(profile.id).catch(() => {});
     }, 1200);
   };

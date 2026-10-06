@@ -18,7 +18,7 @@ export default function RoseAlert() {
   const photo = match.profile?.photos?.[0];
 
   const dismiss = () => { track("rose_alert_dismissed"); dispatch({ type: "DISMISS_ROSE" }); };
-  const open = () => { track("rose_alert_opened"); dispatch({ type: "DISMISS_ROSE" }); dispatch({ type: "OPEN_CHAT", payload: match.id }); };
+  const open = () => { track("rose_alert_opened"); dispatch({ type: "DISMISS_ROSE" }); dispatch({ type: "OPEN_CHAT", payload: { id: match.id, planDate: true } }); };
 
   return (
     <div onClick={dismiss} style={{ position: "fixed", inset: 0, zIndex: 10000, background: "rgba(0,0,0,0.45)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 28, animation: "overlayFadeIn 0.2s ease" }}>
