@@ -145,11 +145,7 @@ src/
 - **react-router-dom**: Dependency installiert aber nicht genutzt — entweder einbauen oder entfernen
 
 ### Test-Accounts
-| Email | Passwort | Geschlecht | Standort |
-|---|---|---|---|
-| simon2@test.com | password123 | männlich | Schwyz |
-| sarah@test.com | password123 | weiblich | Schwyz |
-| bg@test.com | password123 | männlich | Sofia |
+- Test-Logins (simon2@test.com, sarah@test.com, bg@test.com, Demo-Profile) existieren in Supabase; Passwörter stehen nicht im Repo (Repo ist öffentlich). Seed-Scripts lesen `SEED_PASSWORD` aus der Umgebung.
 
 ### Deployment
 - **Frontend**: Render Static Site — auto-deploy von `master` Branch

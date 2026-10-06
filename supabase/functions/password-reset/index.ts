@@ -96,11 +96,14 @@ Deno.serve(async (req) => {
         const last = Number(appMeta.reset_requested_at || 0);
         if (last && Date.now() - last < THROTTLE_MS) return json({ ok: true }); // just sent one
 
-        if ((user.email || "").toLowerCase() !== email) {
-          // Phone (or other) sign-up: attach the profile's email to the login so a reset can reach it.
-          // If another login already owns this address this fails, and the reset goes to that login.
-          const { error: attachErr } = await admin.auth.admin.updateUserById(userId, { email, email_confirm: true });
+        if (!user.email) {
+          // Phone sign-up: attach the profile's email to the login so a reset can reach it. It stays
+          // unconfirmed until the person clicks the link, so nobody can claim an address they do not own.
+          const { error: attachErr } = await admin.auth.admin.updateUserById(userId, { email, email_confirm: false });
           if (attachErr) console.warn("Could not attach email to login:", attachErr.message);
+        } else if (user.email.toLowerCase() !== email) {
+          // The login already has a different email: resets go to that one, never to an unverified profile email
+          return json({ ok: true });
         }
       }
     }

@@ -30,8 +30,15 @@ Deno.serve(async (req) => {
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     if (authError || !user) throw new Error("Unauthorized");
 
-    const { userId, title, body, url, tag } = await req.json();
-    if (!userId || !title) throw new Error("Missing userId or title");
+    const raw = await req.json();
+    const clean = (v: unknown, max: number) => String(v ?? "").replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, max);
+    const userId = String(raw.userId || "");
+    const title = clean(raw.title, 80);
+    const body = clean(raw.body, 200);
+    const tag = clean(raw.tag, 60);
+    // Only pages inside the app can be opened from a notification
+    const url = typeof raw.url === "string" && raw.url.startsWith("/") && !raw.url.startsWith("//") ? raw.url.slice(0, 200) : "/";
+    if (!/^[0-9a-f-]{36}$/i.test(userId) || !title) throw new Error("Missing userId or title");
 
     // Only allow pushing to someone you're connected with: a shared match, or a like from you to them
     if (userId !== user.id) {

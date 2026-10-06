@@ -1,4 +1,9 @@
 import { createClient } from "@supabase/supabase-js";
+const SEED_PASSWORD = process.env.SEED_PASSWORD;
+if (!SEED_PASSWORD) {
+  console.error("Set SEED_PASSWORD (the password for the test accounts) as an environment variable");
+  process.exit(1);
+}
 
 const SUPABASE_URL = "https://ksscosugtbdzgekrszck.supabase.co";
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_KEY;
@@ -119,7 +124,7 @@ async function seed() {
   // Create test user (male)
   const { data: testAuth, error: testErr } = await supabase.auth.admin.createUser({
     email: "simon2@test.com",
-    password: "password123",
+    password: SEED_PASSWORD,
     email_confirm: true,
   });
   if (testErr) { console.error("Failed to create test user:", testErr); process.exit(1); }
@@ -127,7 +132,7 @@ async function seed() {
   // Create female test user
   const { data: sarahAuth, error: sarahErr } = await supabase.auth.admin.createUser({
     email: "sarah@test.com",
-    password: "password123",
+    password: SEED_PASSWORD,
     email_confirm: true,
   });
   if (sarahErr) { console.error("Failed to create sarah test user:", sarahErr); }
@@ -156,7 +161,7 @@ async function seed() {
   };
 
   await supabase.from("profiles").insert(testProfile);
-  console.log("Created test user: simon2@test.com / password123");
+  console.log("Created test user: simon2@test.com");
 
   // Sarah profile
   if (sarahAuth) {
@@ -183,7 +188,7 @@ async function seed() {
       is_standout: false,
     };
     await supabase.from("profiles").insert(sarahProfile);
-    console.log("Created test user: sarah@test.com / password123");
+    console.log("Created test user: sarah@test.com");
   }
 
   // Create demo profiles
@@ -195,7 +200,7 @@ async function seed() {
 
     const { data: authUser, error: authErr } = await supabase.auth.admin.createUser({
       email: `demo${i}@agape.test`,
-      password: "DemoPass123!",
+      password: SEED_PASSWORD,
       email_confirm: true,
     });
     if (authErr) { console.error(`Failed user ${i}:`, authErr.message); continue; }
@@ -235,7 +240,7 @@ async function seed() {
   // --- Bulgarian test user ---
   const { data: bgTestAuth, error: bgTestErr } = await supabase.auth.admin.createUser({
     email: "bg@test.com",
-    password: "password123",
+    password: SEED_PASSWORD,
     email_confirm: true,
   });
   if (bgTestErr) { console.error("Failed to create BG test user:", bgTestErr); }
@@ -263,7 +268,7 @@ async function seed() {
       is_standout: false,
     };
     await supabase.from("profiles").insert(bgTestProfile);
-    console.log("Created BG test user: bg@test.com / password123");
+    console.log("Created BG test user: bg@test.com");
   }
 
   // --- 25 Bulgarian demo profiles ---
@@ -275,7 +280,7 @@ async function seed() {
 
     const { data: authUser, error: authErr } = await supabase.auth.admin.createUser({
       email: `bg_demo${i}@agape.test`,
-      password: "DemoPass123!",
+      password: SEED_PASSWORD,
       email_confirm: true,
     });
     if (authErr) { console.error(`Failed BG user ${i}:`, authErr.message); continue; }

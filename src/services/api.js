@@ -276,7 +276,7 @@ export async function updateProfile(data) {
   if (data.filters !== undefined) updates.filters = data.filters;
   if (data.notificationPrefs !== undefined) updates.notification_prefs = data.notificationPrefs;
   if (data.paused !== undefined) updates.paused = !!data.paused;
-  if (data.photos !== undefined) updates.photos = data.photos;
+  if (data.photos !== undefined) updates.photos = (data.photos || []).filter(isAllowedMediaUrl);
 
   const { data: profile, error } = await withTimeout(
     supabase.from("profiles").update(updates).eq("id", user.id).select().single(),
@@ -284,6 +284,35 @@ export async function updateProfile(data) {
   );
   if (error) throw new Error(error.message);
   return mapProfileToUser(profile, user.phone);
+}
+
+// Photo addresses must be images we produced, app paths or https links; anything else is dropped
+export function isAllowedMediaUrl(u) {
+  if (typeof u !== "string" || !u) return false;
+  if (u.startsWith("data:image/")) return true;
+  if (u.startsWith("/") && !u.startsWith("//")) return true;
+  try {
+    return new URL(u).protocol === "https:";
+  } catch (_) { return false; }
+}
+
+// ─── OTHER PEOPLE'S PROFILES ───
+
+const missingRelation = (err) => /relation .* does not exist|schema cache|Could not find the table/i.test(err?.message || "");
+
+// Other members are read through the profiles_public view, which leaves out private columns.
+// Until security_hardening.sql has run, the table itself is used.
+function publicProfiles() {
+  return supabase.from("profiles_public");
+}
+
+export async function fetchPublicProfiles(ids) {
+  const unique = [...new Set((ids || []).filter(Boolean))];
+  if (!unique.length) return {};
+  let { data, error } = await publicProfiles().select("*").in("id", unique);
+  if (error && missingRelation(error)) ({ data, error } = await supabase.from("profiles").select("*").in("id", unique));
+  if (error) throw new Error(error.message);
+  return Object.fromEntries((data || []).map((p) => [p.id, p]));
 }
 
 // ─── DISCOVER ───
@@ -316,9 +345,8 @@ export async function getDiscover() {
     ...(skippedIds || []).map((s) => s.to_user),
   ];
 
-  const buildQuery = (hidePaused) => {
-    let q = supabase
-      .from("profiles")
+  const buildQuery = (hidePaused, fromTable = false) => {
+    let q = (fromTable ? supabase.from("profiles") : publicProfiles())
       .select("*")
       .eq("gender", targetGender)
       .eq("is_active", true)
@@ -331,8 +359,9 @@ export async function getDiscover() {
   };
 
   let { data: profiles, error } = await buildQuery(true);
-  // The "paused" column arrives with settings_safety.sql; until then show everyone
-  if (error && /paused/i.test(error.message || "")) ({ data: profiles, error } = await buildQuery(false));
+  // Before security_hardening.sql the view does not exist; before settings_safety.sql there is no "paused"
+  if (error && missingRelation(error)) ({ data: profiles, error } = await buildQuery(true, true));
+  if (error && /paused/i.test(error.message || "")) ({ data: profiles, error } = await buildQuery(false, true));
   if (error) throw new Error(error.message);
 
   let filtered = (profiles || []).map(mapProfile);
@@ -402,14 +431,17 @@ export async function sendLike(to, targetType, targetIndex, comment = null, isDo
       matched = true;
       matchId = existingMatch.id;
     } else {
-      const { data: match, error: matchErr } = await supabase
-        .from("matches")
-        .insert({ user1: user.id, user2: to })
-        .select()
-        .single();
-      if (!matchErr) {
+      // The database checks that both likes exist before creating the match
+      let { data: createdId, error: matchErr } = await supabase.rpc("create_match_if_mutual", { p_other: to });
+      if (matchErr && /function .*create_match_if_mutual|schema cache/i.test(matchErr.message || "")) {
+        // Before security_hardening.sql has run
+        const { data: match, error: insErr } = await supabase.from("matches").insert({ user1: user.id, user2: to }).select().single();
+        createdId = match?.id || null;
+        matchErr = insErr;
+      }
+      if (!matchErr && createdId) {
         matched = true;
-        matchId = match.id;
+        matchId = createdId;
       }
     }
   }
@@ -431,7 +463,7 @@ export async function getLikesReceived() {
 
   let query = supabase
     .from("likes")
-    .select("*, from_profile:profiles!likes_from_user_fkey(*)")
+    .select("*")
     .eq("to_user", user.id)
     .order("created_at", { ascending: false });
 
@@ -442,11 +474,12 @@ export async function getLikesReceived() {
   const { data: likes, error } = await query;
   if (error) throw new Error(error.message);
 
+  const senders = await fetchPublicProfiles((likes || []).map((l) => l.from_user));
   const reliability = await getReliability((likes || []).map((l) => l.from_user));
   return (likes || []).map((like) => ({
     id: like.id,
     fromId: like.from_user,
-    profile: like.from_profile ? { ...mapProfile(like.from_profile), reliability: reliability[like.from_user] || null } : null,
+    profile: senders[like.from_user] ? { ...mapProfile(senders[like.from_user]), reliability: reliability[like.from_user] || null } : null,
     targetType: like.target_type,
     targetIndex: like.target_index,
     comment: like.comment,
@@ -476,14 +509,12 @@ export async function getMatches() {
     .order("last_activity", { ascending: false });
   if (error) throw new Error(error.message);
 
+  const partnerIds = (matches || []).map((m) => (m.user1 === user.id ? m.user2 : m.user1));
+  const partners = await fetchPublicProfiles(partnerIds);
   const results = [];
   for (const m of matches || []) {
     const otherId = m.user1 === user.id ? m.user2 : m.user1;
-    const { data: otherProfile } = await supabase
-      .from("profiles")
-      .select("*")
-      .eq("id", otherId)
-      .single();
+    const otherProfile = partners[otherId] || null;
 
     const { data: lastMsg } = await supabase
       .from("messages")
@@ -693,7 +724,7 @@ export async function blockUser(profile) {
     { blocker: user.id, blocked: profile.id, blocked_name: profile.name || null, blocked_photo: profile.photos?.[0] || null },
     { onConflict: "blocker,blocked" }
   );
-  if (error) throw new Error(notSetUp(error) ? "Blocking isn't set up on the server yet." : error.message);
+  if (error) throw new Error(notSetUp(error) ? "Blocking isn't available right now. Please try again later." : error.message);
 }
 
 export async function unblockUser(blockedId) {
@@ -710,7 +741,7 @@ export async function reportUser({ profile, reason, details = null, source = "ap
     reporter: user.id, reported: profile.id, reported_name: profile.name || null, reported_photo: profile.photos?.[0] || null,
     reason, details, source,
   }).select("id, created_at, status").single();
-  if (error) throw new Error(notSetUp(error) ? "Reporting isn't set up on the server yet." : error.message);
+  if (error) throw new Error(notSetUp(error) ? "Reporting isn't available right now. Please try again later." : error.message);
   return { id: data.id, profileId: profile.id, name: profile.name, photo: profile.photos?.[0], reason, status: data.status, timestamp: new Date(data.created_at).getTime() };
 }
 
@@ -750,8 +781,8 @@ export async function uploadMedia(blob, kind, ext, contentType) {
 }
 
 export async function unmatch(matchId) {
-  await supabase.from("messages").delete().eq("match_id", matchId);
-  await supabase.from("matches").delete().eq("id", matchId);
+  const { error } = await supabase.from("matches").delete().eq("id", matchId);
+  if (error) throw new Error(error.message);
 }
 
 // ─── DATE INVITATIONS ───
@@ -851,11 +882,15 @@ export function notifyUser(userId, { title, body, url, tag }) {
 // ─── DATE FEEDBACK (showed up / no-show) ───
 
 export async function getReliability(ids) {
-  if (!ids.length) return {};
-  const { data, error } = await supabase.from("date_feedback").select("to_user, showed_up").in("to_user", ids);
-  if (error) return {};
+  const unique = [...new Set((ids || []).filter(Boolean))];
+  if (!unique.length) return {};
+  const { data, error } = await supabase.rpc("reliability_for", { p_ids: unique });
+  if (!error) return Object.fromEntries((data || []).map((r) => [r.user_id, { dates: r.dates, noShows: r.no_shows }]));
+  // Before security_hardening.sql has run, the rows are still readable directly
+  const { data: rows, error: rowErr } = await supabase.from("date_feedback").select("to_user, showed_up").in("to_user", unique);
+  if (rowErr) return {};
   const out = {};
-  for (const r of data || []) {
+  for (const r of rows || []) {
     const o = out[r.to_user] || (out[r.to_user] = { dates: 0, noShows: 0 });
     o.dates += 1;
     if (!r.showed_up) o.noShows += 1;

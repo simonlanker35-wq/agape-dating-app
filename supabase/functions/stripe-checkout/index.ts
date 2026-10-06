@@ -26,21 +26,44 @@ Deno.serve(async (req) => {
 
     const { data: profile } = await supabase
       .from("profiles")
-      .select("email, name, stripe_customer_id")
+      .select("email, name, stripe_customer_id, subscription_status")
       .eq("id", user.id)
       .single();
+
+    // The customer id stored on the profile is only trusted if Stripe says it belongs to this user
+    const ownCustomerId = async (): Promise<string | null> => {
+      const id = profile?.stripe_customer_id;
+      if (!id) return null;
+      try {
+        const c = await stripe.customers.retrieve(id);
+        if ((c as { deleted?: boolean }).deleted) return null;
+        const cust = c as Stripe.Customer;
+        const email = (user.email || (profile?.email?.includes("@") ? profile.email : "") || "").toLowerCase();
+        if (cust.metadata?.supabase_user_id === user.id) return id;
+        if (!cust.metadata?.supabase_user_id && email && (cust.email || "").toLowerCase() === email) return id;
+        console.warn("Stored customer does not belong to user", user.id);
+        return null;
+      } catch (_) {
+        return null;
+      }
+    };
+    const ALLOWED_PRICES = (Deno.env.get("STRIPE_PRICE_IDS") || "price_1UF5K3CBLGZ7l0PdrdfmSFjw,price_1UF5LtCBLGZ7l0Pday9S7emI,price_1UF5McCBLGZ7l0PdmGpUGONs").split(",").map((s) => s.trim()).filter(Boolean);
 
     if (req.method === "GET") {
       const url = new URL(req.url);
       if (url.searchParams.get("action") === "status") {
-        if (!profile?.stripe_customer_id) {
+        const customerId = await ownCustomerId();
+        if (!customerId) {
+          if (profile?.subscription_status === "active") {
+            await supabase.from("profiles").update({ subscription_status: "none", subscription_id: null }).eq("id", user.id);
+          }
           return new Response(JSON.stringify({ status: "none", plan: null }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
 
         const subscriptions = await stripe.subscriptions.list({
-          customer: profile.stripe_customer_id,
+          customer: customerId,
           status: "active",
           limit: 1,
         });
@@ -51,6 +74,9 @@ Deno.serve(async (req) => {
             .from("profiles")
             .update({ subscription_status: "active", subscription_id: sub.id })
             .eq("id", user.id);
+        } else if (profile?.subscription_status === "active") {
+          // The subscription ended (cancelled, expired, unpaid): take Agape+ away
+          await supabase.from("profiles").update({ subscription_status: "none", subscription_id: null }).eq("id", user.id);
         }
         return new Response(
           JSON.stringify({
@@ -70,9 +96,10 @@ Deno.serve(async (req) => {
     // Stop or resume the renewal. Cancelling never cuts access short: Agape+ stays active
     // until the end of the period that was already paid for.
     if (body.action === "cancel" || body.action === "resume") {
-      if (!profile?.stripe_customer_id) throw new Error("No subscription found");
+      const customerId = await ownCustomerId();
+      if (!customerId) throw new Error("No subscription found");
       const subscriptions = await stripe.subscriptions.list({
-        customer: profile.stripe_customer_id,
+        customer: customerId,
         status: "active",
         limit: 1,
       });
@@ -95,8 +122,9 @@ Deno.serve(async (req) => {
 
     const { priceId } = body;
     if (!priceId) throw new Error("Missing priceId");
+    if (!ALLOWED_PRICES.includes(priceId)) throw new Error("Unknown plan");
 
-    let customerId = profile?.stripe_customer_id;
+    let customerId = await ownCustomerId();
 
     const origin = req.headers.get("origin") || "https://agape-dating-app-frontend.onrender.com";
 

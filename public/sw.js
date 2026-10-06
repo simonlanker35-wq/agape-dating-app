@@ -34,7 +34,11 @@ self.addEventListener("push", (e) => {
 
 self.addEventListener("notificationclick", (e) => {
   e.notification.close();
-  const url = (e.notification.data && e.notification.data.url) || "/";
+  let url = "/";
+  try {
+    const target = new URL((e.notification.data && e.notification.data.url) || "/", self.location.origin);
+    if (target.origin === self.location.origin) url = target.pathname + target.search;
+  } catch (_) {}
   e.waitUntil(
     clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
       for (const client of list) {

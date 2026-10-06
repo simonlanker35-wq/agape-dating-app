@@ -1,4 +1,9 @@
 import { createClient } from "@supabase/supabase-js";
+const SEED_PASSWORD = process.env.SEED_PASSWORD;
+if (!SEED_PASSWORD) {
+  console.error("Set SEED_PASSWORD (the password for the test accounts) as an environment variable");
+  process.exit(1);
+}
 
 const SUPABASE_URL = "https://ksscosugtbdzgekrszck.supabase.co";
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_KEY;
@@ -15,7 +20,7 @@ const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
 async function create() {
   const { data: authUser, error: authErr } = await supabase.auth.admin.createUser({
     email: "sarah@test.com",
-    password: "password123",
+    password: SEED_PASSWORD,
     email_confirm: true,
   });
   if (authErr) { console.error("Auth error:", authErr.message); process.exit(1); }
@@ -52,7 +57,7 @@ async function create() {
 
   console.log("Created female test account:");
   console.log("  Email: sarah@test.com");
-  console.log("  Password: password123");
+  console.log("  Password: (SEED_PASSWORD)");
   console.log("  Location: Schwyz");
   console.log("  ID:", authUser.user.id);
 }

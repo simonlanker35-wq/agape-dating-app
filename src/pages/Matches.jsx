@@ -1421,7 +1421,7 @@ function ChatThread({ match, onBack }) {
                 </button>
               )}
               {hasVideoCall && (
-                <button onClick={() => { track("video_call_joined"); window.open(`https://meet.ffmuc.net/agape-${match.id.slice(0, 8)}`, "_blank"); }} style={chip()}>
+                <button onClick={() => { track("video_call_joined"); window.open(`https://meet.ffmuc.net/agape-${match.id}`, "_blank"); }} style={chip()}>
                   <Video size={14} color="#15803D" strokeWidth={1.8} /> Join video call
                 </button>
               )}
