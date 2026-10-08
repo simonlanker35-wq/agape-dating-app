@@ -10,6 +10,7 @@ const C = { primary: "#B8912A", text: "#1A1612", sub: "#8C857C", border: "#E8E4D
 // `for` limits a step to one gender, because the chat buttons differ for him and her.
 const TOURS = {
   discover: [
+    { selector: 'button[aria-label$="Tap to see why."]', title: "How well you match", text: "The ring shows your compatibility in percent, based on faith, what you both want, lifestyle and shared interests. Tap it to see what stands out." },
     { selector: 'button[aria-label="Like"]', title: "Like", text: "Like this person. You have 8 likes a day — 15 with Agape+. The number on the button is what's left today." },
     { selector: 'button[aria-label="Send a Dove"]', title: "Send a Dove", text: "A Dove says you're serious: you're revealed to them instantly, ahead of everyone else. Send it on its own or with a comment. 1 per week, 3 with Agape+." },
     { selector: ".prompt-heart", title: "Like a prompt", text: "Tap the heart on a prompt to like that exact thing and add a comment. A comment gives them something to answer." },
