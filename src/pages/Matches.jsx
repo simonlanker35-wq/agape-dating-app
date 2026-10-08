@@ -478,7 +478,7 @@ const DECLINE_REASONS = [
   "Not interested anymore",
 ];
 
-function DateCard({ invitation, isMe, isMale, onRespond, onConfirm, onDecline, onCancel, meAvatar, themAvatar, themName, pickerOpen, onPickerOpenChange }) {
+function DateCard({ invitation, isMe, isMale, onRespond, onConfirm, onDecline, onCancel, onReschedule, onAskReschedule, meAvatar, themAvatar, themName, pickerOpen, onPickerOpenChange }) {
   const [selectedTimes, setSelectedTimes] = useState([]);
   const [sending, setSending] = useState(false);
   const [confirmError, setConfirmError] = useState("");
@@ -489,6 +489,12 @@ function DateCard({ invitation, isMe, isMale, onRespond, onConfirm, onDecline, o
   const [internalPickerOpen, setInternalPickerOpen] = useState(false);
 
   // "Cancel" with a confirmation step, used by both sides at every stage
+  // When the confirmed date starts, as a timestamp; the slot's start hour stands in when no time was stored
+  const confirmedAtMs = invitation.confirmed_time?.date
+    ? new Date(`${invitation.confirmed_time.date}T${invitation.confirmed_time.time || "12:00"}:00`).getTime()
+    : 0;
+  const cancelled = api.isCancelledInvite(invitation);
+
   const cancelRow = (label, question) => !onCancel ? null : cancelAsk ? (
     <div style={{ marginTop: 10, padding: "10px 12px", borderRadius: 12, background: "#FEF2F2", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
       <span style={{ flex: 1, minWidth: 140, fontSize: 13, color: "#7F1D1D", fontFamily: FONT }}>{question}</span>
@@ -589,7 +595,7 @@ function DateCard({ invitation, isMe, isMale, onRespond, onConfirm, onDecline, o
           </p>
         </div>
         <span style={{ fontSize: 11, fontWeight: 600, fontFamily: FONT, letterSpacing: "0.04em", textTransform: "uppercase", padding: "4px 9px", borderRadius: 9999, background: invitation.status === "confirmed" ? "#F0FDF4" : C.surface, color: invitation.status === "confirmed" ? "#15803D" : C.sub, flexShrink: 0 }}>
-          {invitation.status === "confirmed" ? "Confirmed" : invitation.status === "declined" ? "Declined" : "Pending"}
+          {invitation.status === "confirmed" ? "Confirmed" : cancelled ? "Cancelled" : invitation.status === "declined" ? "Declined" : "Pending"}
         </span>
       </div>
 
@@ -602,7 +608,11 @@ function DateCard({ invitation, isMe, isMale, onRespond, onConfirm, onDecline, o
                 {longDay(invitation.confirmed_time.date)} · {invitation.confirmed_time.time}
               </span>
             </div>
-            {new Date(invitation.confirmed_time.date).getTime() + 24 * 3600e3 > Date.now() && cancelRow("Cancel this date", `Cancel the date with ${themName}? They will be told right away.`)}
+            {confirmedAtMs - 24 * 3600e3 > Date.now()
+              ? cancelRow("Cancel this date", `Cancel the date with ${themName}? They will be told right away.`)
+              : confirmedAtMs > Date.now() && (
+                <p style={{ margin: "10px 0 0", fontSize: 12.5, color: C.sub, fontFamily: FONT, textAlign: "center" }}>Less than 24 hours to go, so the date can no longer be cancelled here. Let {themName} know in the chat if something comes up.</p>
+              )}
           </>
         )}
 
@@ -799,12 +809,32 @@ function DateCard({ invitation, isMe, isMale, onRespond, onConfirm, onDecline, o
           </>
         )}
 
-        {invitation.status === "declined" && (
+        {invitation.status === "declined" && !cancelled && (
           <div style={{ padding: "10px 14px", borderRadius: 12, background: "#FEF2F2", textAlign: "center" }}>
             <span style={{ fontSize: 13, fontWeight: 600, color: "#EF4444", fontFamily: FONT }}>
               Date declined
             </span>
           </div>
+        )}
+
+        {cancelled && (
+          <>
+            <div style={{ padding: "10px 14px", borderRadius: 12, background: "#FEF2F2", textAlign: "center", marginBottom: 10 }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: "#EF4444", fontFamily: FONT }}>
+                {invitation.confirmed_time ? "Date cancelled" : "Plan withdrawn"}
+              </span>
+            </div>
+            {isMale && onReschedule && (
+              <button onClick={() => { track("date_reschedule_tapped"); onReschedule(); }} style={{ width: "100%", padding: "12px 0", borderRadius: 12, fontSize: 14, fontWeight: 600, fontFamily: FONT, background: C.text, color: "white", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                <Calendar size={15} color="white" /> Reschedule
+              </button>
+            )}
+            {!isMale && onAskReschedule && (
+              <button onClick={async () => { track("date_reschedule_asked"); setSending(true); await onAskReschedule(); setSending(false); }} disabled={sending} style={{ width: "100%", padding: "12px 0", borderRadius: 12, fontSize: 14, fontWeight: 600, fontFamily: FONT, background: C.text, color: "white", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, opacity: sending ? 0.6 : 1 }}>
+                <Calendar size={15} color="white" /> {sending ? "Sending…" : `Ask ${themName} to reschedule`}
+              </button>
+            )}
+          </>
         )}
       </div>
     </div>
@@ -1154,13 +1184,23 @@ function ChatThread({ match, onBack }) {
   const formatTime = (ts) => new Date(ts).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
   // Messages and date cards interleaved by time
+  // After a cancellation the cancelled plan is shown as a card (with a way to reschedule) until a new plan exists
+  const newestInvite = dateInvitations.length ? dateInvitations.reduce((a, b) => (new Date(b.created_at) > new Date(a.created_at) ? b : a)) : null;
+  const lastCancelled = !confirmedDate && !openInvite && newestInvite && api.isCancelledInvite(newestInvite) ? newestInvite : null;
+
   const timeline = useMemo(() => {
     const items = messages.map((m) => ({ ...m, _type: "message" }));
     for (const inv of [confirmedDate, openInvite]) {
       if (inv) items.push({ ...inv, _type: "date", timestamp: new Date(inv.created_at).getTime() });
     }
+    if (lastCancelled) {
+      // Place it right after the "cancelled" line in the chat, or at its creation time if that line is missing
+      const note = [...messages].reverse().find((m) => typeof m.text === "string" && m.text.startsWith("🗓️"));
+      const ts = Math.max(new Date(lastCancelled.created_at).getTime(), note ? (note.timestamp || 0) + 1 : 0);
+      items.push({ ...lastCancelled, _type: "date", timestamp: ts });
+    }
     return items.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
-  }, [messages, confirmedDate, openInvite]);
+  }, [messages, confirmedDate, openInvite, lastCancelled]);
 
   const chip = (extra = {}) => ({
     display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 13px", borderRadius: 9999, fontSize: 13, fontWeight: 600, fontFamily: FONT,
@@ -1173,6 +1213,15 @@ function ChatThread({ match, onBack }) {
     onConfirm: handleConfirmDate,
     onDecline: handleDeclineDate,
     onCancel: handleCancelDate,
+    onReschedule: () => setShowDateBuilder(true),
+    onAskReschedule: async () => {
+      try {
+        await actions.sendMessage(match.id, "🗓️ Can we find a new time?");
+        notifyThem(`${state.currentUser?.name || "Your match"} would like to reschedule`, "Open the chat to plan a new date.", "date");
+      } catch (err) {
+        console.error("Ask to reschedule failed:", err);
+      }
+    },
     meAvatar: state.currentUser?.photos?.[0],
     themAvatar: profile.photos?.[0],
     themName: profile.name,
@@ -1482,7 +1531,7 @@ function ChatThread({ match, onBack }) {
             <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 8, scrollbarWidth: "none" }}>
               {isMale && !openInvite && !confirmedDate && (
                 <button aria-label="Plan a date" onClick={() => { track("plan_date_tapped"); setShowDateBuilder(true); }} style={chip({ background: C.text, color: "#fff", border: `1px solid ${C.text}` })}>
-                  <Calendar size={14} color="#fff" strokeWidth={1.8} /> {lastDeclined ? "Plan another date" : "Plan a date"}
+                  <Calendar size={14} color="#fff" strokeWidth={1.8} /> {lastCancelled ? "Reschedule" : lastDeclined ? "Plan another date" : "Plan a date"}
                 </button>
               )}
               {!isMale && !nudgeSent && !openInvite && !confirmedDate && (
@@ -1772,7 +1821,7 @@ export default function Matches() {
                           const t = lastMsg.text || "";
                           if (t.trim() === "🌹") return `${who} sent a rose`;
                           if (t.startsWith("📹")) return t.replace(/^📹\s*/, "").replace("Video call scheduled:", "Video call ·");
-                          if (t.startsWith("🗓️")) return `${who} ${t.includes("cancelled") ? "cancelled the date" : "withdrew the plan"}`;
+                          if (t.startsWith("🗓️")) return `${who} ${t.includes("cancelled") ? "cancelled the date" : t.includes("new time") ? "asked to reschedule" : "withdrew the plan"}`;
                           return (lastMsg.sender === currentUserId ? "You: " : "") + t.slice(0, 35) + (t.length > 35 ? "…" : "");
                         })()
                       : "New match · say hello"}
@@ -1787,6 +1836,7 @@ export default function Matches() {
     </div>
   );
 }
+
 
 
 
