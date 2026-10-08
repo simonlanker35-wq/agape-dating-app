@@ -78,7 +78,12 @@ const DAY_SLOTS = [
   { id: "afternoon", label: "Afternoon", hint: "14 – 17", time: "15:00" },
   { id: "evening", label: "Evening", hint: "17 – 22", time: "19:00" },
 ];
-const MAX_SLOTS = 12;
+const MAX_SLOTS = 40;
+// Hours offered in the picker, 08:00 to 21:00: two rows of seven per day
+const PICK_HOURS = Array.from({ length: 14 }, (_, i) => `${String(8 + i).padStart(2, "0")}:00`);
+const hourOf = (t) => parseInt(String(t?.time || "12").slice(0, 2), 10);
+// A word for the part of the day an hour falls in
+const partOfDay = (t) => { const h = hourOf(t); return h < 12 ? "Morning" : h < 14 ? "Lunch" : h < 17 ? "Afternoon" : "Evening"; };
 const TIME_SLOTS = ["12:00", "14:00", "16:00", "18:00", "19:30", "21:00"];
 
 function formatTimeLeft(ms) {
@@ -121,30 +126,25 @@ function Avatar({ src, name, size = 34 }) {
 }
 
 const buildAllRows = () =>
-  getNextDays(14).flatMap((d) => DAY_SLOTS.map((s) => ({ date: d.date, label: `${d.dayName} ${d.dayNum} ${d.month}`, slot: s.id, time: s.time, isWeekend: d.isWeekend })));
+  getNextDays(14).flatMap((d) => PICK_HOURS.map((time) => ({ date: d.date, label: `${d.dayName} ${d.dayNum} ${d.month}`, time, isWeekend: d.isWeekend })));
 
-// One pill per part of the day. Selected pills fill gold; in the comparison view, every pill shown is a
-// time the other person offered, and the one tapped becomes the pick.
-function SlotPill({ t, on, offered, onClick }) {
-  const clickable = !!onClick;
+// One small box per hour; selected boxes fill gold
+function HourBox({ t, on, onClick }) {
   return (
     <button
       onClick={onClick}
-      disabled={!clickable}
+      disabled={!onClick}
+      aria-pressed={on}
+      aria-label={`${t.time}${on ? ", selected" : ""}`}
       style={{
-        display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 2,
-        padding: "10px 12px", borderRadius: 14, textAlign: "left", cursor: clickable ? "pointer" : "default",
-        background: on ? C.primary : offered ? C.primarySoft : C.bg,
-        border: on ? `1.5px solid ${C.primary}` : offered ? `1.5px solid ${C.primary}` : `1.5px solid ${C.border}`,
-        boxShadow: on ? "0 4px 12px rgba(184,145,42,0.28)" : "none",
-        transition: "background 120ms, box-shadow 120ms",
+        width: "100%", aspectRatio: "1 / 1", minHeight: 38, borderRadius: 11, padding: 0, cursor: onClick ? "pointer" : "default",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        fontSize: 14, fontWeight: 700, fontFamily: FONT, color: on ? "white" : C.text,
+        background: on ? C.primary : C.bg, border: on ? `1.5px solid ${C.primary}` : `1.5px solid ${C.border}`,
+        boxShadow: on ? "0 3px 10px rgba(184,145,42,0.28)" : "none", transition: "background 120ms, box-shadow 120ms",
       }}
     >
-      <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 14, fontWeight: 700, color: on ? "white" : C.text, fontFamily: FONT }}>
-        {on && <CheckCircle size={14} strokeWidth={2.2} color="white" />}
-        {slotName(t)}
-      </span>
-      <span style={{ fontSize: 12, color: on ? "rgba(255,255,255,0.85)" : C.sub, fontFamily: FONT }}>{slotHint(t) || t.time}</span>
+      {t.time.slice(0, 2)}
     </button>
   );
 }
@@ -166,7 +166,7 @@ function OfferedTimesList({ rows, chosenKey, onPick, themName, onConfirm, sendin
               {day.times.map((t) => {
                 const k = timeKey(t);
                 const on = chosenKey === k;
-                const Icon = SLOT_ICONS[t.slot] || Clock;
+                const Icon = SLOT_ICONS[t.slot] || SLOT_ICONS[partOfDay(t).toLowerCase()] || Clock;
                 return (
                   <button
                     key={k}
@@ -181,8 +181,8 @@ function OfferedTimesList({ rows, chosenKey, onPick, themName, onConfirm, sendin
                       <Icon size={19} strokeWidth={1.7} color={on ? "white" : C.primary} />
                     </span>
                     <span style={{ flex: 1, minWidth: 0 }}>
-                      <span style={{ display: "block", fontSize: 15, fontWeight: 700, color: C.text, fontFamily: FONT }}>{slotName(t)}</span>
-                      <span style={{ display: "block", fontSize: 12.5, color: C.sub, fontFamily: FONT, marginTop: 1 }}>{slotHint(t) ? `${slotHint(t)} · ${themName || "She"} is free` : t.time}</span>
+                      <span style={{ display: "block", fontSize: 15, fontWeight: 700, color: C.text, fontFamily: FONT }}>{t.slot ? slotName(t) : t.time}</span>
+                      <span style={{ display: "block", fontSize: 12.5, color: C.sub, fontFamily: FONT, marginTop: 1 }}>{t.slot ? slotHint(t) : partOfDay(t)} · {themName || "She"} is free</span>
                     </span>
                     <span style={{ flexShrink: 0, padding: "6px 12px", borderRadius: 9999, fontSize: 12.5, fontWeight: 700, fontFamily: FONT, background: on ? C.primary : "transparent", color: on ? "white" : C.primary, border: `1.5px solid ${C.primary}` }}>
                       {on ? "Chosen" : "Choose"}
@@ -208,7 +208,8 @@ function OfferedTimesList({ rows, chosenKey, onPick, themName, onConfirm, sendin
   );
 }
 
-// Availability, one card per day. `theirs` is optional: with it, only their offered times are listed and one is picked.
+// Availability, one card per day with the hours in boxes. `theirs` is optional: with it, only their
+// offered times are listed and one is picked.
 function AvailabilityTable({ rows, mine, theirs, onToggle, themName, highlightKey, onConfirm, sending }) {
   const comparing = !!theirs;
   if (comparing) {
@@ -221,28 +222,18 @@ function AvailabilityTable({ rows, mine, theirs, onToggle, themName, highlightKe
         const d = new Date(day.date + "T12:00:00");
         const picked = day.times.filter((t) => mine.has(timeKey(t))).length;
         return (
-          <div key={day.date} style={{ borderRadius: 18, border: `1px solid ${C.border}`, background: C.card, padding: "12px 12px 12px" }}>
+          <div key={day.date} style={{ borderRadius: 18, border: `1px solid ${C.border}`, background: C.card, padding: 12 }}>
             <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 10 }}>
               <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
                 <span style={{ fontSize: 17, fontWeight: 600, color: C.text, fontFamily: SERIF }}>{d.toLocaleDateString("en", { weekday: "long" })}</span>
                 <span style={{ fontSize: 13, color: C.sub, fontFamily: FONT }}>{d.toLocaleDateString("en", { day: "numeric", month: "short" })}</span>
               </div>
-              {comparing
-                ? <span style={{ fontSize: 12, color: C.primary, fontWeight: 600, fontFamily: FONT }}>{themName ? `${themName} is free` : "Free"}</span>
-                : picked > 0 && <span style={{ fontSize: 12, color: C.primary, fontWeight: 600, fontFamily: FONT }}>{picked} picked</span>}
+              {picked > 0 && <span style={{ fontSize: 12, color: C.primary, fontWeight: 600, fontFamily: FONT }}>{picked} picked</span>}
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 6 }}>
               {day.times.map((t) => {
                 const k = timeKey(t);
-                return (
-                  <SlotPill
-                    key={k}
-                    t={t}
-                    on={mine.has(k) || highlightKey === k}
-                    offered={comparing && theirs.has(k)}
-                    onClick={onToggle ? () => onToggle(t) : undefined}
-                  />
-                );
+                return <HourBox key={k} t={t} on={mine.has(k)} onClick={onToggle ? () => onToggle(t) : undefined} />;
               })}
             </div>
           </div>
@@ -628,7 +619,7 @@ function DateCard({ invitation, isMe, isMale, onRespond, onConfirm, onDecline, o
             {showPicker && (
               <AvailabilitySheet
                 title={pickerTitle}
-                subtitle={`Tick the times you're free (up to ${MAX_SLOTS}). ${themName} picks one of them.`}
+                subtitle={`Tap the hours you're free. ${themName} picks one of them.`}
                 onClose={() => setShowPicker(false)}
                 footer={
                   <button
@@ -641,7 +632,7 @@ function DateCard({ invitation, isMe, isMale, onRespond, onConfirm, onDecline, o
                 }
               >
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
-                  <button onClick={() => quickPick((r) => r.slot === "evening")} style={{ padding: "7px 12px", borderRadius: 9999, fontSize: 12, fontWeight: 600, fontFamily: FONT, background: C.surface, color: C.text, border: `1px solid ${C.border}`, cursor: "pointer" }}>+ All evenings</button>
+                  <button onClick={() => quickPick((r) => hourOf(r) >= 18)} style={{ padding: "7px 12px", borderRadius: 9999, fontSize: 12, fontWeight: 600, fontFamily: FONT, background: C.surface, color: C.text, border: `1px solid ${C.border}`, cursor: "pointer" }}>+ All evenings</button>
                   <button onClick={() => quickPick((r) => r.isWeekend)} style={{ padding: "7px 12px", borderRadius: 9999, fontSize: 12, fontWeight: 600, fontFamily: FONT, background: C.surface, color: C.text, border: `1px solid ${C.border}`, cursor: "pointer" }}>+ Weekends</button>
                   {selectedTimes.length > 0 && (
                     <button onClick={() => setSelectedTimes([])} style={{ padding: "7px 12px", borderRadius: 9999, fontSize: 12, fontWeight: 600, fontFamily: FONT, background: "none", color: C.sub, border: `1px solid ${C.border}`, cursor: "pointer" }}>Clear all</button>
@@ -797,7 +788,7 @@ function DateCard({ invitation, isMe, isMale, onRespond, onConfirm, onDecline, o
                 }
               >
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
-                  <button onClick={() => quickPick((r) => r.slot === "evening")} style={{ padding: "7px 12px", borderRadius: 9999, fontSize: 12, fontWeight: 600, fontFamily: FONT, background: C.surface, color: C.text, border: `1px solid ${C.border}`, cursor: "pointer" }}>+ All evenings</button>
+                  <button onClick={() => quickPick((r) => hourOf(r) >= 18)} style={{ padding: "7px 12px", borderRadius: 9999, fontSize: 12, fontWeight: 600, fontFamily: FONT, background: C.surface, color: C.text, border: `1px solid ${C.border}`, cursor: "pointer" }}>+ All evenings</button>
                   <button onClick={() => quickPick((r) => r.isWeekend)} style={{ padding: "7px 12px", borderRadius: 9999, fontSize: 12, fontWeight: 600, fontFamily: FONT, background: C.surface, color: C.text, border: `1px solid ${C.border}`, cursor: "pointer" }}>+ Weekends</button>
                   {selectedTimes.length > 0 && (
                     <button onClick={() => setSelectedTimes([])} style={{ padding: "7px 12px", borderRadius: 9999, fontSize: 12, fontWeight: 600, fontFamily: FONT, background: "none", color: C.sub, border: `1px solid ${C.border}`, cursor: "pointer" }}>Clear all</button>
@@ -1836,6 +1827,7 @@ export default function Matches() {
     </div>
   );
 }
+
 
 
 
