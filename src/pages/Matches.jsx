@@ -23,18 +23,43 @@ const FONT = "'Outfit', system-ui, sans-serif";
 const SERIF = "'Lora', Georgia, serif";
 
 const DATE_TYPES = [
-  { id: "dinner", Icon: Utensils, label: "Dinner" },
-  { id: "walk", Icon: Footprints, label: "Walk" },
-  { id: "coffee", Icon: Coffee, label: "Coffee" },
-  { id: "adventure", Icon: Mountain, label: "Adventure" },
+  { id: "dinner", Icon: Utensils, label: "Dinner", hint: "An evening at a table together" },
+  { id: "walk", Icon: Footprints, label: "Walk", hint: "Side by side, outdoors" },
+  { id: "coffee", Icon: Coffee, label: "Coffee", hint: "Short, relaxed, easy to say yes to" },
+  { id: "adventure", Icon: Mountain, label: "Adventure", hint: "Something active you both remember" },
 ];
 
 const WARDROBE_OPTIONS = [
-  { id: "casual", Icon: Shirt, label: "Casual" },
-  { id: "smart", Icon: Briefcase, label: "Smart casual" },
-  { id: "formal", Icon: Gem, label: "Formal" },
-  { id: "sporty", Icon: Dumbbell, label: "Active" },
+  { id: "casual", Icon: Shirt, label: "Casual", hint: "Come as you are" },
+  { id: "smart", Icon: Briefcase, label: "Smart casual", hint: "A little effort, nothing stiff" },
+  { id: "formal", Icon: Gem, label: "Formal", hint: "Dressed up for the occasion" },
+  { id: "sporty", Icon: Dumbbell, label: "Active", hint: "Comfortable, ready to move" },
 ];
+
+// A choice row with a round icon badge, used for the date type and the dress code
+function ChoiceRow({ Icon, label, hint, selected, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "12px 14px 12px 12px", borderRadius: 16,
+        textAlign: "left", cursor: "pointer",
+        border: selected ? `1.5px solid ${C.primary}` : `1px solid ${C.border}`,
+        background: selected ? C.primarySoft : C.bg,
+        boxShadow: selected ? "0 4px 14px rgba(184,145,42,0.18)" : "none",
+      }}
+    >
+      <span style={{ width: 42, height: 42, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: selected ? C.primary : C.surface }}>
+        <Icon size={20} strokeWidth={1.7} color={selected ? "white" : C.sub} />
+      </span>
+      <span style={{ flex: 1, minWidth: 0 }}>
+        <span style={{ display: "block", fontSize: 15, fontWeight: 700, color: C.text, fontFamily: FONT }}>{label}</span>
+        {hint && <span style={{ display: "block", fontSize: 12.5, color: C.sub, fontFamily: FONT, marginTop: 1 }}>{hint}</span>}
+      </span>
+      <span style={{ width: 20, height: 20, borderRadius: "50%", flexShrink: 0, border: selected ? `6px solid ${C.primary}` : `1.5px solid ${C.border}`, background: "white", boxSizing: "border-box" }} />
+    </button>
+  );
+}
 
 function dayLabel(ts) {
   const d = new Date(ts);
@@ -82,7 +107,6 @@ function groupByDay(times) {
 
 const timeKey = (t) => `${t.date}|${t.slot || t.time}`;
 const longDay = (date) => new Date(date + "T12:00:00").toLocaleDateString("en", { weekday: "long", day: "numeric", month: "short" });
-const GREEN = "#22C55E";
 
 function Avatar({ src, name, size = 34 }) {
   return (
@@ -98,52 +122,68 @@ function Avatar({ src, name, size = 34 }) {
 const buildAllRows = () =>
   getNextDays(14).flatMap((d) => DAY_SLOTS.map((s) => ({ date: d.date, label: `${d.dayName} ${d.dayNum} ${d.month}`, slot: s.id, time: s.time, isWeekend: d.isWeekend })));
 
-function AvailCell({ on, onClick }) {
+// One pill per part of the day. Selected pills fill gold; in the comparison view, every pill shown is a
+// time the other person offered, and the one tapped becomes the pick.
+function SlotPill({ t, on, offered, onClick }) {
+  const clickable = !!onClick;
   return (
     <button
       onClick={onClick}
-      disabled={!onClick}
+      disabled={!clickable}
       style={{
-        width: 40, height: 40, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", padding: 0,
-        cursor: onClick ? "pointer" : "default",
-        background: on ? GREEN : "white", border: on ? `2px solid ${GREEN}` : `2px solid ${C.border}`,
+        display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 2,
+        padding: "10px 12px", borderRadius: 14, textAlign: "left", cursor: clickable ? "pointer" : "default",
+        background: on ? C.primary : offered ? C.primarySoft : C.bg,
+        border: on ? `1.5px solid ${C.primary}` : offered ? `1.5px solid ${C.primary}` : `1.5px solid ${C.border}`,
+        boxShadow: on ? "0 4px 12px rgba(184,145,42,0.28)" : "none",
+        transition: "background 120ms, box-shadow 120ms",
       }}
     >
-      {on && <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>}
+      <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 14, fontWeight: 700, color: on ? "white" : C.text, fontFamily: FONT }}>
+        {on && <CheckCircle size={14} strokeWidth={2.2} color="white" />}
+        {slotName(t)}
+      </span>
+      <span style={{ fontSize: 12, color: on ? "rgba(255,255,255,0.85)" : C.sub, fontFamily: FONT }}>{slotHint(t) || t.time}</span>
     </button>
   );
 }
 
-// Breeze-style availability table: times grouped by day, a column per person. `theirs` is optional — omit it for a single-column view.
-function AvailabilityTable({ rows, mine, theirs, onToggle, meAvatar, themAvatar, themName, highlightKey }) {
-  const two = !!theirs;
-  const cols = two ? "1fr 56px 56px" : "1fr 56px";
+// Availability, one card per day. `theirs` is optional: with it, only their offered times are listed and one is picked.
+function AvailabilityTable({ rows, mine, theirs, onToggle, themName, highlightKey }) {
+  const comparing = !!theirs;
   return (
-    <div>
-      <div style={{ display: "grid", gridTemplateColumns: cols, alignItems: "center", padding: "0 0 10px", borderBottom: `1px solid ${C.border}` }}>
-        <div />
-        {two && <div style={{ display: "flex", justifyContent: "center" }}><Avatar src={themAvatar} name={themName} /></div>}
-        <div style={{ display: "flex", justifyContent: "center" }}><Avatar src={meAvatar} name="Me" /></div>
-      </div>
-      {groupByDay(rows).map((day) => (
-        <div key={day.date}>
-          <p style={{ fontSize: 15, fontWeight: 800, color: C.text, fontFamily: FONT, padding: "16px 0 6px", margin: 0 }}>{longDay(day.date)}</p>
-          {day.times.map((t) => {
-            const k = timeKey(t);
-            const hi = highlightKey === k;
-            return (
-              <div key={k} style={{ display: "grid", gridTemplateColumns: cols, alignItems: "center", padding: "6px 0", borderBottom: `1px solid ${C.border}`, background: hi ? C.primarySoft : "transparent", borderRadius: hi ? 10 : 0 }}>
-                <div style={{ display: "flex", alignItems: "baseline", gap: 8, paddingLeft: hi ? 8 : 0 }}>
-                  <span style={{ fontSize: 17, fontWeight: 700, color: C.text, fontFamily: FONT }}>{t.time}</span>
-                  {t.slot && <span style={{ fontSize: 12, color: C.sub, fontFamily: FONT }}>{slotName(t)}</span>}
-                </div>
-                {two && <div style={{ display: "flex", justifyContent: "center" }}><AvailCell on={theirs.has(k)} /></div>}
-                <div style={{ display: "flex", justifyContent: "center" }}><AvailCell on={mine.has(k)} onClick={onToggle ? () => onToggle(t) : undefined} /></div>
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      {groupByDay(rows).map((day) => {
+        const d = new Date(day.date + "T12:00:00");
+        const picked = day.times.filter((t) => mine.has(timeKey(t))).length;
+        return (
+          <div key={day.date} style={{ borderRadius: 18, border: `1px solid ${C.border}`, background: C.card, padding: "12px 12px 12px" }}>
+            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 10 }}>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                <span style={{ fontSize: 17, fontWeight: 600, color: C.text, fontFamily: SERIF }}>{d.toLocaleDateString("en", { weekday: "long" })}</span>
+                <span style={{ fontSize: 13, color: C.sub, fontFamily: FONT }}>{d.toLocaleDateString("en", { day: "numeric", month: "short" })}</span>
               </div>
-            );
-          })}
-        </div>
-      ))}
+              {comparing
+                ? <span style={{ fontSize: 12, color: C.primary, fontWeight: 600, fontFamily: FONT }}>{themName ? `${themName} is free` : "Free"}</span>
+                : picked > 0 && <span style={{ fontSize: 12, color: C.primary, fontWeight: 600, fontFamily: FONT }}>{picked} picked</span>}
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              {day.times.map((t) => {
+                const k = timeKey(t);
+                return (
+                  <SlotPill
+                    key={k}
+                    t={t}
+                    on={mine.has(k) || highlightKey === k}
+                    offered={comparing && theirs.has(k)}
+                    onClick={onToggle ? () => onToggle(t) : undefined}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -275,26 +315,10 @@ function DateBuilder({ profileName, userLocation, onSend, onClose }) {
         {step === 1 && (
           <>
             <p style={{ fontSize: 18, fontWeight: 700, color: C.text, fontFamily: FONT, marginBottom: 16 }}>What kind of date?</p>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {DATE_TYPES.map((dt) => (
-                <button
-                  key={dt.id}
-                  onClick={() => { track("date_type_selected", { type: dt.id }); setDateType(dt.id); }}
-                  style={{
-                    padding: "16px 14px",
-                    borderRadius: 14,
-                    border: dateType === dt.id ? `2px solid ${C.primary}` : `1.5px solid ${C.border}`,
-                    background: dateType === dt.id ? C.primarySoft : C.card,
-                    cursor: "pointer",
-                    textAlign: "left",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                  }}
-                >
-                  <dt.Icon size={20} strokeWidth={1.7} color={dateType === dt.id ? C.primary : C.sub} />
-                  <span style={{ fontSize: 14, fontWeight: 600, color: C.text, fontFamily: FONT }}>{dt.label}</span>
-                </button>
+                <ChoiceRow key={dt.id} Icon={dt.Icon} label={dt.label} hint={dt.hint} selected={dateType === dt.id}
+                  onClick={() => { track("date_type_selected", { type: dt.id }); setDateType(dt.id); }} />
               ))}
             </div>
           </>
@@ -342,26 +366,10 @@ function DateBuilder({ profileName, userLocation, onSend, onClose }) {
         {step === 3 && (
           <>
             <p style={{ fontSize: 18, fontWeight: 700, color: C.text, fontFamily: FONT, marginBottom: 16 }}>Dress code</p>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {WARDROBE_OPTIONS.map((w) => (
-                <button
-                  key={w.id}
-                  onClick={() => { track("date_wardrobe_selected", { wardrobe: w.id }); setWardrobe(w.id); }}
-                  style={{
-                    padding: "16px 14px",
-                    borderRadius: 14,
-                    border: wardrobe === w.id ? `2px solid ${C.primary}` : `1.5px solid ${C.border}`,
-                    background: wardrobe === w.id ? C.primarySoft : C.card,
-                    cursor: "pointer",
-                    textAlign: "left",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                  }}
-                >
-                  <w.Icon size={20} strokeWidth={1.7} color={wardrobe === w.id ? C.primary : C.sub} />
-                  <span style={{ fontSize: 14, fontWeight: 600, color: C.text, fontFamily: FONT }}>{w.label}</span>
-                </button>
+                <ChoiceRow key={w.id} Icon={w.Icon} label={w.label} hint={w.hint} selected={wardrobe === w.id}
+                  onClick={() => { track("date_wardrobe_selected", { wardrobe: w.id }); setWardrobe(w.id); }} />
               ))}
             </div>
           </>
@@ -657,11 +665,11 @@ function DateCard({ invitation, isMe, isMale, onRespond, onConfirm, onDecline, o
                 onClose={() => setShowPicker(false)}
                 footer={
                   confirming ? (
-                    <button onClick={handleConfirm} disabled={sending} style={{ ...primaryBtn, background: GREEN }}>
+                    <button onClick={handleConfirm} disabled={sending} style={{ ...primaryBtn, background: C.primary }}>
                       {sending ? "..." : `Confirm ${longDay(confirming.date)} · ${confirming.time}`}
                     </button>
                   ) : (
-                    <p style={{ fontSize: 13, color: C.sub, textAlign: "center", fontFamily: FONT, margin: 0 }}>Tap a time in your column to choose it</p>
+                    <p style={{ fontSize: 13, color: C.sub, textAlign: "center", fontFamily: FONT, margin: 0 }}>Tap one of the times to choose it</p>
                   )
                 }
               >
@@ -1707,3 +1715,4 @@ export default function Matches() {
     </div>
   );
 }
+
