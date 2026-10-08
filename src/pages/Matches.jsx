@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { useApp } from "../context/AppContext";
 import * as api from "../services/api";
 import { MessageCircle, Ban, Flag, UserMinus, Calendar, CheckCircle, Clock, Video, Heart, Lock, Flower2, ChevronLeft, Shield, ArrowUp, Utensils, Footprints, Coffee, Mountain, Shirt, Briefcase, Gem, Dumbbell, MapPin, Image as ImageIcon, Mic, X, SmilePlus, Reply, Sunrise, Sun, Sunset, Moon } from "lucide-react";
@@ -151,7 +152,7 @@ function SlotPill({ t, on, offered, onClick }) {
 const SLOT_ICONS = { morning: Sunrise, lunch: Sun, afternoon: Sunset, evening: Moon };
 
 // The times she offered, as a timeline he picks one from: a day label, then one row per time with a "Choose" chip.
-function OfferedTimesList({ rows, chosenKey, onPick, themName }) {
+function OfferedTimesList({ rows, chosenKey, onPick, themName, onConfirm, sending }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
       {groupByDay(rows).map((day, di) => {
@@ -188,6 +189,16 @@ function OfferedTimesList({ rows, chosenKey, onPick, themName }) {
                     </span>
                   </button>
                 );
+              }).flatMap((el, i) => {
+                // The confirm button sits right under the chosen row as well as in the footer
+                const t = day.times[i];
+                if (!onConfirm || chosenKey !== timeKey(t)) return [el];
+                return [el, (
+                  <button key={timeKey(t) + "-confirm"} onClick={onConfirm} disabled={sending}
+                    style={{ width: "100%", padding: "12px 0", borderRadius: 12, fontSize: 14.5, fontWeight: 600, fontFamily: FONT, background: C.primary, color: "white", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                    <CheckCircle size={16} color="white" /> {sending ? "Confirming…" : `Confirm ${slotName(t)}, ${longDay(t.date)}`}
+                  </button>
+                )];
               })}
             </div>
           </div>
@@ -198,11 +209,11 @@ function OfferedTimesList({ rows, chosenKey, onPick, themName }) {
 }
 
 // Availability, one card per day. `theirs` is optional: with it, only their offered times are listed and one is picked.
-function AvailabilityTable({ rows, mine, theirs, onToggle, themName, highlightKey }) {
+function AvailabilityTable({ rows, mine, theirs, onToggle, themName, highlightKey, onConfirm, sending }) {
   const comparing = !!theirs;
   if (comparing) {
     const chosenKey = highlightKey || [...mine][0] || null;
-    return <OfferedTimesList rows={rows.filter((t) => theirs.has(timeKey(t)))} chosenKey={chosenKey} onPick={onToggle} themName={themName} />;
+    return <OfferedTimesList rows={rows.filter((t) => theirs.has(timeKey(t)))} chosenKey={chosenKey} onPick={onToggle} themName={themName} onConfirm={onConfirm} sending={sending} />;
   }
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -242,9 +253,10 @@ function AvailabilityTable({ rows, mine, theirs, onToggle, themName, highlightKe
 }
 
 function AvailabilitySheet({ title, subtitle, onClose, children, footer }) {
-  return (
-    <div onClick={onClose} style={{ position: "fixed", inset: 0, maxWidth: 430, margin: "0 auto", zIndex: 600, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end" }}>
-      <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", borderRadius: "24px 24px 0 0", background: C.bg, maxHeight: "88vh", display: "flex", flexDirection: "column" }}>
+  // Rendered on the body and sized with the dynamic viewport, so the footer stays above Safari's toolbar
+  return createPortal(
+    <div onClick={onClose} style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, height: "100dvh", maxWidth: 430, margin: "0 auto", zIndex: 600, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end" }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", borderRadius: "24px 24px 0 0", background: C.bg, maxHeight: "88dvh", display: "flex", flexDirection: "column" }}>
         <div style={{ padding: "14px 16px 0", flexShrink: 0 }}>
           <div style={{ width: 36, height: 4, borderRadius: 2, background: C.border, margin: "0 auto 14px" }} />
           <p style={{ fontSize: 12, fontWeight: 700, color: C.sub, textTransform: "uppercase", letterSpacing: "0.1em", fontFamily: FONT, margin: "0 0 4px", textAlign: "center" }}>Date picker</p>
@@ -256,7 +268,8 @@ function AvailabilitySheet({ title, subtitle, onClose, children, footer }) {
         </div>
         {footer && <div style={{ flexShrink: 0, padding: "12px 16px max(24px, env(safe-area-inset-bottom, 24px))", borderTop: `1px solid ${C.border}`, background: C.bg }}>{footer}</div>}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -468,6 +481,7 @@ const DECLINE_REASONS = [
 function DateCard({ invitation, isMe, isMale, onRespond, onConfirm, onDecline, onCancel, meAvatar, themAvatar, themName, pickerOpen, onPickerOpenChange }) {
   const [selectedTimes, setSelectedTimes] = useState([]);
   const [sending, setSending] = useState(false);
+  const [confirmError, setConfirmError] = useState("");
   const [showDecline, setShowDecline] = useState(false);
   const [declineReasons, setDeclineReasons] = useState([]);
   const [confirming, setConfirming] = useState(null);
@@ -537,9 +551,15 @@ function DateCard({ invitation, isMe, isMale, onRespond, onConfirm, onDecline, o
     if (!confirming) return;
     track("date_confirmed");
     setSending(true);
-    await onConfirm(invitation.id, confirming);
-    setSending(false);
-    setShowPicker(false);
+    setConfirmError("");
+    try {
+      await onConfirm(invitation.id, confirming);
+      setShowPicker(false);
+    } catch (err) {
+      setConfirmError(err?.message ? `Could not save: ${err.message}` : "Could not save your choice. Please try again.");
+    } finally {
+      setSending(false);
+    }
   };
 
   const toggleDeclineReason = (r) => {
@@ -717,13 +737,12 @@ function DateCard({ invitation, isMe, isMale, onRespond, onConfirm, onDecline, o
                 subtitle={`These are the times ${themName} is free. Tap one, then confirm.`}
                 onClose={() => setShowPicker(false)}
                 footer={
-                  confirming ? (
-                    <button onClick={handleConfirm} disabled={sending} style={{ ...primaryBtn, background: C.primary }}>
-                      {sending ? "..." : `Confirm ${longDay(confirming.date)} · ${confirming.time}`}
+                  <>
+                    {confirmError && <p style={{ fontSize: 12.5, color: "#EF4444", textAlign: "center", fontFamily: FONT, margin: "0 0 8px" }}>{confirmError}</p>}
+                    <button onClick={handleConfirm} disabled={!confirming || sending} style={{ ...primaryBtn, background: confirming ? C.primary : C.border, cursor: confirming ? "pointer" : "default" }}>
+                      {sending ? "Confirming…" : confirming ? `Confirm ${longDay(confirming.date)} · ${slotName(confirming)}` : "Choose a time above"}
                     </button>
-                  ) : (
-                    <p style={{ fontSize: 13, color: C.sub, textAlign: "center", fontFamily: FONT, margin: 0 }}>Tap one of the times to choose it</p>
-                  )
+                  </>
                 }
               >
                 <AvailabilityTable
@@ -734,6 +753,8 @@ function DateCard({ invitation, isMe, isMale, onRespond, onConfirm, onDecline, o
                     const same = confirming && timeKey(confirming) === timeKey(t);
                     setConfirming(same ? null : t);
                   }}
+                  onConfirm={handleConfirm}
+                  sending={sending}
                   highlightKey={confirming ? timeKey(confirming) : null}
                   meAvatar={meAvatar}
                   themAvatar={themAvatar}
@@ -1104,6 +1125,7 @@ function ChatThread({ match, onBack }) {
       notifyThem("Date confirmed", `${myName} picked ${longDay(confirmedTime.date)} · ${confirmedTime.time}.`, "date");
     } catch (err) {
       console.error("Confirm failed:", err);
+      throw err;
     }
   };
 
@@ -1768,5 +1790,6 @@ export default function Matches() {
     </div>
   );
 }
+
 
 
