@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useApp } from "../context/AppContext";
 import * as api from "../services/api";
-import { MessageCircle, Ban, Flag, UserMinus, Calendar, CheckCircle, Clock, Video, Heart, Lock, Flower2, ChevronLeft, Shield, ArrowUp, Utensils, Footprints, Coffee, Mountain, Shirt, Briefcase, Gem, Dumbbell, MapPin, Image as ImageIcon, Mic, X, SmilePlus, Reply, Sunrise, Sun, Sunset, Moon } from "lucide-react";
+import { MessageCircle, Ban, Flag, UserMinus, Calendar, CheckCircle, Clock, Video, Heart, Lock, Flower2, ChevronLeft, Shield, ArrowUp, Utensils, Footprints, Coffee, Mountain, MapPin, Image as ImageIcon, Mic, X, SmilePlus, Reply, Sunrise, Sun, Sunset, Moon } from "lucide-react";
 import AgapeCross from "../components/AgapeCross";
 import DoveIcon from "../components/DoveIcon";
 import LocationPicker from "../components/LocationPicker";
@@ -30,12 +30,8 @@ const DATE_TYPES = [
   { id: "adventure", Icon: Mountain, label: "Adventure", hint: "Something active you both remember" },
 ];
 
-const WARDROBE_OPTIONS = [
-  { id: "casual", Icon: Shirt, label: "Casual", hint: "Come as you are" },
-  { id: "smart", Icon: Briefcase, label: "Smart casual", hint: "A little effort, nothing stiff" },
-  { id: "formal", Icon: Gem, label: "Formal", hint: "Dressed up for the occasion" },
-  { id: "sporty", Icon: Dumbbell, label: "Active", hint: "Comfortable, ready to move" },
-];
+// Dress codes from plans made before the step was removed still show on their cards
+const WARDROBE_LABELS = { casual: "Casual", smart: "Smart casual", formal: "Formal", sporty: "Active" };
 
 // A choice row with a round icon badge, used for the date type and the dress code
 function ChoiceRow({ Icon, label, hint, selected, onClick }) {
@@ -342,19 +338,17 @@ function DateBuilder({ profileName, userLocation, onSend, onClose }) {
   const [dateType, setDateType] = useState(null);
   const [location, setLocation] = useState("");
   const [mapCenter, setMapCenter] = useState(userLocation || { lat: 50.0647, lng: 19.9450 });
-  const [wardrobe, setWardrobe] = useState(null);
   const canProceed =
     (step === 1 && dateType) ||
-    (step === 2 && location.trim()) ||
-    (step === 3 && wardrobe);
+    (step === 2 && location.trim());
 
   const handleNext = () => {
-    if (step < 3) {
-      track("date_builder_step", { step, dateType, location, wardrobe });
+    if (step < 2) {
+      track("date_builder_step", { step, dateType, location });
       setStep(step + 1);
     } else {
-      track("date_invitation_sent", { dateType, wardrobe });
-      onSend({ dateType, location: location.trim(), wardrobe, proposedTimes: [] });
+      track("date_invitation_sent", { dateType });
+      onSend({ dateType, location: location.trim(), wardrobe: null, proposedTimes: [] });
     }
   };
 
@@ -364,7 +358,7 @@ function DateBuilder({ profileName, userLocation, onSend, onClose }) {
         <div style={{ width: 36, height: 4, borderRadius: 2, background: C.border, margin: "0 auto 16px" }} />
 
         <div style={{ display: "flex", gap: 4, marginBottom: 20 }}>
-          {[1, 2, 3].map((s) => (
+          {[1, 2].map((s) => (
             <div key={s} style={{ flex: 1, height: 3, borderRadius: 2, background: s <= step ? C.primary : C.border }} />
           ))}
         </div>
@@ -420,18 +414,6 @@ function DateBuilder({ profileName, userLocation, onSend, onClose }) {
           </>
         )}
 
-        {step === 3 && (
-          <>
-            <p style={{ fontSize: 18, fontWeight: 700, color: C.text, fontFamily: FONT, marginBottom: 16 }}>Dress code</p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {WARDROBE_OPTIONS.map((w) => (
-                <ChoiceRow key={w.id} Icon={w.Icon} label={w.label} hint={w.hint} selected={wardrobe === w.id}
-                  onClick={() => { track("date_wardrobe_selected", { wardrobe: w.id }); setWardrobe(w.id); }} />
-              ))}
-            </div>
-          </>
-        )}
-
         <div style={{ display: "flex", gap: 8, marginTop: 24, position: "sticky", bottom: -32, background: C.bg, padding: "10px 0 32px", marginBottom: -32 }}>
           {step > 1 && (
             <button onClick={() => setStep(step - 1)} style={{ flex: 1, padding: "14px 0", borderRadius: 14, fontSize: 14, fontWeight: 700, background: C.surface, color: C.sub, border: "none", cursor: "pointer" }}>
@@ -453,7 +435,7 @@ function DateBuilder({ profileName, userLocation, onSend, onClose }) {
               cursor: canProceed ? "pointer" : "default",
             }}
           >
-            {step === 3 ? `Send to ${profileName}` : "Next"}
+            {step === 2 ? `Send to ${profileName}` : "Next"}
           </button>
         </div>
       </div>
@@ -525,7 +507,7 @@ function DateCard({ invitation, isMe, isMale, onRespond, onConfirm, onDecline, o
   const primaryBtn = { width: "100%", padding: "13px 0", borderRadius: 12, fontSize: 14.5, fontWeight: 600, fontFamily: FONT, background: C.text, color: "white", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 };
   const secondaryBtn = { ...primaryBtn, background: C.bg, color: C.text, border: `1px solid ${C.border}` };
   const dt = DATE_TYPES.find((d) => d.id === invitation.date_type);
-  const wb = WARDROBE_OPTIONS.find((w) => w.id === invitation.wardrobe);
+  const wb = invitation.wardrobe ? { label: WARDROBE_LABELS[invitation.wardrobe] || invitation.wardrobe } : null;
 
   const toggleTime = (t) => {
     setSelectedTimes((prev) => {

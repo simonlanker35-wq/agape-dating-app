@@ -122,7 +122,7 @@ src/
 - Sparks (eingehende Likes ansehen, matchen, ablehnen)
 - Standouts (hervorgehobene Profile)
 - Chat (Nachrichten senden/empfangen, 5s Polling)
-- Date-Einladungssystem (3-Step: Typ → Ort mit Karte → Dresscode; sie wählt Zeiten, er bestätigt eine)
+- Date-Einladungssystem (2-Step: Typ → Ort mit Karte; sie wählt Stunden, er bestätigt eine)
 - Date-Response (Frau wählt Zeiten) + Confirm (Mann bestätigt)
 - Date-Decline mit Gründen (Checkboxen)
 - Rose (Frau → +36h Deadline)
