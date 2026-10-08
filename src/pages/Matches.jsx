@@ -737,12 +737,9 @@ function DateCard({ invitation, isMe, isMale, onRespond, onConfirm, onDecline, o
                 subtitle={`These are the times ${themName} is free. Tap one, then confirm.`}
                 onClose={() => setShowPicker(false)}
                 footer={
-                  <>
-                    {confirmError && <p style={{ fontSize: 12.5, color: "#EF4444", textAlign: "center", fontFamily: FONT, margin: "0 0 8px" }}>{confirmError}</p>}
-                    <button onClick={handleConfirm} disabled={!confirming || sending} style={{ ...primaryBtn, background: confirming ? C.primary : C.border, cursor: confirming ? "pointer" : "default" }}>
-                      {sending ? "Confirming…" : confirming ? `Confirm ${longDay(confirming.date)} · ${slotName(confirming)}` : "Choose a time above"}
-                    </button>
-                  </>
+                  confirmError
+                    ? <p style={{ fontSize: 12.5, color: "#EF4444", textAlign: "center", fontFamily: FONT, margin: 0 }}>{confirmError}</p>
+                    : <p style={{ fontSize: 13, color: C.sub, textAlign: "center", fontFamily: FONT, margin: 0 }}>{confirming ? "Press Confirm under the time you chose" : "Tap a time to choose it"}</p>
                 }
               >
                 <AvailabilityTable
