@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useApp } from "../context/AppContext";
 import * as api from "../services/api";
-import { MessageCircle, Ban, Flag, UserMinus, Calendar, CheckCircle, Clock, Video, Heart, Lock, Flower2, ChevronLeft, Shield, ArrowUp, Utensils, Footprints, Coffee, Mountain, Shirt, Briefcase, Gem, Dumbbell, MapPin, Image as ImageIcon, Mic, X, SmilePlus, Reply } from "lucide-react";
+import { MessageCircle, Ban, Flag, UserMinus, Calendar, CheckCircle, Clock, Video, Heart, Lock, Flower2, ChevronLeft, Shield, ArrowUp, Utensils, Footprints, Coffee, Mountain, Shirt, Briefcase, Gem, Dumbbell, MapPin, Image as ImageIcon, Mic, X, SmilePlus, Reply, Sunrise, Sun, Sunset, Moon } from "lucide-react";
 import AgapeCross from "../components/AgapeCross";
 import DoveIcon from "../components/DoveIcon";
 import LocationPicker from "../components/LocationPicker";
@@ -148,9 +148,62 @@ function SlotPill({ t, on, offered, onClick }) {
   );
 }
 
+const SLOT_ICONS = { morning: Sunrise, lunch: Sun, afternoon: Sunset, evening: Moon };
+
+// The times she offered, as a timeline he picks one from: a day label, then one row per time with a "Choose" chip.
+function OfferedTimesList({ rows, chosenKey, onPick, themName }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      {groupByDay(rows).map((day, di) => {
+        const d = new Date(day.date + "T12:00:00");
+        return (
+          <div key={day.date} style={{ paddingTop: di === 0 ? 2 : 14 }}>
+            <p style={{ margin: "0 0 8px 2px", fontSize: 11.5, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: C.sub, fontFamily: FONT }}>
+              {d.toLocaleDateString("en", { weekday: "long" })} · {d.toLocaleDateString("en", { day: "numeric", month: "short" })}
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {day.times.map((t) => {
+                const k = timeKey(t);
+                const on = chosenKey === k;
+                const Icon = SLOT_ICONS[t.slot] || Clock;
+                return (
+                  <button
+                    key={k}
+                    onClick={() => onPick(t)}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 12, width: "100%", padding: "11px 12px", borderRadius: 16, textAlign: "left", cursor: "pointer",
+                      background: on ? C.primarySoft : C.bg, border: on ? `1.5px solid ${C.primary}` : `1px solid ${C.border}`,
+                      boxShadow: on ? "0 4px 14px rgba(184,145,42,0.18)" : "none", transition: "background 120ms, box-shadow 120ms",
+                    }}
+                  >
+                    <span style={{ width: 40, height: 40, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: on ? C.primary : C.surface }}>
+                      <Icon size={19} strokeWidth={1.7} color={on ? "white" : C.primary} />
+                    </span>
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ display: "block", fontSize: 15, fontWeight: 700, color: C.text, fontFamily: FONT }}>{slotName(t)}</span>
+                      <span style={{ display: "block", fontSize: 12.5, color: C.sub, fontFamily: FONT, marginTop: 1 }}>{slotHint(t) ? `${slotHint(t)} · ${themName || "She"} is free` : t.time}</span>
+                    </span>
+                    <span style={{ flexShrink: 0, padding: "6px 12px", borderRadius: 9999, fontSize: 12.5, fontWeight: 700, fontFamily: FONT, background: on ? C.primary : "transparent", color: on ? "white" : C.primary, border: `1.5px solid ${C.primary}` }}>
+                      {on ? "Chosen" : "Choose"}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // Availability, one card per day. `theirs` is optional: with it, only their offered times are listed and one is picked.
 function AvailabilityTable({ rows, mine, theirs, onToggle, themName, highlightKey }) {
   const comparing = !!theirs;
+  if (comparing) {
+    const chosenKey = highlightKey || [...mine][0] || null;
+    return <OfferedTimesList rows={rows.filter((t) => theirs.has(timeKey(t)))} chosenKey={chosenKey} onPick={onToggle} themName={themName} />;
+  }
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       {groupByDay(rows).map((day) => {
@@ -1715,4 +1768,5 @@ export default function Matches() {
     </div>
   );
 }
+
 
