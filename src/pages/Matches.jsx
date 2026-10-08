@@ -133,7 +133,7 @@ function HourBox({ t, on, onClick }) {
       aria-pressed={on}
       aria-label={`${t.time}${on ? ", selected" : ""}`}
       style={{
-        width: "100%", aspectRatio: "1 / 1", minHeight: 38, borderRadius: 11, padding: 0, cursor: onClick ? "pointer" : "default",
+        width: 46, height: 44, flexShrink: 0, scrollSnapAlign: "start", borderRadius: 11, padding: 0, cursor: onClick ? "pointer" : "default",
         display: "flex", alignItems: "center", justifyContent: "center",
         fontSize: 14, fontWeight: 700, fontFamily: FONT, color: on ? "white" : C.text,
         background: on ? C.primary : C.bg, border: on ? `1.5px solid ${C.primary}` : `1.5px solid ${C.border}`,
@@ -226,11 +226,15 @@ function AvailabilityTable({ rows, mine, theirs, onToggle, themName, highlightKe
               </div>
               {picked > 0 && <span style={{ fontSize: 12, color: C.primary, fontWeight: 600, fontFamily: FONT }}>{picked} picked</span>}
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 6 }}>
-              {day.times.map((t) => {
-                const k = timeKey(t);
-                return <HourBox key={k} t={t} on={mine.has(k)} onClick={onToggle ? () => onToggle(t) : undefined} />;
-              })}
+            <div style={{ position: "relative", margin: "0 -12px" }}>
+              <div style={{ display: "flex", gap: 6, overflowX: "auto", scrollbarWidth: "none", WebkitOverflowScrolling: "touch", padding: "2px 24px 4px 12px", scrollSnapType: "x proximity" }}>
+                {day.times.map((t) => {
+                  const k = timeKey(t);
+                  return <HourBox key={k} t={t} on={mine.has(k)} onClick={onToggle ? () => onToggle(t) : undefined} />;
+                })}
+              </div>
+              {/* A soft fade on the right edge hints that the row scrolls */}
+              <div style={{ position: "absolute", top: 0, right: 0, bottom: 0, width: 28, pointerEvents: "none", background: `linear-gradient(to right, rgba(250,250,248,0), ${C.card})`, borderRadius: "0 18px 18px 0" }} />
             </div>
           </div>
         );
@@ -1809,6 +1813,7 @@ export default function Matches() {
     </div>
   );
 }
+
 
 
 

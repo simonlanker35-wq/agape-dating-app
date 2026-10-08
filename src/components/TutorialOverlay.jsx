@@ -17,7 +17,7 @@ const TOURS = {
   ],
   chat: [
     { selector: 'button[aria-label="Safety options"]', title: "Safety options", text: "Report, block or unmatch from here — anytime." },
-    { selector: 'button[aria-label="Plan a date"]', title: "Plan a date", text: "Pick what, where and the dress code. She then says when she's free and you choose one of her times. You have 5 days after the first message." },
+    { selector: 'button[aria-label="Plan a date"]', title: "Plan a date", text: "Pick what and where. She then says which hours she's free and you choose one of them. You have 5 days after the first message." },
     { selector: 'button[aria-label="Send a rose"]', title: "Send a rose", text: "Tell him you'd love to go on a date — it gives him 36 extra hours to plan one." },
     { selector: 'button[aria-label="Video call"]', title: "Video call", text: "Rather meet on a call first? Schedule one here — the planning clock pauses until after the call." },
   ],
