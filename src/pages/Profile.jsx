@@ -47,6 +47,7 @@ import VoiceRecorder from "../components/VoiceRecorder";
 import { extForMime } from "../services/media";
 import { redirectToCheckout, getSubscriptionStatus, cancelSubscription, resumeSubscription } from "../services/stripe";
 import { getDovesRemaining } from "../services/limits";
+import { resetTours } from "../components/TutorialOverlay";
 import { track } from "../services/posthog";
 import { enablePush, disablePush, isPushEnabled, isPushSupported, getPermission, needsHomeScreenInstall } from "../services/push";
 
@@ -412,6 +413,7 @@ function SettingsScreen({ onBack, initialSection = null }) {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [tipsReset, setTipsReset] = useState(false);
   const [editLocationData, setEditLocationData] = useState(null);
   const [distanceVal, setDistanceVal] = useState(currentUser?.filters?.maxDistance || 80);
 
@@ -887,6 +889,7 @@ function SettingsScreen({ onBack, initialSection = null }) {
           <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: C.sub, padding: "0 4px", marginBottom: 8 }}>Support</p>
           <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
             <SettingsRow icon={I.msg} label="Help & feedback" onPress={() => setSection("help")} />
+            <SettingsRow icon={I.sparkle} label="Show the tips again" sub={tipsReset ? "Done — open a tab to see them" : "Replay the short tour on each tab"} onPress={() => { track("tour_reset"); resetTours(); setTipsReset(true); }} />
             <SettingsRow icon={I.file} label="Terms of service" onPress={() => setSection("terms")} />
             <SettingsRow icon={I.keyhole} label="Privacy policy" onPress={() => setSection("privacypolicy")} />
           </div>

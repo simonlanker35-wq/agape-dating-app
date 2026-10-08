@@ -1591,7 +1591,8 @@ function ChatThread({ match, onBack }) {
         )}
       </div>
 
-      <TutorialOverlay screen="chat" />
+      {/* The chat tips wait while the date builder is open, so they never cover it */}
+      <TutorialOverlay screen="chat" paused={showDateBuilder} />
 
       {lightbox && (
         <div onClick={() => setLightbox(null)} style={{ position: "fixed", inset: 0, zIndex: 10001, background: "rgba(0,0,0,0.94)", display: "flex", alignItems: "center", justifyContent: "center" }}>

@@ -1,11 +1,13 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { track } from "../services/posthog";
+import { useApp } from "../context/AppContext";
 
 const FONT = "'Outfit', system-ui, sans-serif";
 const C = { primary: "#B8912A", text: "#1A1612", sub: "#8C857C", border: "#E8E4DF" };
 
-// One tour per tab; steps with a selector spotlight that element, `full` steps are a centered intro card
+// One tour per tab; steps with a selector spotlight that element, `full` steps are a centered intro card.
+// `for` limits a step to one gender, because the chat buttons differ for him and her.
 const TOURS = {
   discover: [
     { selector: 'button[aria-label="Like"]', title: "Like", text: "Like this person. You have 8 likes a day — 15 with Agape+. The number on the button is what's left today." },
@@ -17,8 +19,8 @@ const TOURS = {
   ],
   chat: [
     { selector: 'button[aria-label="Safety options"]', title: "Safety options", text: "Report, block or unmatch from here — anytime." },
-    { selector: 'button[aria-label="Plan a date"]', title: "Plan a date", text: "Pick what and where. She then says which hours she's free and you choose one of them. You have 5 days after the first message." },
-    { selector: 'button[aria-label="Send a rose"]', title: "Send a rose", text: "Tell him you'd love to go on a date — it gives him 36 extra hours to plan one." },
+    { selector: 'button[aria-label="Plan a date"]', for: "male", title: "Plan a date", text: "Pick what and where. She then says which hours she's free and you choose one of them. You have 5 days after the first message." },
+    { selector: 'button[aria-label="Send a rose"]', for: "female", title: "Send a rose", text: "Tell him you'd love to go on a date — it gives him 36 extra hours to plan one." },
     { selector: 'button[aria-label="Video call"]', title: "Video call", text: "Rather meet on a call first? Schedule one here — the planning clock pauses until after the call." },
   ],
   standouts: [
@@ -28,11 +30,36 @@ const TOURS = {
     { full: true, title: "Sparks", text: "People who liked you land here. Free members reveal one a week — with Agape+ you see everyone. Like back to match." },
   ],
   matches: [
-    { full: true, title: "Messages", text: "The chat opens as soon as you match. After the first message he has 5 days to plan a date: he picks what and where, she says when she's free, he picks one of her times." },
+    { full: true, title: "Messages", text: "The chat opens as soon as you match. After the first message he has 5 days to plan a date: he picks what and where, she says which hours she's free, he picks one of them." },
   ],
 };
 
-const key = (screen) => `agape_tour_${screen}`;
+// Tours are remembered per account, so a second person on the same phone gets them too
+const key = (uid, screen) => `agape_tour_${uid || "anon"}_${screen}`;
+export const TOUR_RESET_EVENT = "agape-tour-reset";
+
+// Forget every finished tour on this device; the tabs show their tips again
+export function resetTours() {
+  try {
+    const gone = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith("agape_tour_")) gone.push(k);
+    }
+    gone.forEach((k) => localStorage.removeItem(k));
+  } catch {}
+  window.dispatchEvent(new Event(TOUR_RESET_EVENT));
+}
+
+// Only one tour on screen at a time: the Messages intro and the chat tour can both want to show
+// when a chat opens straight away, and would otherwise stack on top of each other.
+let activeTour = null;
+const lockListeners = new Set();
+const claimTour = (id) => { if (activeTour && activeTour !== id) return false; activeTour = id; return true; };
+const releaseTour = (id) => { if (activeTour === id) { activeTour = null; lockListeners.forEach((fn) => fn()); } };
+
+const READY_WAIT_MS = 8000;   // how long a tour waits for its first button before giving up (data still loading)
+const MISSING_SKIP_MS = 900;  // how long a step waits for its button before it is skipped
 
 // Among all matches, prefer one that is actually laid out and on screen
 function findTarget(selector) {
@@ -47,9 +74,18 @@ function findTarget(selector) {
 
 const sameRect = (a, b) => !!a && !!b && Math.abs(a.top - b.top) < 0.5 && Math.abs(a.left - b.left) < 0.5 && Math.abs(a.width - b.width) < 0.5 && Math.abs(a.height - b.height) < 0.5;
 
-export default function TutorialOverlay({ screen }) {
-  const steps = TOURS[screen];
-  const [visible, setVisible] = useState(false);
+export default function TutorialOverlay({ screen, paused = false }) {
+  const { state } = useApp();
+  const uid = state.currentUser?.id || null;
+  const gender = state.currentUser?.gender || null;
+  const allSteps = TOURS[screen];
+  // Steps meant for the other gender are left out, so nothing waits for a button that never appears
+  const steps = allSteps ? allSteps.filter((s) => !s.for || !gender || s.for === gender) : null;
+
+  const id = useRef(`tour-${Math.random().toString(36).slice(2)}`);
+  const [wanted, setWanted] = useState(false);   // this tour has not been seen yet
+  const [owner, setOwner] = useState(false);     // and it holds the one-tour-at-a-time lock
+  const [ready, setReady] = useState(false);     // and its first button is on screen
   const [idx, setIdx] = useState(0);
   const [rect, setRect] = useState(null);
   const [bubbleH, setBubbleH] = useState(170);
@@ -57,21 +93,57 @@ export default function TutorialOverlay({ screen }) {
   const shown = useRef(0);
   const bubbleRef = useRef(null);
 
+  // Decide whether this tour is due, now and again after "show the tips again"
   useEffect(() => {
-    let done = false;
-    try { done = localStorage.getItem(key(screen)) === "1"; } catch {}
-    shown.current = 0;
-    setIdx(0);
-    setRect(null);
-    setVisible(!!steps && !done);
-  }, [screen]);
+    const check = () => {
+      let done = false;
+      try { done = localStorage.getItem(key(uid, screen)) === "1"; } catch {}
+      shown.current = 0;
+      setIdx(0);
+      setRect(null);
+      setReady(false);
+      setWanted(!!steps?.length && !done);
+    };
+    check();
+    window.addEventListener(TOUR_RESET_EVENT, check);
+    return () => window.removeEventListener(TOUR_RESET_EVENT, check);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [screen, uid]);
+
+  // Take the lock when due; wait for it when another tour is showing
+  useEffect(() => {
+    const me = id.current;
+    if (!wanted) { setOwner(false); releaseTour(me); return; }
+    const attempt = () => { if (claimTour(me)) setOwner(true); };
+    attempt();
+    lockListeners.add(attempt);
+    return () => { lockListeners.delete(attempt); releaseTour(me); };
+  }, [wanted]);
+
+  // A spotlight tour starts only once one of its buttons is on screen; if none shows up (the page is
+  // empty or still loading) it stays hidden and is tried again next time
+  useEffect(() => {
+    if (!wanted || !owner || paused) return;
+    if (!steps?.length) return;
+    if (steps.every((s) => s.full)) { setReady(true); return; }
+    const startedAt = performance.now();
+    let timer = 0;
+    const poll = () => {
+      if (steps.some((s) => s.selector && findTarget(s.selector))) { setReady(true); return; }
+      if (performance.now() - startedAt > READY_WAIT_MS) { setWanted(false); return; }
+      timer = setTimeout(poll, 150);
+    };
+    poll();
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wanted, owner, paused, screen]);
 
   const finish = (skipped = false) => {
     if (shown.current > 0) {
-      try { localStorage.setItem(key(screen), "1"); } catch {}
+      try { localStorage.setItem(key(uid, screen), "1"); } catch {}
       track(skipped ? "tour_skipped" : "tour_completed", { screen, steps: shown.current });
     }
-    setVisible(false);
+    setWanted(false);
   };
 
   const next = () => {
@@ -80,7 +152,8 @@ export default function TutorialOverlay({ screen }) {
     else setIdx(idx + 1);
   };
 
-  const step = visible && steps ? steps[idx] : null;
+  const live = wanted && owner && ready && !paused;
+  const step = live && steps ? steps[idx] : null;
 
   // Follow the target every frame: it can move after first paint (images loading, sheets and cards
   // still animating in, scrolling, the mobile address bar collapsing). The spotlight is only shown
@@ -113,7 +186,8 @@ export default function TutorialOverlay({ screen }) {
 
       const el = findTarget(step.selector);
       if (!el) {
-        if (!displayed && performance.now() - startedAt > 4000) {
+        // A button that is not there (no prompts on this profile, a rose already sent) is skipped quickly
+        if (!displayed && performance.now() - startedAt > MISSING_SKIP_MS) {
           if (idx + 1 < steps.length) setIdx(idx + 1); else finish();
           return;
         }
@@ -141,6 +215,7 @@ export default function TutorialOverlay({ screen }) {
     };
     schedule();
     return () => { cancelled = true; cancelAnimationFrame(raf); clearTimeout(timer); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, idx]);
 
   // Real bubble height, so above/below placement never relies on a guess
@@ -174,7 +249,7 @@ export default function TutorialOverlay({ screen }) {
   const isLast = idx + 1 >= steps.length;
 
   return createPortal(
-    <div style={{ position: "fixed", inset: 0, zIndex: 9000, fontFamily: FONT, touchAction: "none", overscrollBehavior: "contain" }} onClick={next}>
+    <div role="dialog" aria-label={step.title} style={{ position: "fixed", inset: 0, zIndex: 9000, fontFamily: FONT, touchAction: "none", overscrollBehavior: "contain" }} onClick={next}>
       {rect ? (
         <div style={{ position: "fixed", boxSizing: "border-box", top: rect.top - pad, left: rect.left - pad, width: rect.width + pad * 2, height: rect.height + pad * 2, borderRadius: 16, boxShadow: "0 0 0 9999px rgba(0,0,0,0.64)", border: "2px solid rgba(255,255,255,0.9)", pointerEvents: "none" }} />
       ) : (
@@ -189,7 +264,7 @@ export default function TutorialOverlay({ screen }) {
         <p style={{ fontSize: 14, color: C.sub, lineHeight: 1.5, margin: 0 }}>{step.text}</p>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 14 }}>
           {steps.length > 1 && (
-            <div style={{ display: "flex", gap: 5, flex: 1 }}>
+            <div style={{ display: "flex", gap: 5, flex: 1 }} aria-label={`Step ${idx + 1} of ${steps.length}`}>
               {steps.map((_, i) => <span key={i} style={{ width: 6, height: 6, borderRadius: 3, background: i === idx ? C.primary : C.border }} />)}
             </div>
           )}
