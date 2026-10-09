@@ -1766,7 +1766,7 @@ export default function Matches() {
             if (!profile) return null;
             const convo = state.conversations[m.id];
             const lastMsg = convo?.messages?.[convo.messages.length - 1] || m.lastMessage;
-            const hasUnread = lastMsg && lastMsg.sender !== currentUserId;
+            const hasUnread = lastMsg && lastMsg.sender !== currentUserId && !lastMsg.read && !lastMsg.isComment;
 
             return (
               <button

@@ -560,7 +560,7 @@ export async function getMatches() {
       .limit(1)
       .maybeSingle();
 
-    let preview = lastMsg ? { text: lastMsg.text, sender: lastMsg.sender } : null;
+    let preview = lastMsg ? { text: lastMsg.text, sender: lastMsg.sender, read: !!lastMsg.read, timestamp: new Date(lastMsg.created_at).getTime() } : null;
     if (!preview) {
       const { data: likeComment } = await supabase
         .from("likes")
@@ -672,6 +672,13 @@ function mapMessage(msg) {
     reactions: msg.reactions || {},
     replyTo: msg.reply_to || null,
   };
+}
+
+// Everything they sent in this chat counts as read once the chat is open
+export async function markMessagesRead(matchId) {
+  const user = await currentUser();
+  const { error } = await supabase.from("messages").update({ read: true }).eq("match_id", matchId).neq("sender", user.id).eq("read", false);
+  if (error) console.warn("Could not mark messages read:", error.message);
 }
 
 // Set my reaction on a message (empty emoji removes it). Returns the message's reactions map.

@@ -54,9 +54,13 @@ export default function Navigation() {
   const unreadCount = (tab) => {
     if (tab === "likes") return likesReceived.length;
     if (tab === "matches") {
-      return Object.values(state.conversations).filter(
-        (c) => c.messages?.length > 0 && c.messages[c.messages.length - 1].sender !== "me"
-      ).length;
+      // One per chat where the last message is theirs and still unread
+      const myId = state.currentUser?.id;
+      return (state.matches || []).filter((m) => {
+        const convo = state.conversations[m.id];
+        const last = convo?.messages?.[convo.messages.length - 1] || m.lastMessage;
+        return last && last.sender !== myId && !last.read && !last.isComment;
+      }).length;
     }
     return 0;
   };

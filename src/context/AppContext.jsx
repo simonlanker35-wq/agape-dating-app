@@ -83,6 +83,12 @@ function reducer(state, action) {
     case "SET_LIKES_RECEIVED":
       return { ...state, likesReceived: action.payload };
 
+    case "MARK_READ":
+      return {
+        ...state,
+        matches: state.matches.map((m) => (m.id === action.payload && m.lastMessage ? { ...m, lastMessage: { ...m.lastMessage, read: true } } : m)),
+      };
+
     case "SET_MATCHES":
       return { ...state, matches: action.payload, matchesLoaded: true };
 
@@ -661,10 +667,16 @@ export function AppProvider({ children }) {
 
     loadMessages: async (matchId) => {
       const messages = await api.getMessages(matchId);
+      const myId = state.currentUser?.id;
+      const unread = messages.some((m) => m.sender !== myId && !m.read && !m.isComment);
       dispatch({
         type: "SET_CONVERSATIONS",
-        payload: { [matchId]: { messages, lastActivity: Date.now() } },
+        payload: { [matchId]: { messages: unread ? messages.map((m) => (m.sender !== myId ? { ...m, read: true } : m)) : messages, lastActivity: Date.now() } },
       });
+      if (unread) {
+        dispatch({ type: "MARK_READ", payload: matchId });
+        api.markMessagesRead(matchId).catch(() => {});
+      }
     },
 
     // emoji "" removes my reaction. Updates the chat immediately and rolls back if saving fails.
