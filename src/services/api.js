@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import { geocodeCity } from "./geo";
 
 
 
@@ -136,10 +137,18 @@ export async function createProfile(data) {
     job: data.job || "",
     school: data.school || "",
     location_city: data.location || "",
+    location_lat: Number.isFinite(data.locationLat) ? data.locationLat : null,
+    location_lng: Number.isFinite(data.locationLng) ? data.locationLng : null,
     photos: data.photos || [],
     prompts: data.prompts || [],
     interests: data.interests || [],
   };
+
+  // A city typed without picking a suggestion still gets its coordinates
+  if (profile.location_city && (profile.location_lat == null || profile.location_lng == null)) {
+    const geo = await geocodeCity(profile.location_city);
+    if (geo) { profile.location_lat = geo.lat; profile.location_lng = geo.lng; }
+  }
 
   let { error: profileError } = await supabase.from("profiles").insert(profile);
 
@@ -266,6 +275,10 @@ export async function updateProfile(data) {
   if (data.location !== undefined) updates.location_city = data.location;
   if (data.locationLat !== undefined) updates.location_lat = data.locationLat;
   if (data.locationLng !== undefined) updates.location_lng = data.locationLng;
+  if (data.location && (data.locationLat == null || data.locationLng == null)) {
+    const geo = await geocodeCity(data.location);
+    if (geo) { updates.location_lat = geo.lat; updates.location_lng = geo.lng; }
+  }
   if (data.prompts !== undefined) updates.prompts = data.prompts;
   if (data.interests !== undefined) updates.interests = data.interests;
   if (data.traits !== undefined) updates.traits = data.traits;

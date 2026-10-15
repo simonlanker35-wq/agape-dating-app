@@ -52,8 +52,19 @@ function RecoveryModal() {
   );
 }
 
+// Shown for the moment it takes to restore a stored login, instead of flashing the sign-up screen
+function Splash() {
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <img src="/logo.svg" alt="Agape" width={88} height={88} style={{ borderRadius: 22, boxShadow: "0 4px 24px rgba(0,0,0,0.08)" }} />
+    </div>
+  );
+}
+
 function AppContent() {
   const { state } = useApp();
+
+  if (!state.sessionChecked) return <Splash />;
 
   if (!state.onboardingComplete) {
     return (

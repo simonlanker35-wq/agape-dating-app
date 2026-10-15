@@ -4,6 +4,7 @@ import { supabase } from "../services/supabase";
 import { getSubscriptionStatus } from "../services/stripe";
 import { syncPushSubscription } from "../services/push";
 import { identify, track, reset as resetPosthog } from "../services/posthog";
+import { geocodeCity, reverseCity } from "../services/geo";
 import { setServerUsage } from "../services/limits";
 
 const AppContext = createContext();
@@ -16,6 +17,7 @@ const initialState = {
   likesReceived: [],
   matches: [],
   conversations: {},
+  sessionChecked: false, // true once we know whether a stored login exists; the app shows a splash until then
   doves: 3,
   blocked: [],
   reports: [],
@@ -58,14 +60,20 @@ function reducer(state, action) {
         ...state,
         currentUser: action.payload,
         filters: saved ? { ...state.filters, ...saved } : state.filters,
-        onboardingComplete: !!action.payload,
+        sessionChecked: true, onboardingComplete: !!action.payload,
         needsProfile: false,
       };
     }
 
     // Signed in (e.g. via Google/Apple) but the profile row was never created — resume onboarding
     case "NEEDS_PROFILE":
-      return { ...state, needsProfile: true, currentUser: null, onboardingComplete: false };
+      return { ...state, needsProfile: true, currentUser: null, onboardingComplete: false, sessionChecked: true };
+
+    case "SESSION_CHECKED":
+      return { ...state, sessionChecked: true };
+
+    case "SET_SUBSCRIPTION_STATUS":
+      return state.currentUser ? { ...state, currentUser: { ...state.currentUser, subscriptionStatus: action.payload } } : state;
 
     case "SET_RECOVERY":
       return { ...state, passwordRecovery: action.payload };
@@ -238,7 +246,7 @@ function reducer(state, action) {
       return { ...state, error: action.payload };
 
     case "LOGOUT":
-      return { ...initialState };
+      return { ...initialState, sessionChecked: true };
 
     case "REMOVE_MATCH":
       return {
@@ -286,16 +294,27 @@ export function AppProvider({ children }) {
 
     const loadSessionUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      if (!session) {
+        // Coming back from Google/Apple the session arrives a moment later; otherwise there is none
+        if (!oauthReturn) dispatch({ type: "SESSION_CHECKED" });
+        return;
+      }
       try {
-        const exists = await api.checkProfileExists();
-        if (!exists) { dispatch({ type: "NEEDS_PROFILE" }); return; }
-        const user = await withStripeFallback(await api.getMe());
+        const [exists, user] = await Promise.all([api.checkProfileExists(), api.getMe().catch(() => null)]);
+        if (!exists || !user) { dispatch({ type: "NEEDS_PROFILE" }); return; }
+        // Show the app right away; the Stripe check can take seconds when the server is cold
         dispatch({ type: "SET_USER", payload: user });
         identify(user.id, { gender: user.gender, subscriptionStatus: user.subscriptionStatus });
-      } catch (_) {}
+        withStripeFallback({ ...user }).then((u) => {
+          if (u.subscriptionStatus !== user.subscriptionStatus) dispatch({ type: "SET_SUBSCRIPTION_STATUS", payload: u.subscriptionStatus });
+        }).catch(() => {});
+      } catch (_) {
+        dispatch({ type: "SESSION_CHECKED" });
+      }
     };
     loadSessionUser();
+    // Never leave the splash up for long if something hangs
+    const splashGuard = setTimeout(() => dispatch({ type: "SESSION_CHECKED" }), 10000);
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === "SIGNED_OUT") {
@@ -311,6 +330,7 @@ export function AppProvider({ children }) {
     });
 
     return () => {
+      clearTimeout(splashGuard);
       subscription.unsubscribe();
       navigator.serviceWorker?.removeEventListener("message", onSwMessage);
     };
@@ -370,30 +390,36 @@ export function AppProvider({ children }) {
     }
   }, [state.onboardingComplete, state.currentUser?.id]);
 
-  // GPS is only used when the profile has no coordinates yet (e.g. the city was typed without picking a
-  // suggestion). A location the user chose is never overwritten, so a typed location sticks.
+  // Coordinates always belong to the city the person chose. A city without coordinates is geocoded;
+  // the phone's GPS is used only when there is no location at all, so someone who picked Schwyz is
+  // never shown around their actual whereabouts.
   useEffect(() => {
     const user = state.currentUser;
-    if (!user || !navigator.geolocation) return;
+    if (!user) return;
     if (user.location?.lat && user.location?.lng) return;
+    let cancelled = false;
+    const city = (user.location?.city || "").trim();
+    if (city) {
+      geocodeCity(city).then((geo) => {
+        if (cancelled || !geo) return;
+        dispatch({ type: "SET_USER_LOCATION", payload: { lat: geo.lat, lng: geo.lng, city } });
+        api.updateProfile({ location: city, locationLat: geo.lat, locationLng: geo.lng }).catch(() => {});
+      });
+      return () => { cancelled = true; };
+    }
+    if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
+        if (cancelled) return;
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
-        dispatch({ type: "SET_USER_LOCATION", payload: { lat, lng } });
-        const update = { locationLat: lat, locationLng: lng };
-        if (!user.location?.city) {
-          try {
-            const resp = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=10`);
-            const data = await resp.json();
-            const city = data.address?.city || data.address?.town || data.address?.village || data.address?.municipality || "";
-            if (city) { update.location = city; dispatch({ type: "SET_USER_LOCATION", payload: { lat, lng, city } }); }
-          } catch (_) {}
-        }
-        api.updateProfile(update).catch(() => {});
+        const found = await reverseCity(lat, lng);
+        dispatch({ type: "SET_USER_LOCATION", payload: { lat, lng, city: found || undefined } });
+        api.updateProfile({ locationLat: lat, locationLng: lng, ...(found ? { location: found } : {}) }).catch(() => {});
       },
       () => {}
     );
+    return () => { cancelled = true; };
   }, [state.currentUser?.id]);
 
   const loadDiscover = useCallback(async () => {
