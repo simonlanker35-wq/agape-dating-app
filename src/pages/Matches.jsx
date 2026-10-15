@@ -11,6 +11,7 @@ import NotificationPrompt from "../components/NotificationPrompt";
 import TutorialOverlay from "../components/TutorialOverlay";
 import AudioPlayer from "../components/AudioPlayer";
 import VerifiedBadge from "../components/VerifiedBadge";
+import { computeDeadline, FIVE_DAYS, NUDGE_BONUS, COOLDOWN_48H, CALL_GRACE } from "../utils/deadline";
 import CompatibilityRing from "../components/CompatibilityRing";
 import VoiceRecorder from "../components/VoiceRecorder";
 import { prepareChatImage, extForMime, isRecordingSupported } from "../services/media";
@@ -899,35 +900,9 @@ function ChatThread({ match, onBack }) {
     return () => clearInterval(check);
   }, [nudgeSent, isMale, match.id]);
 
-  // The clock starts with the first real message, not with a like comment sent before the match
-  const firstMessageTime = messages.find((msg) => !msg.isComment)?.timestamp ?? null;
-  const FIVE_DAYS = 5 * 24 * 60 * 60 * 1000;
-  const NUDGE_BONUS = 36 * 60 * 60 * 1000;
-  const COOLDOWN_48H = 48 * 60 * 60 * 1000;
-  const CALL_GRACE = 2 * 60 * 60 * 1000;
-  const deadlinePaused = match.deadlinePaused;
-  // A scheduled video call pauses the clock until two hours after the call; then five fresh days start
-  const callAt = match.videoCallAt || null;
-  const hasVideoCall = videoCallStarted || (!!callAt && Date.now() < callAt + CALL_GRACE);
-  const timerStopped = deadlinePaused || hasVideoCall || !!confirmedDate || !!openInvite;
-
-  // The most recent closed plan restarts the clock. A decline adds a 48h cooling-off period;
-  // a cancellation gives five fresh days, so cancelling can never lock the chat on the spot.
-  const lastClosed = dateInvitations
-    .filter((inv) => inv.status === "declined")
-    .sort((x, y) => new Date(y.created_at) - new Date(x.created_at))[0] || null;
-  const lastClosedAt = lastClosed ? new Date(lastClosed.created_at).getTime() : null;
-  const lastClosedCooldown = lastClosed && !api.isCancelledInvite(lastClosed) ? COOLDOWN_48H : 0;
-
-  let deadlineMs = null;
-  if (!timerStopped && firstMessageTime) {
-    deadlineMs = firstMessageTime + FIVE_DAYS;
-    if (lastClosedAt) deadlineMs = Math.max(deadlineMs, lastClosedAt + lastClosedCooldown + FIVE_DAYS);
-    if (callAt && !hasVideoCall) deadlineMs = Math.max(deadlineMs, callAt + CALL_GRACE + FIVE_DAYS);
-    if (nudgeSent || match.nudgeAt) deadlineMs += NUDGE_BONUS;
-  }
-  const timeLeftMs = deadlineMs ? deadlineMs - Date.now() : null;
-  const chatLocked = !timerStopped && timeLeftMs !== null && timeLeftMs <= 0;
+  // The planning clock (see utils/deadline.js); recomputed on every render so it ticks with the UI
+  const { firstMessageTime, deadlinePaused, callAt, hasVideoCall, timerStopped, deadlineMs, timeLeftMs, chatLocked } =
+    computeDeadline({ messages, match, dateInvitations, confirmedDate, openInvite, videoCallStarted, nudgeSent });
 
   const dateTimeMs = confirmedDate?.confirmed_time?.date
     ? new Date(`${confirmedDate.confirmed_time.date}T${confirmedDate.confirmed_time.time || "12:00"}:00`).getTime()
@@ -1087,8 +1062,10 @@ function ChatThread({ match, onBack }) {
     track("video_call_scheduled");
     setVideoCallStarted(true);
     try {
-      await api.startVideoCall(match.id);
+      // The chosen day and time, in the phone's own time zone
+      await api.startVideoCall(match.id, new Date(`${vcDay.date}T${vcTime}:00`));
       await actions.sendMessage(match.id, `📹 Video call scheduled: ${vcDay.dayName} ${vcDay.dayNum} ${vcDay.month} at ${vcTime}`);
+      actions.refreshMatches();
     } catch (err) {
       console.error("Video call failed:", err);
       setVideoCallStarted(false);

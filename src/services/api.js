@@ -994,10 +994,13 @@ export async function cancelDate(invitationId) {
 
 export const isCancelledInvite = (inv) => inv?.status === "declined" && (inv.decline_reasons || []).includes(CANCELLED_BY_SENDER);
 
-export async function startVideoCall(matchId) {
+// Stores when the call is planned for (not when it was scheduled), so the planning clock stays
+// paused until two hours after the call itself
+export async function startVideoCall(matchId, callAt = new Date()) {
+  const when = callAt instanceof Date ? callAt : new Date(callAt);
   const { error } = await supabase
     .from("matches")
-    .update({ video_call_at: new Date().toISOString() })
+    .update({ video_call_at: when.toISOString() })
     .eq("id", matchId);
   if (error) throw new Error(error.message);
 }
