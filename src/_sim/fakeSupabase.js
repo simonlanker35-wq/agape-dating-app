@@ -171,8 +171,11 @@ export function createFakeBackend() {
         const like = db.likes.find((l) => l.id === r.like_id);
         if (r.user_id !== u || !like || like.to_user !== u) throw err(401, "42501", "new row violates row-level security policy for table \"spark_reveals\"");
         if (db.spark_reveals.some((x) => x.user_id === r.user_id && x.like_id === r.like_id)) throw err(409, "23505", "duplicate key value violates unique constraint \"spark_reveals_user_id_like_id_key\"");
-        const used = db.spark_reveals.filter((x) => x.user_id === u && ts(x.created_at) >= weekStart()).length;
-        if (used >= limitsFor(u).reveals) throw err(400, "P0001", "REVEAL_LIMIT");
+        const mine = db.spark_reveals.filter((x) => x.user_id === u).sort((a, b) => ts(a.created_at) - ts(b.created_at));
+        if (!premium(u) && mine.length >= 10) {
+          const used = mine.slice(10).filter((x) => ts(x.created_at) >= weekStart()).length;
+          if (used >= limitsFor(u).reveals) throw err(400, "P0001", "REVEAL_LIMIT");
+        }
         break;
       }
       case "push_subscriptions": case "photo_originals": if (r.user_id !== u) throw err(401, "42501", `RLS ${table}`); break;
@@ -265,8 +268,11 @@ export function createFakeBackend() {
         const lim = limitsFor(u);
         const likesUsed = db.likes.filter((l) => l.from_user === u && !l.is_dove && ts(l.created_at) >= dayStart()).length;
         const dovesUsed = db.likes.filter((l) => l.from_user === u && l.is_dove && ts(l.created_at) >= weekStart()).length;
-        const revealsUsed = db.spark_reveals.filter((r) => r.user_id === u && ts(r.created_at) >= weekStart()).length;
-        return { premium: premium(u), likesUsed, likesLimit: lim.likes, dovesUsed, dovesLimit: lim.doves, revealsUsed, revealsLimit: lim.reveals, likesResetAt: new Date(dayStart() + 86400e3).toISOString(), dovesResetAt: new Date(weekStart() + 7 * 86400e3).toISOString() };
+        const mine = db.spark_reveals.filter((r) => r.user_id === u).sort((a, b) => ts(a.created_at) - ts(b.created_at));
+        const beyond = mine.slice(10).filter((x) => ts(x.created_at) >= weekStart()).length;
+        const revealsUsed = premium(u) ? 0 : mine.length < 10 ? mine.length : beyond;
+        const revealsLimit = premium(u) ? 1e6 : mine.length < 10 ? 10 : lim.reveals;
+        return { premium: premium(u), likesUsed, likesLimit: lim.likes, dovesUsed, dovesLimit: lim.doves, revealsUsed, revealsLimit, starterRevealsLeft: Math.max(0, 10 - mine.length), likesResetAt: new Date(dayStart() + 86400e3).toISOString(), dovesResetAt: new Date(weekStart() + 7 * 86400e3).toISOString() };
       }
       case "reliability_for": {
         const out = {};

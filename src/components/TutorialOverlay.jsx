@@ -28,7 +28,7 @@ const TOURS = {
     { full: true, title: "Chosen", text: "Every Wednesday we pick the one profile that matches you best on faith, what you both want, lifestyle and shared interests. Tap the ring to see why. Send them a Dove if you like what you see." },
   ],
   likes: [
-    { full: true, title: "Sparks", text: "People who liked you land here. Free members reveal one a week — with Agape+ you see everyone. Like back to match." },
+    { full: true, title: "Sparks", text: "People who liked you land here. Your first 10 reveals are free, then one a week — with Agape+ you see everyone. Like back to match." },
   ],
   matches: [
     { full: true, title: "Messages", text: "The chat opens as soon as you match. After the first message he has 5 days to plan a date: he picks what and where, she says which hours she's free, he picks one of them." },

@@ -1,4 +1,4 @@
-const FREE = { dailyLikes: 8, weeklyDoves: 1, weeklyStandouts: 1, weeklyReveals: 1 };
+const FREE = { dailyLikes: 8, weeklyDoves: 1, weeklyStandouts: 1, weeklyReveals: 1, starterReveals: 10 };
 const PREMIUM = { dailyLikes: 15, weeklyDoves: 3, weeklyStandouts: 2, weeklyReveals: Infinity };
 
 function todayKey() {
@@ -60,11 +60,20 @@ export function getStandoutLikesUsed() { return getCount("agape_weekly_standout"
 export function getStandoutLikesRemaining(isPremium) { return Math.max(0, tier(isPremium).weeklyStandouts - getStandoutLikesUsed()); }
 export function recordStandoutLike() { increment("agape_weekly_standout"); }
 
+// Lifetime reveals on this device (the starter allowance); the database keeps the real count per account
+function revealsTotal() { try { return Number(localStorage.getItem("agape_reveals_total")) || 0; } catch { return 0; } }
 export function getRevealsUsed() { return server ? server.revealsUsed : getCount("agape_weekly_reveals"); }
 export function getRevealsRemaining(isPremium) {
   if (server) return server.revealsLimit >= 1000000 ? Infinity : Math.max(0, server.revealsLimit - server.revealsUsed);
-  return isPremium ? Infinity : Math.max(0, FREE.weeklyReveals - getRevealsUsed());
+  if (isPremium) return Infinity;
+  const starterLeft = FREE.starterReveals - revealsTotal();
+  if (starterLeft > 0) return starterLeft;
+  return Math.max(0, FREE.weeklyReveals - getRevealsUsed());
 }
-export function recordReveal() { if (server) server.revealsUsed += 1; increment("agape_weekly_reveals"); }
+export function recordReveal() {
+  if (server) server.revealsUsed += 1;
+  try { localStorage.setItem("agape_reveals_total", String(revealsTotal() + 1)); } catch {}
+  increment("agape_weekly_reveals");
+}
 
 export const LIMITS = { FREE, PREMIUM };

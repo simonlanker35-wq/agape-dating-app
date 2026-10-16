@@ -83,7 +83,7 @@ export default function LikesYou() {
         </p>
         {!isPremium && (
           <p style={{ color: C.primary, fontSize: 12, fontWeight: 600, marginTop: 6, fontFamily: FONT, lineHeight: 1.4 }}>
-            Free members reveal one new like a week. With Agape+ you see everyone right away.
+            Your first 10 reveals are free, then one a week. With Agape+ you see everyone right away.
           </p>
         )}
       </div>

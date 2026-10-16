@@ -84,7 +84,7 @@ async function run() {
     if (usage) {
       check(`usage ${n}: likes used = ${k}`, usage.likesUsed === k && usage.likesLimit === limit, JSON.stringify(usage));
       setServerUsage(usage);
-      check(`limits.js ${n}: remaining from server`, getLikesRemaining(prem) === limit - k && getDovesRemaining(prem) === usage.dovesLimit - usage.dovesUsed && (prem ? getRevealsRemaining(true) === Infinity : getRevealsRemaining(false) === 1));
+      check(`limits.js ${n}: remaining from server`, getLikesRemaining(prem) === limit - k && getDovesRemaining(prem) === usage.dovesLimit - usage.dovesUsed && (prem ? getRevealsRemaining(true) === Infinity : getRevealsRemaining(false) === usage.revealsLimit - usage.revealsUsed));
     }
     const again = await safe(`discover after likes ${n}`, () => api.getDiscover());
     if (again) check(`discover ${n}: liked and skipped gone`, again.every((p) => !liked[n].includes(p.id) && p.id !== skipT?.id));
@@ -103,10 +103,17 @@ async function run() {
     check(`sparks ${n}: count ${likes.length} = ${expected}`, likes.length === expected);
     check(`sparks ${n}: sender profiles loaded`, likes.every((l) => l.profile && l.profile.name));
     if (likes.length >= 2) {
-      const r1 = await safe(`reveal ${n}`, () => api.revealLike(likes[0].id));
-      check(`reveal ${n} stored`, r1 === true);
-      if (prem) await safe(`reveal 2 premium ${n}`, () => api.revealLike(likes[1].id));
-      else await expectThrow(`reveal limit free ${n}`, () => api.revealLike(likes[1].id), /reveal/);
+      // ten starter reveals for everyone, then one a week for free members
+      const canReveal = Math.min(likes.length, 12);
+      let ok = 0;
+      for (let k = 0; k < canReveal; k++) {
+        try { if (await api.revealLike(likes[k].id)) ok++; }
+        catch (e) { check(`reveal ${n} #${k + 1}`, !prem && k >= 11 && /reveal/.test(e.message), e.message); }
+      }
+      const expectedOk = prem ? canReveal : Math.min(canReveal, 11); // 10 starter + 1 this week
+      check(`reveals ${n}: ${ok} of ${canReveal} allowed`, ok === expectedOk, `expected ${expectedOk}`);
+      const u = await api.getUsage();
+      if (!prem) check(`usage ${n}: reveal counters`, (ok < 10 && u.revealsLimit === 10 && u.revealsUsed === ok) || (ok >= 10 && u.revealsLimit === 1 && u.revealsUsed === ok - 10), JSON.stringify(u));
       const after = await api.getLikesReceived();
       check(`sparks ${n}: revealed flag`, after.find((l) => l.id === likes[0].id)?.revealed === true);
     }
