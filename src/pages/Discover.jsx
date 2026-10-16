@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useApp } from "../context/AppContext";
-import { Heart, X, MessageCircle, Ban, Flag } from "lucide-react";
+import { Heart, X, MessageCircle, Ban, Flag, Hand } from "lucide-react";
 import DoveIcon from "../components/DoveIcon";
 import ReliabilityBadge from "../components/ReliabilityBadge";
 import AgapeCross from "../components/AgapeCross";
@@ -12,7 +12,7 @@ import VerifiedBadge from "../components/VerifiedBadge";
 import CompatibilityRing from "../components/CompatibilityRing";
 import FilterSheet from "../components/FilterSheet";
 import ReportSheet from "../components/ReportSheet";
-import { getLikesRemaining, getDovesRemaining, recordLike, recordDove, LIMITS } from "../services/limits";
+import { getLikesRemaining, getDovesRemaining, recordLike, recordDove, getWavesRemaining, recordWave, LIMITS } from "../services/limits";
 import * as api from "../services/api";
 import { track } from "../services/posthog";
 
@@ -46,13 +46,15 @@ export default function Discover() {
   const [showReport, setShowReport] = useState(false);
   const cardRef = useRef(null);
   const isPremium = state.currentUser?.subscriptionStatus === "active";
-  const [likesLeft, setLikesLeft] = useState(getLikesRemaining(isPremium));
-  const [dovesLeft, setDovesLeft] = useState(getDovesRemaining(isPremium));
+  // Friends side: a wave instead of a like, no Doves, its own daily allowance
+  const friends = state.mode === "friends";
+  const [likesLeft, setLikesLeft] = useState(friends ? getWavesRemaining(isPremium) : getLikesRemaining(isPremium));
+  const [dovesLeft, setDovesLeft] = useState(friends ? 0 : getDovesRemaining(isPremium));
 
   useEffect(() => {
-    setLikesLeft(getLikesRemaining(isPremium));
-    setDovesLeft(getDovesRemaining(isPremium));
-  }, [isPremium, state.usage]);
+    setLikesLeft(friends ? getWavesRemaining(isPremium) : getLikesRemaining(isPremium));
+    setDovesLeft(friends ? 0 : getDovesRemaining(isPremium));
+  }, [isPremium, state.usage, friends]);
 
   const userLat = state.currentUser?.location?.lat;
   const userLng = state.currentUser?.location?.lng;
@@ -96,12 +98,12 @@ export default function Discover() {
   }, [profile?.id]);
 
   if (likesLeft <= 0 && !(doveBrowse && dovesLeft > 0)) {
-    const limit = isPremium ? LIMITS.PREMIUM.dailyLikes : LIMITS.FREE.dailyLikes;
+    const limit = friends ? (isPremium ? LIMITS.PREMIUM.dailyWaves : LIMITS.FREE.dailyWaves) : (isPremium ? LIMITS.PREMIUM.dailyLikes : LIMITS.FREE.dailyLikes);
     return (
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", padding: "60px 20px", textAlign: "center" }}>
-        <Heart size={48} strokeWidth={1.4} color="#B8912A" style={{ marginBottom: 16 }} />
-        <h2 style={{ color: "#1A1612", fontFamily: "'Outfit', system-ui, sans-serif", fontSize: 20, fontWeight: 700, margin: 0 }}>No likes left today</h2>
-        <p style={{ color: "#8C857C", fontSize: 14, marginTop: 4 }}>You've used all {limit} {isPremium ? "" : "free "}likes for today. Come back tomorrow!</p>
+        {friends ? <Hand size={48} strokeWidth={1.4} color="#B8912A" style={{ marginBottom: 16 }} /> : <Heart size={48} strokeWidth={1.4} color="#B8912A" style={{ marginBottom: 16 }} />}
+        <h2 style={{ color: "#1A1612", fontFamily: "'Outfit', system-ui, sans-serif", fontSize: 20, fontWeight: 700, margin: 0 }}>{friends ? "No waves left today" : "No likes left today"}</h2>
+        <p style={{ color: "#8C857C", fontSize: 14, marginTop: 4 }}>You've used all {limit} {isPremium ? "" : "free "}{friends ? "waves" : "likes"} for today. Come back tomorrow!</p>
         {dovesLeft > 0 && (
           <button className="filter-apply-btn" style={{ marginTop: 16, flex: "none" }} onClick={() => { track("dove_browse_after_limit"); setDoveBrowse(true); }}>
             You still have {dovesLeft} Dove{dovesLeft === 1 ? "" : "s"} this week · keep browsing
@@ -139,7 +141,7 @@ export default function Discover() {
   const handleLike = async (targetType, targetIndex, comment = null, isDove = false) => {
     if (isDove && dovesLeft <= 0) return;
     if (!isDove && likesLeft <= 0) return;
-    const flashType = comment ? "comment" : isDove ? "dove" : "heart";
+    const flashType = comment ? "comment" : isDove ? "dove" : friends ? "wave" : "heart";
     const likedId = profile.id;
     const likedProfile = profile;
     setCommentTarget(null);
@@ -147,7 +149,8 @@ export default function Discover() {
     setShowDove(false);
     setLikeFlash(flashType);
     // Doves come from their own weekly allowance and do not use up a daily like
-    if (isDove) { recordDove(); setDovesLeft(getDovesRemaining(isPremium)); }
+    if (friends) { recordWave(); setLikesLeft(getWavesRemaining(isPremium)); }
+    else if (isDove) { recordDove(); setDovesLeft(getDovesRemaining(isPremium)); }
     else { recordLike(); setLikesLeft(getLikesRemaining(isPremium)); }
 
     setTimeout(async () => {
@@ -252,7 +255,7 @@ export default function Discover() {
       {likeFlash && (
         <div className={`like-flash-overlay ${likeFlash}`}>
           <span className="flash-emoji">
-            {likeFlash === "dove" ? <DoveIcon size={120} color="#B8912A" strokeWidth={1.2} /> : likeFlash === "comment" ? <MessageCircle size={120} strokeWidth={1.4} color="#B8912A" /> : likeFlash === "block" ? <Ban size={120} strokeWidth={1.4} color="#EF4444" /> : likeFlash === "report" ? <Flag size={120} strokeWidth={1.4} color="#EF4444" /> : <Heart size={120} strokeWidth={1.4} fill="#DC3232" color="#DC3232" />}
+            {likeFlash === "wave" ? <Hand size={120} strokeWidth={1.3} color="#B8912A" /> : likeFlash === "dove" ? <DoveIcon size={120} color="#B8912A" strokeWidth={1.2} /> : likeFlash === "comment" ? <MessageCircle size={120} strokeWidth={1.4} color="#B8912A" /> : likeFlash === "block" ? <Ban size={120} strokeWidth={1.4} color="#EF4444" /> : likeFlash === "report" ? <Flag size={120} strokeWidth={1.4} color="#EF4444" /> : <Heart size={120} strokeWidth={1.4} fill="#DC3232" color="#DC3232" />}
           </span>
         </div>
       )}
@@ -347,12 +350,13 @@ export default function Discover() {
                 <div style={{ display: "flex", gap: 20 }}>
                   <button
                     onClick={() => likesLeft > 0 && onHeartPress("profile", 0)}
-                    aria-label="Like"
+                    aria-label={friends ? "Wave" : "Like"}
                     style={{ width: 56, height: 38, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", background: "#B8912A", opacity: likesLeft > 0 ? 1 : 0.4, border: "none", cursor: "pointer", boxShadow: "0 3px 12px rgba(184,145,42,0.45)", opacity: likesLeft > 0 ? 1 : 0.5, position: "relative" }}
                   >
-                    <Heart size={18} fill="white" stroke="white" />
+                    {friends ? <Hand size={18} stroke="white" strokeWidth={2.2} /> : <Heart size={18} fill="white" stroke="white" />}
                     <span style={{ position: "absolute", top: -6, right: -6, minWidth: 18, height: 18, padding: "0 5px", borderRadius: 9, background: "white", color: "#B8912A", fontSize: 11, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Outfit', system-ui, sans-serif", boxShadow: "0 1px 4px rgba(0,0,0,0.2)" }}>{likesLeft}</span>
                   </button>
+                  {!friends && (
                   <button
                     onClick={() => { track("dove_button_tapped", { source: "discover" }); setDoveSheet(true); }}
                     aria-label="Send a Dove"
@@ -361,6 +365,7 @@ export default function Discover() {
                     <DoveIcon size={20} color="white" strokeWidth={2.2} />
                     <span style={{ position: "absolute", top: -6, right: -6, minWidth: 18, height: 18, padding: "0 5px", borderRadius: 9, background: "white", color: "#B8912A", fontSize: 11, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Outfit', system-ui, sans-serif", boxShadow: "0 1px 4px rgba(0,0,0,0.2)" }}>{dovesLeft}</span>
                   </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -471,14 +476,14 @@ export default function Discover() {
       {commentTarget && (
         <div className="comment-modal-overlay" onClick={() => { setCommentTarget(null); setShowDove(false); }}>
           <div className="comment-modal" onClick={(e) => e.stopPropagation()}>
-            <button
+            {!friends && <button
               onClick={() => { if (dovesLeft > 0 || showDove) setShowDove((v) => !v); }}
               disabled={dovesLeft <= 0 && !showDove}
               style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 9999, fontSize: 12, fontWeight: 700, marginBottom: 10, cursor: "pointer", fontFamily: "'Outfit', system-ui, sans-serif", background: showDove ? "#B8912A" : "#F4F2EE", color: showDove ? "white" : "#8C857C", border: "none", opacity: dovesLeft <= 0 && !showDove ? 0.5 : 1 }}
             >
               <DoveIcon size={14} strokeWidth={2.2} />
               {showDove ? "Sending with a Dove" : `Send with a Dove · ${dovesLeft} left`}
-            </button>
+            </button>}
             <h3>
               {commentTarget.type === "prompt"
                 ? profile.prompts[commentTarget.index]?.prompt

@@ -32,6 +32,7 @@ function mapProfile(p) {
     lat: loc.lat,
     lng: loc.lng,
     denomination: p.denomination || "",
+    intent: p.intent || "date",
     distance: null,
     // Team-approved verification selfies are shown after the regular photos
     photos: [...(p.photos || []), ...["church", "bible"].map((k) => p.verified_photos?.[k]).filter(Boolean)],
@@ -137,6 +138,7 @@ export async function createProfile(data) {
     job: data.job || "",
     school: data.school || "",
     location_city: data.location || "",
+    intent: ["date", "friends", "both"].includes(data.intent) ? data.intent : "date",
     location_lat: Number.isFinite(data.locationLat) ? data.locationLat : null,
     location_lng: Number.isFinite(data.locationLng) ? data.locationLng : null,
     photos: data.photos || [],
@@ -151,6 +153,10 @@ export async function createProfile(data) {
   }
 
   let { error: profileError } = await supabase.from("profiles").insert(profile);
+  if (profileError && missingColumn(profileError, "intent")) {
+    delete profile.intent;
+    ({ error: profileError } = await supabase.from("profiles").insert(profile));
+  }
 
   // The same email may already sit on another account (e.g. typed into a phone sign-up earlier) — keep going without it
   if (profileError && profileError.code === "23505" && profile.email) {
@@ -289,6 +295,7 @@ export async function updateProfile(data) {
   if (data.filters !== undefined) updates.filters = data.filters;
   if (data.notificationPrefs !== undefined) updates.notification_prefs = data.notificationPrefs;
   if (data.paused !== undefined) updates.paused = !!data.paused;
+  if (data.intent !== undefined && ["date", "friends", "both"].includes(data.intent)) updates.intent = data.intent;
   if (data.photos !== undefined) updates.photos = (data.photos || []).filter(isAllowedMediaUrl);
 
   const { data: profile, error } = await withTimeout(
@@ -310,6 +317,11 @@ export function isAllowedMediaUrl(u) {
 }
 
 // ─── OTHER PEOPLE'S PROFILES ───
+
+// A column added by a later SQL script is not there yet on this database
+const missingColumn = (err, col) => new RegExp(`column .*\\b${col}\\b|'${col}' column|${col}.* does not exist`, "i").test(err?.message || "");
+// 'date' for the dating side, 'friend' for the friends side
+export const kindOf = (mode) => (mode === "friends" ? "friend" : "date");
 
 const missingRelation = (err) => /relation .* does not exist|schema cache|Could not find the table/i.test(err?.message || "");
 
@@ -338,9 +350,11 @@ function haversineKm(lat1, lon1, lat2, lon2) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-export async function getDiscover() {
+export async function getDiscover(mode = "date") {
   const user = await currentUser();
   const { data: me } = await supabase.from("profiles").select("*").eq("id", user.id).single();
+  const friends = mode === "friends";
+  const kind = kindOf(mode);
 
   const targetGender = me.gender === "male" ? "female" : "male";
   const minAge = me.filters?.minAge || 18;
@@ -349,7 +363,9 @@ export async function getDiscover() {
   const myLat = me.location_lat;
   const myLng = me.location_lng;
 
-  const { data: likedIds } = await supabase.from("likes").select("to_user").eq("from_user", user.id);
+  // Only likes of this kind hide a profile: a friend wave does not remove someone from dating Seek
+  let { data: likedIds, error: likedErr } = await supabase.from("likes").select("to_user").eq("from_user", user.id).eq("kind", kind);
+  if (likedErr && missingColumn(likedErr, "kind")) ({ data: likedIds } = await supabase.from("likes").select("to_user").eq("from_user", user.id));
   const { data: skippedIds } = await supabase.from("skips").select("to_user").eq("from_user", user.id);
 
   const excludeIds = [
@@ -358,20 +374,24 @@ export async function getDiscover() {
     ...(skippedIds || []).map((s) => s.to_user),
   ];
 
-  const buildQuery = (hidePaused, fromTable = false) => {
+  const buildQuery = (hidePaused, fromTable = false, withIntent = true) => {
     let q = (fromTable ? supabase.from("profiles") : publicProfiles())
       .select("*")
-      .eq("gender", targetGender)
       .eq("is_active", true)
       .gte("age", minAge)
       .lte("age", maxAge)
       .limit(100);
+    // Friends are of either gender; dating shows the other gender
+    if (!friends) q = q.eq("gender", targetGender);
+    if (withIntent) q = q.in("intent", friends ? ["friends", "both"] : ["date", "both"]);
     if (hidePaused) q = q.eq("paused", false);
     if (excludeIds.length > 0) q = q.not("id", "in", `(${excludeIds.join(",")})`);
     return q;
   };
 
   let { data: profiles, error } = await buildQuery(true);
+  // Before friends_mode.sql there is no "intent" column: everyone is here to date
+  if (error && missingColumn(error, "intent")) ({ data: profiles, error } = friends ? { data: [], error: null } : await buildQuery(true, false, false));
   // Before security_hardening.sql the view does not exist; before settings_safety.sql there is no "paused"
   if (error && missingRelation(error)) ({ data: profiles, error } = await buildQuery(true, true));
   if (error && /paused/i.test(error.message || "")) ({ data: profiles, error } = await buildQuery(false, true));
@@ -397,9 +417,10 @@ export function limitMessage(msg) {
   if (/LIKE_LIMIT/.test(msg || "")) return "You've used all your likes for today";
   if (/DOVE_LIMIT/.test(msg || "")) return "You've used all your Doves for this week";
   if (/REVEAL_LIMIT/.test(msg || "")) return "You've used your reveal for this week";
+  if (/WAVE_LIMIT/.test(msg || "")) return "You've used all your waves for today";
   return msg;
 }
-export function isLimitError(err) { return /LIKE_LIMIT|DOVE_LIMIT|REVEAL_LIMIT|all your likes|all your Doves|your reveal for this week/.test(err?.message || ""); }
+export function isLimitError(err) { return /LIKE_LIMIT|DOVE_LIMIT|REVEAL_LIMIT|WAVE_LIMIT|all your likes|all your Doves|all your waves|your reveal for this week/.test(err?.message || ""); }
 
 // How many likes, Doves and reveals are used and allowed, counted by the database
 export async function getUsage() {
@@ -414,6 +435,7 @@ export async function getUsage() {
     likesUsed: Number(data.likesUsed) || 0, likesLimit: Number(data.likesLimit) || 0,
     dovesUsed: Number(data.dovesUsed) || 0, dovesLimit: Number(data.dovesLimit) || 0,
     revealsUsed: Number(data.revealsUsed) || 0, revealsLimit: Number(data.revealsLimit) || 0,
+    wavesUsed: Number(data.wavesUsed) || 0, wavesLimit: data.wavesLimit != null ? Number(data.wavesLimit) : (data.premium ? 30 : 15),
     likesResetAt: data.likesResetAt ? new Date(data.likesResetAt).getTime() : null,
     dovesResetAt: data.dovesResetAt ? new Date(data.dovesResetAt).getTime() : null,
   };
@@ -429,60 +451,63 @@ export async function revealLike(likeId) {
   return true;
 }
 
-export async function sendLike(to, targetType, targetIndex, comment = null, isDove = false) {
+export async function sendLike(to, targetType, targetIndex, comment = null, isDove = false, kind = "date") {
   const user = await currentUser();
+  if (kind === "friend") isDove = false;
 
-  const { data: existing } = await supabase
+  let { data: existing, error: existErr } = await supabase
     .from("likes")
     .select("id")
     .eq("from_user", user.id)
     .eq("to_user", to)
+    .eq("kind", kind)
     .limit(1)
     .maybeSingle();
+  const kindless = !!(existErr && missingColumn(existErr, "kind")); // friends_mode.sql not run yet
+  if (kindless) ({ data: existing } = await supabase.from("likes").select("id").eq("from_user", user.id).eq("to_user", to).limit(1).maybeSingle());
 
   if (existing) throw new Error("Already liked");
 
-  const { error } = await withTimeout(supabase.from("likes").insert({
+  const row = {
     from_user: user.id,
     to_user: to,
     target_type: targetType || "profile",
     target_index: targetIndex || 0,
     comment: comment || null,
     is_dove: isDove || false,
-  }), 20000);
+  };
+  if (!kindless) row.kind = kind;
+  let { error } = await withTimeout(supabase.from("likes").insert(row), 20000);
+  if (error && missingColumn(error, "kind")) { delete row.kind; ({ error } = await withTimeout(supabase.from("likes").insert(row), 20000)); }
   if (error) throw new Error(limitMessage(error.message));
 
-  // Any like from them to me (heart, comment or dove) makes this a match
-  const { data: mutual } = await supabase
-    .from("likes")
-    .select("id")
-    .eq("from_user", to)
-    .eq("to_user", user.id)
-    .limit(1)
-    .maybeSingle();
+  // Any like from them to me of the same kind (heart, comment or dove) makes this a match
+  let mutualQ = supabase.from("likes").select("id").eq("from_user", to).eq("to_user", user.id);
+  if (!kindless) mutualQ = mutualQ.eq("kind", kind);
+  const { data: mutual } = await mutualQ.limit(1).maybeSingle();
 
   let matched = false;
   let matchId = null;
 
   if (mutual) {
-    const { data: existingMatch } = await supabase
-      .from("matches")
-      .select("id")
-      .or(`and(user1.eq.${user.id},user2.eq.${to}),and(user1.eq.${to},user2.eq.${user.id})`)
-      .limit(1)
-      .maybeSingle();
+    let exQ = supabase.from("matches").select("id").or(`and(user1.eq.${user.id},user2.eq.${to}),and(user1.eq.${to},user2.eq.${user.id})`);
+    if (!kindless) exQ = exQ.eq("kind", kind);
+    const { data: existingMatch } = await exQ.limit(1).maybeSingle();
 
     if (existingMatch) {
       matched = true;
       matchId = existingMatch.id;
     } else {
       // The database checks that both likes exist before creating the match
-      let { data: createdId, error: matchErr } = await supabase.rpc("create_match_if_mutual", { p_other: to });
+      let { data: createdId, error: matchErr } = await supabase.rpc("create_match_if_mutual", kindless ? { p_other: to } : { p_other: to, p_kind: kind });
       if (matchErr && /function .*create_match_if_mutual|schema cache/i.test(matchErr.message || "")) {
-        // Before security_hardening.sql has run
-        const { data: match, error: insErr } = await supabase.from("matches").insert({ user1: user.id, user2: to }).select().single();
-        createdId = match?.id || null;
-        matchErr = insErr;
+        // Older database: the one-argument function, or (older still) a plain insert
+        ({ data: createdId, error: matchErr } = await supabase.rpc("create_match_if_mutual", { p_other: to }));
+        if (matchErr && /function .*create_match_if_mutual|schema cache/i.test(matchErr.message || "")) {
+          const { data: match, error: insErr } = await supabase.from("matches").insert({ user1: user.id, user2: to }).select().single();
+          createdId = match?.id || null;
+          matchErr = insErr;
+        }
       }
       if (!matchErr && createdId) {
         matched = true;
@@ -494,13 +519,20 @@ export async function sendLike(to, targetType, targetIndex, comment = null, isDo
   return { matched, matchId };
 }
 
-export async function getLikesReceived() {
+export async function getLikesReceived(mode = "date") {
   const user = await currentUser();
+  const kind = kindOf(mode);
 
-  const { data: matchedUserIds } = await supabase
+  let { data: matchedUserIds, error: mErr } = await supabase
     .from("matches")
     .select("user1, user2")
+    .eq("kind", kind)
     .or(`user1.eq.${user.id},user2.eq.${user.id}`);
+  const kindless = !!(mErr && missingColumn(mErr, "kind"));
+  if (kindless) {
+    if (mode === "friends") return []; // friends_mode.sql not run yet
+    ({ data: matchedUserIds } = await supabase.from("matches").select("user1, user2").or(`user1.eq.${user.id},user2.eq.${user.id}`));
+  }
 
   const matchedIds = (matchedUserIds || []).map((m) =>
     m.user1 === user.id ? m.user2 : m.user1
@@ -511,6 +543,7 @@ export async function getLikesReceived() {
     .select("*")
     .eq("to_user", user.id)
     .order("created_at", { ascending: false });
+  if (!kindless) query = query.eq("kind", kind);
 
   if (matchedIds.length > 0) {
     query = query.not("from_user", "in", `(${matchedIds.join(",")})`);
@@ -527,6 +560,7 @@ export async function getLikesReceived() {
   return (likes || []).map((like) => ({
     id: like.id,
     fromId: like.from_user,
+    kind: like.kind || "date",
     revealed: revealed.has(like.id),
     profile: senders[like.from_user] ? { ...mapProfile(senders[like.from_user]), reliability: reliability[like.from_user] || null } : null,
     targetType: like.target_type,
@@ -548,14 +582,20 @@ export async function skipProfile(to) {
 
 // ─── MATCHES ───
 
-export async function getMatches() {
+export async function getMatches(mode = "date") {
   const user = await currentUser();
+  const kind = kindOf(mode);
 
-  const { data: matches, error } = await supabase
+  let { data: matches, error } = await supabase
     .from("matches")
     .select("*")
+    .eq("kind", kind)
     .or(`user1.eq.${user.id},user2.eq.${user.id}`)
     .order("last_activity", { ascending: false });
+  if (error && missingColumn(error, "kind")) {
+    if (mode === "friends") return []; // friends_mode.sql not run yet
+    ({ data: matches, error } = await supabase.from("matches").select("*").or(`user1.eq.${user.id},user2.eq.${user.id}`).order("last_activity", { ascending: false }));
+  }
   if (error) throw new Error(error.message);
 
   const partnerIds = (matches || []).map((m) => (m.user1 === user.id ? m.user2 : m.user1));
@@ -591,6 +631,7 @@ export async function getMatches() {
 
     results.push({
       id: m.id,
+      kind: m.kind || "date",
       profileId: otherId,
       profile: otherProfile ? mapProfile(otherProfile) : null,
       timestamp: new Date(m.last_activity || m.created_at).getTime(),
@@ -1054,6 +1095,7 @@ function mapProfileToUser(p, authPhone) {
     subscriptionStatus: p.subscription_status || "none",
     notificationPrefs: p.notification_prefs || {},
     paused: !!p.paused,
+    intent: p.intent || "date",
   };
 }
 

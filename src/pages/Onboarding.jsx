@@ -18,6 +18,7 @@ const STEPS = [
   "name",
   "birthday",
   "gender",
+  "intent",
   "denomination",
   "email",
   "location",
@@ -197,6 +198,7 @@ export default function Onboarding() {
     birthMonth: "",
     birthYear: "",
     gender: "",
+    intent: "",
     denomination: "",
     email: "",
     job: "",
@@ -530,6 +532,7 @@ export default function Onboarding() {
         name: form.name,
         age,
         gender: form.gender,
+        intent: form.intent || "date",
         denomination: form.denomination,
         email: form.email || null,
       });
@@ -643,6 +646,7 @@ export default function Onboarding() {
         return age !== null && age >= 18 && age < 120;
       }
       case "gender": return form.gender !== "";
+      case "intent": return form.intent !== "";
       case "denomination": return form.denomination !== "";
       case "email": return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email);
       case "location": return form.location.trim().length > 0;
@@ -1217,6 +1221,41 @@ export default function Onboarding() {
             >
               {g.label}
               {form.gender === g.value && <Check size={20} style={{ color: S.primary }} />}
+            </button>
+          ))}
+        </div>
+      </Wrap>
+    );
+  }
+
+  // ---- WHAT BRINGS YOU HERE ----
+  if (currentStep === "intent") {
+    const options = [
+      { value: "date", label: "I want to date", hint: "Find a partner who shares your faith" },
+      { value: "friends", label: "I want to meet friends", hint: "Christian friends near you, men and women" },
+      { value: "both", label: "Both", hint: "Switch between the two any time" },
+    ];
+    return (
+      <Wrap {...wrapProps}>
+        <h2 style={{ color: S.text, fontSize: 30, fontWeight: 800, marginBottom: 8, fontFamily: "'Outfit', system-ui, sans-serif" }}>What brings you here?</h2>
+        <p style={{ color: S.sub, fontSize: 14, marginBottom: 20 }}>You can change this later in your settings</p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {options.map((o) => (
+            <button
+              key={o.value}
+              onClick={() => { track("intent_selected", { intent: o.value }); setForm({ ...form, intent: o.value }); setTimeout(goNext, 250); }}
+              style={{
+                padding: "18px 22px", background: form.intent === o.value ? S.primarySoft : S.surface,
+                border: `2px solid ${form.intent === o.value ? S.primary : S.border}`, borderRadius: 14,
+                cursor: "pointer", textAlign: "left", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
+                fontFamily: "'Outfit', system-ui, sans-serif",
+              }}
+            >
+              <span>
+                <span style={{ display: "block", fontSize: 18, fontWeight: 600, color: S.text }}>{o.label}</span>
+                <span style={{ display: "block", fontSize: 13, color: S.sub, marginTop: 2 }}>{o.hint}</span>
+              </span>
+              {form.intent === o.value && <Check size={20} style={{ color: S.primary, flexShrink: 0 }} />}
             </button>
           ))}
         </div>

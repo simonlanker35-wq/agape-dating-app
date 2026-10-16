@@ -4,7 +4,7 @@ import { supabase } from "../services/supabase";
 
 const uuid = () => crypto.randomUUID();
 const TABLES = ["profiles", "likes", "skips", "matches", "messages", "date_invitations", "date_feedback", "blocks", "reports", "photo_verifications", "spark_reveals", "push_subscriptions", "photo_originals"];
-const PUBLIC_PROFILE_COLS = ["id", "name", "age", "height", "gender", "denomination", "job", "school", "location_city", "location_lat", "location_lng", "photos", "prompts", "interests", "traits", "who_are_you", "looking_for", "bio", "filters", "is_active", "is_standout", "compatibility_reason", "verified_photos", "details", "paused", "last_active", "created_at"];
+const PUBLIC_PROFILE_COLS = ["id", "name", "age", "height", "gender", "denomination", "job", "school", "location_city", "location_lat", "location_lng", "photos", "prompts", "interests", "traits", "who_are_you", "looking_for", "bio", "filters", "is_active", "is_standout", "compatibility_reason", "verified_photos", "details", "paused", "last_active", "created_at", "intent"];
 const PROTECTED = ["subscription_status", "doves", "is_active", "stripe_customer_id", "subscription_id", "is_standout", "email"];
 
 export function createFakeBackend() {
@@ -114,7 +114,7 @@ export function createFakeBackend() {
   };
 
   // ── inserts with the database's own checks ──
-  const limitsFor = (uid) => premium(uid) ? { likes: 15, doves: 3, reveals: 1e6 } : { likes: 8, doves: 1, reveals: 1 };
+  const limitsFor = (uid) => premium(uid) ? { likes: 15, doves: 3, reveals: 1e6, waves: 30 } : { likes: 8, doves: 1, reveals: 1, waves: 15 };
   const insertRow = (table, row) => {
     const u = state.cur?.id;
     const r = { ...row };
@@ -124,18 +124,23 @@ export function createFakeBackend() {
       case "profiles": {
         if (r.id !== u) throw err(401, "42501", "new row violates row-level security policy for table \"profiles\"");
         if (db.profiles.some((p) => p.email && p.email === r.email)) throw err(409, "23505", "duplicate key value violates unique constraint \"profiles_email_key\"");
-        Object.assign(r, { doves: 3, is_active: true, is_standout: false, subscription_status: "none", paused: false, details: {}, verified_photos: {}, notification_prefs: {}, traits: [], who_are_you: [], looking_for: [], bio: "", last_active: nowIso(), ...r });
+        Object.assign(r, { doves: 3, is_active: true, is_standout: false, subscription_status: "none", paused: false, details: {}, verified_photos: {}, notification_prefs: {}, traits: [], who_are_you: [], looking_for: [], bio: "", last_active: nowIso(), intent: "date", ...r });
         break;
       }
       case "likes": {
         if (r.from_user !== u) throw err(401, "42501", "new row violates row-level security policy for table \"likes\"");
-        if (db.likes.some((l) => l.from_user === r.from_user && l.to_user === r.to_user)) throw err(409, "23505", "duplicate key value violates unique constraint \"likes_from_user_to_user_key\"");
+        r.kind = r.kind || "date";
+        if (db.likes.some((l) => l.from_user === r.from_user && l.to_user === r.to_user && (l.kind || "date") === r.kind)) throw err(409, "23505", "duplicate key value violates unique constraint \"likes_from_to_kind_key\"");
         const lim = limitsFor(u);
-        if (r.is_dove) {
-          const used = db.likes.filter((l) => l.from_user === u && l.is_dove && ts(l.created_at) >= weekStart()).length;
+        if (r.kind === "friend") {
+          r.is_dove = false;
+          const used = db.likes.filter((l) => l.from_user === u && l.kind === "friend" && ts(l.created_at) >= dayStart()).length;
+          if (used >= lim.waves) throw err(400, "P0001", "WAVE_LIMIT");
+        } else if (r.is_dove) {
+          const used = db.likes.filter((l) => l.from_user === u && l.kind !== "friend" && l.is_dove && ts(l.created_at) >= weekStart()).length;
           if (used >= lim.doves) throw err(400, "P0001", "DOVE_LIMIT");
         } else {
-          const used = db.likes.filter((l) => l.from_user === u && !l.is_dove && ts(l.created_at) >= dayStart()).length;
+          const used = db.likes.filter((l) => l.from_user === u && l.kind !== "friend" && !l.is_dove && ts(l.created_at) >= dayStart()).length;
           if (used >= lim.likes) throw err(400, "P0001", "LIKE_LIMIT");
         }
         r.is_dove = !!r.is_dove;
@@ -254,25 +259,27 @@ export function createFakeBackend() {
     switch (fn) {
       case "create_match_if_mutual": {
         const other = args.p_other;
-        if (!other || other === u) throw err(400, "P0001", "Not allowed");
-        const a = db.likes.some((l) => l.from_user === u && l.to_user === other);
-        const b = db.likes.some((l) => l.from_user === other && l.to_user === u);
+        const kind = args.p_kind || "date";
+        if (!other || other === u || !["date", "friend"].includes(kind)) throw err(400, "P0001", "Not allowed");
+        const a = db.likes.some((l) => l.from_user === u && l.to_user === other && (l.kind || "date") === kind);
+        const b = db.likes.some((l) => l.from_user === other && l.to_user === u && (l.kind || "date") === kind);
         if (!a || !b) return null;
-        const ex = db.matches.find((m) => (m.user1 === u && m.user2 === other) || (m.user1 === other && m.user2 === u));
+        const ex = db.matches.find((m) => (m.kind || "date") === kind && ((m.user1 === u && m.user2 === other) || (m.user1 === other && m.user2 === u)));
         if (ex) return ex.id;
-        const m = { id: uuid(), user1: u, user2: other, created_at: nowIso(), last_activity: nowIso(), nudge_at: null, deadline_paused: false, video_call_at: null };
+        const m = { id: uuid(), user1: u, user2: other, kind, created_at: nowIso(), last_activity: nowIso(), nudge_at: null, deadline_paused: false, video_call_at: null };
         db.matches.push(m);
         return m.id;
       }
       case "usage_limits": {
         const lim = limitsFor(u);
-        const likesUsed = db.likes.filter((l) => l.from_user === u && !l.is_dove && ts(l.created_at) >= dayStart()).length;
-        const dovesUsed = db.likes.filter((l) => l.from_user === u && l.is_dove && ts(l.created_at) >= weekStart()).length;
+        const likesUsed = db.likes.filter((l) => l.from_user === u && l.kind !== "friend" && !l.is_dove && ts(l.created_at) >= dayStart()).length;
+        const dovesUsed = db.likes.filter((l) => l.from_user === u && l.kind !== "friend" && l.is_dove && ts(l.created_at) >= weekStart()).length;
+        const wavesUsed = db.likes.filter((l) => l.from_user === u && l.kind === "friend" && ts(l.created_at) >= dayStart()).length;
         const mine = db.spark_reveals.filter((r) => r.user_id === u).sort((a, b) => ts(a.created_at) - ts(b.created_at));
         const beyond = mine.slice(10).filter((x) => ts(x.created_at) >= weekStart()).length;
         const revealsUsed = premium(u) ? 0 : mine.length < 10 ? mine.length : beyond;
         const revealsLimit = premium(u) ? 1e6 : mine.length < 10 ? 10 : lim.reveals;
-        return { premium: premium(u), likesUsed, likesLimit: lim.likes, dovesUsed, dovesLimit: lim.doves, revealsUsed, revealsLimit, starterRevealsLeft: Math.max(0, 10 - mine.length), likesResetAt: new Date(dayStart() + 86400e3).toISOString(), dovesResetAt: new Date(weekStart() + 7 * 86400e3).toISOString() };
+        return { premium: premium(u), likesUsed, likesLimit: lim.likes, dovesUsed, dovesLimit: lim.doves, wavesUsed, wavesLimit: lim.waves, revealsUsed, revealsLimit, starterRevealsLeft: Math.max(0, 10 - mine.length), likesResetAt: new Date(dayStart() + 86400e3).toISOString(), dovesResetAt: new Date(weekStart() + 7 * 86400e3).toISOString() };
       }
       case "reliability_for": {
         const out = {};
@@ -366,7 +373,7 @@ export function createFakeBackend() {
     supabase.auth.signOut = async () => { state.cur = null; return { error: null }; };
   };
   const setUser = (id) => { state.cur = id ? { id, email: profileOf(id)?.email || `${id}@sim.test`, phone: null } : null; };
-  const seedProfile = (row) => { db.profiles.push({ doves: 3, is_active: true, is_standout: false, subscription_status: "none", paused: false, details: {}, verified_photos: {}, notification_prefs: {}, traits: [], who_are_you: [], looking_for: [], bio: "", created_at: nowIso(), last_active: nowIso(), ...row }); };
+  const seedProfile = (row) => { db.profiles.push({ doves: 3, is_active: true, is_standout: false, subscription_status: "none", paused: false, details: {}, verified_photos: {}, notification_prefs: {}, traits: [], who_are_you: [], looking_for: [], bio: "", intent: "date", created_at: nowIso(), last_active: nowIso(), ...row }); };
 
   return { db, state, install, setUser, seedProfile, now, setOffset: (ms) => { state.offset = ms; } };
 }

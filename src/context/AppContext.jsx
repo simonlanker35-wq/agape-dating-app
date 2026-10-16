@@ -1,4 +1,4 @@
-import { createContext, useContext, useReducer, useEffect, useCallback } from "react";
+import { createContext, useContext, useReducer, useEffect, useCallback, useRef } from "react";
 import * as api from "../services/api";
 import { supabase } from "../services/supabase";
 import { getSubscriptionStatus } from "../services/stripe";
@@ -17,6 +17,8 @@ const initialState = {
   likesReceived: [],
   matches: [],
   conversations: {},
+  // "date" or "friends": which of the two front ends is showing (people here for both can switch)
+  mode: (() => { try { return localStorage.getItem("agape_mode") === "friends" ? "friends" : "date"; } catch { return "date"; } })(),
   sessionChecked: false, // true once we know whether a stored login exists; the app shows a splash until then
   doves: 3,
   blocked: [],
@@ -56,13 +58,27 @@ function reducer(state, action) {
         denominations: Array.isArray(f.denominations) ? f.denominations : [],
         details: f.details && typeof f.details === "object" ? f.details : {},
       } : null;
+      // Someone here only for friends (or only to date) always sees that front end
+      const intent = action.payload?.intent || "date";
+      const mode = intent === "friends" ? "friends" : intent === "date" ? "date" : state.mode;
+      try { localStorage.setItem("agape_mode", mode); } catch {}
       return {
         ...state,
         currentUser: action.payload,
         filters: saved ? { ...state.filters, ...saved } : state.filters,
+        mode,
+        activeTab: mode === "friends" && state.activeTab === "standouts" ? "discover" : state.activeTab,
         sessionChecked: true, onboardingComplete: !!action.payload,
         needsProfile: false,
       };
+    }
+
+    case "SET_MODE": {
+      const mode = action.payload === "friends" ? "friends" : "date";
+      if (mode === state.mode) return state;
+      try { localStorage.setItem("agape_mode", mode); } catch {}
+      // The lists belong to one side; they are reloaded for the other
+      return { ...state, mode, profiles: [], likesReceived: [], matches: [], conversations: {}, matchesLoaded: false, openChatId: null, activeTab: state.activeTab === "standouts" ? "discover" : state.activeTab };
     }
 
     // Signed in (e.g. via Google/Apple) but the profile row was never created — resume onboarding
@@ -390,6 +406,17 @@ export function AppProvider({ children }) {
     }
   }, [state.onboardingComplete, state.currentUser?.id]);
 
+  // Switching between dating and friends reloads the lists for that side
+  const firstMode = useRef(true);
+  useEffect(() => {
+    if (firstMode.current) { firstMode.current = false; return; }
+    if (!state.onboardingComplete || !state.currentUser) return;
+    loadDiscover();
+    loadLikesReceived();
+    loadMatches();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.mode]);
+
   // Coordinates always belong to the city the person chose. A city without coordinates is geocoded;
   // the phone's GPS is used only when there is no location at all, so someone who picked Schwyz is
   // never shown around their actual whereabouts.
@@ -422,9 +449,12 @@ export function AppProvider({ children }) {
     return () => { cancelled = true; };
   }, [state.currentUser?.id]);
 
+  const modeRef = useRef(state.mode);
+  modeRef.current = state.mode;
+
   const loadDiscover = useCallback(async () => {
     try {
-      const profiles = await api.getDiscover();
+      const profiles = await api.getDiscover(modeRef.current);
       dispatch({ type: "SET_PROFILES", payload: profiles });
     } catch (err) {
       console.error("Failed to load discover:", err);
@@ -433,7 +463,7 @@ export function AppProvider({ children }) {
 
   const loadLikesReceived = useCallback(async () => {
     try {
-      const likes = await api.getLikesReceived();
+      const likes = await api.getLikesReceived(modeRef.current);
       dispatch({ type: "SET_LIKES_RECEIVED", payload: likes });
     } catch (err) {
       console.error("Failed to load likes:", err);
@@ -518,7 +548,7 @@ export function AppProvider({ children }) {
 
   const loadMatches = useCallback(async () => {
     try {
-      const matches = await api.getMatches();
+      const matches = await api.getMatches(modeRef.current);
       dispatch({ type: "SET_MATCHES", payload: matches });
     } catch (err) {
       console.error("Failed to load matches:", err);
@@ -619,17 +649,23 @@ export function AppProvider({ children }) {
     },
 
     likeProfile: async (profileId, targetType, targetIndex, comment, isDove) => {
-      const res = await api.sendLike(profileId, targetType, targetIndex, comment, isDove);
-      track("like_sent", { targetType, isDove: !!isDove, hasComment: !!comment });
+      const friends = modeRef.current === "friends";
+      const kind = api.kindOf(modeRef.current);
+      const res = await api.sendLike(profileId, targetType, targetIndex, comment, friends ? false : isDove, kind);
+      track(friends ? "wave_sent" : "like_sent", { targetType, isDove: !!isDove && !friends, hasComment: !!comment });
       let matchData = null;
       if (res.matched) {
-        track("match_created", { fromDiscover: true });
-        const matches = await api.getMatches();
+        track(friends ? "friend_connected" : "match_created", { fromDiscover: true });
+        const matches = await api.getMatches(modeRef.current);
         dispatch({ type: "SET_MATCHES", payload: matches });
         matchData = matches.find((m) => m.profileId === profileId) || null;
-        api.notifyUser(profileId, { title: "It's a match", body: `You and ${state.currentUser?.name || "someone"} liked each other. Say hello and plan a date together.`, url: "/?tab=matches", tag: "match" });
+        api.notifyUser(profileId, friends
+          ? { title: "You're friends now", body: `You and ${state.currentUser?.name || "someone"} waved at each other. Say hello.`, url: "/?tab=matches", tag: "match" }
+          : { title: "It's a match", body: `You and ${state.currentUser?.name || "someone"} liked each other. Say hello and plan a date together.`, url: "/?tab=matches", tag: "match" });
       } else {
-        api.notifyUser(profileId, { title: isDove ? "You received a Dove" : "Someone new likes you", body: "Open Sparks to see who.", url: "/?tab=likes", tag: "like" });
+        api.notifyUser(profileId, friends
+          ? { title: "Someone waved at you", body: "Open Waves to see who.", url: "/?tab=likes", tag: "like" }
+          : { title: isDove ? "You received a Dove" : "Someone new likes you", body: "Open Sparks to see who.", url: "/?tab=likes", tag: "like" });
       }
       dispatch({
         type: "LIKE_PROFILE",
@@ -653,8 +689,10 @@ export function AppProvider({ children }) {
 
     matchFromLike: async (like) => {
       let res;
+      const kind = like.kind || api.kindOf(modeRef.current);
+      const friends = kind === "friend";
       try {
-        res = await api.sendLike(like.fromId, "profile", 0);
+        res = await api.sendLike(like.fromId, "profile", 0, null, false, kind);
       } catch (err) {
         if (err.message === "Already liked") {
           res = { matched: true };
@@ -663,10 +701,12 @@ export function AppProvider({ children }) {
         }
       }
       if (res.matched) {
-        track("match_created", { fromSparks: true });
-        api.notifyUser(like.fromId, { title: "It's a match", body: `${state.currentUser?.name || "Someone"} liked you back. Say hello and plan a date together.`, url: "/?tab=matches", tag: "match" });
+        track(friends ? "friend_connected" : "match_created", { fromSparks: true });
+        api.notifyUser(like.fromId, friends
+          ? { title: "You're friends now", body: `${state.currentUser?.name || "Someone"} waved back. Say hello.`, url: "/?tab=matches", tag: "match" }
+          : { title: "It's a match", body: `${state.currentUser?.name || "Someone"} liked you back. Say hello and plan a date together.`, url: "/?tab=matches", tag: "match" });
         try {
-          const matches = await api.getMatches();
+          const matches = await api.getMatches(modeRef.current);
           dispatch({ type: "SET_MATCHES", payload: matches });
         } catch (_) {
           const alreadyMatched = state.matches.some((m) => m.profileId === like.fromId);
@@ -750,6 +790,7 @@ export function AppProvider({ children }) {
     },
 
     refreshDiscover: loadDiscover,
+    setMode: (mode) => dispatch({ type: "SET_MODE", payload: mode }),
     refreshLikes: loadLikesReceived,
     // Blocks and reports are saved on the server; the lists update immediately
     blockProfile: async (profile) => {

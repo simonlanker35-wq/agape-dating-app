@@ -1,5 +1,5 @@
-const FREE = { dailyLikes: 8, weeklyDoves: 1, weeklyStandouts: 1, weeklyReveals: 1, starterReveals: 10 };
-const PREMIUM = { dailyLikes: 15, weeklyDoves: 3, weeklyStandouts: 2, weeklyReveals: Infinity };
+const FREE = { dailyLikes: 8, weeklyDoves: 1, weeklyStandouts: 1, weeklyReveals: 1, starterReveals: 10, dailyWaves: 15 };
+const PREMIUM = { dailyLikes: 15, weeklyDoves: 3, weeklyStandouts: 2, weeklyReveals: Infinity, dailyWaves: 30 };
 
 function todayKey() {
   return new Date().toISOString().slice(0, 10);
@@ -48,6 +48,14 @@ export function getLikesRemaining(isPremium) {
   return Math.max(0, tier(isPremium).dailyLikes - getLikesUsed());
 }
 export function recordLike() { if (server) server.likesUsed += 1; increment("agape_daily_likes"); }
+
+// Friend waves have their own daily allowance and never touch the dating likes
+export function getWavesUsed() { return server ? server.wavesUsed : getCount("agape_daily_waves"); }
+export function getWavesRemaining(isPremium) {
+  if (server) return Math.max(0, (server.wavesLimit ?? tier(isPremium).dailyWaves) - (server.wavesUsed || 0));
+  return Math.max(0, tier(isPremium).dailyWaves - getWavesUsed());
+}
+export function recordWave() { if (server) server.wavesUsed = (server.wavesUsed || 0) + 1; increment("agape_daily_waves"); }
 
 export function getDovesUsed() { return server ? server.dovesUsed : getCount("agape_weekly_doves"); }
 export function getDovesRemaining(isPremium) {

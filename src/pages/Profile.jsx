@@ -438,6 +438,7 @@ function SettingsScreen({ onBack, initialSection = null }) {
     const titles = {
       notifications: "Notifications",
       faith: "Faith preferences",
+      intent: "Here for",
       location: "Location",
       privacy: "Privacy",
       safety: "Safety centre",
@@ -549,6 +550,29 @@ function SettingsScreen({ onBack, initialSection = null }) {
                 </div>
               </div>
             </>
+          )}
+          {section === "intent" && (
+            <div>
+              <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: C.sub, padding: "0 4px", marginBottom: 8 }}>What brings you here</p>
+              <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
+                {[
+                  { value: "date", label: "Dating", sub: "Find a partner who shares your faith" },
+                  { value: "friends", label: "Meeting friends", sub: "Christian friends near you, men and women" },
+                  { value: "both", label: "Both", sub: "A switch at the top lets you change sides" },
+                ].map((o) => (
+                  <SettingsRow key={o.value} icon={I.user} label={o.label} sub={o.sub}
+                    toggle={{ on: (currentUser?.intent || "date") === o.value, onToggle: async () => {
+                      if ((currentUser?.intent || "date") === o.value) return;
+                      track("intent_changed", { intent: o.value });
+                      try {
+                        const updated = await actions.updateProfile({ intent: o.value });
+                        dispatch({ type: "SET_USER", payload: updated });
+                      } catch (_) {}
+                    } }} />
+                ))}
+              </div>
+              <p style={{ fontSize: 12, color: C.sub, padding: "8px 4px 0", lineHeight: 1.5 }}>People who are only here for friends do not appear in dating and are not shown to daters. Dating likes and friend waves are kept apart.</p>
+            </div>
           )}
           {section === "faith" && (
             <div>
@@ -856,6 +880,7 @@ function SettingsScreen({ onBack, initialSection = null }) {
           <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
             <SettingsRow icon={I.user} label="Personal info" sub="Name, phone, denomination" onPress={() => setSection("account")} />
             <SettingsRow icon={I.cross} label="Faith preferences" sub="Only show my denomination" onPress={() => setSection("faith")} />
+            <SettingsRow icon={I.user} label="Here for" sub={{ date: "Dating", friends: "Meeting friends", both: "Dating and friends" }[currentUser?.intent || "date"]} onPress={() => setSection("intent")} />
             <SettingsRow icon={I.mapPin} label="Location" sub="Distance, visibility" onPress={() => setSection("location")} />
           </div>
         </div>

@@ -11,6 +11,13 @@ const TABS = [
   { id: "matches", label: "Messages" },
   { id: "profile", label: "Me" },
 ];
+// The friends side has no weekly pick; waves and friends replace sparks and messages
+const FRIEND_TABS = [
+  { id: "discover", label: "Seek" },
+  { id: "likes", label: "Waves" },
+  { id: "matches", label: "Friends" },
+  { id: "profile", label: "Me" },
+];
 
 function NavIcon({ id, active }) {
   const color = active ? "white" : "#888";
@@ -68,7 +75,7 @@ export default function Navigation() {
   return (
     <nav className="bottom-nav">
       <div className="bottom-nav-pill">
-        {TABS.map(({ id, label }) => {
+        {(state.mode === "friends" ? FRIEND_TABS : TABS).map(({ id, label }) => {
           const count = unreadCount(id);
           const isActive = activeTab === id;
 

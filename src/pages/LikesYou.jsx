@@ -21,6 +21,8 @@ export default function LikesYou() {
   const [dismissed, setDismissed] = useState(new Set());
   const [viewProfile, setViewProfile] = useState(null);
   const isPremium = state.currentUser?.subscriptionStatus === "active";
+  // Friends side: waves are never hidden, there is nothing to reveal
+  const friends = state.mode === "friends";
   const [revealsLeft, setRevealsLeft] = useState(getRevealsRemaining(isPremium));
   // Revealed likes are remembered per account, so a reveal is not lost on reload
   const revealKey = `agape_revealed_${state.currentUser?.id || "anon"}`;
@@ -77,11 +79,11 @@ export default function LikesYou() {
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: C.bg }}>
       <div style={{ padding: "40px 20px 8px" }}>
-        <h1 style={{ color: C.text, fontFamily: FONT, fontSize: 24, fontWeight: 700, letterSpacing: "-0.4px", margin: 0 }}>Sparks</h1>
+        <h1 style={{ color: C.text, fontFamily: FONT, fontSize: 24, fontWeight: 700, letterSpacing: "-0.4px", margin: 0 }}>{friends ? "Waves" : "Sparks"}</h1>
         <p style={{ color: C.sub, fontSize: 13, marginTop: 4 }}>
-          {likesWithProfiles.length} {likesWithProfiles.length === 1 ? "person" : "people"} liked you
+          {likesWithProfiles.length} {likesWithProfiles.length === 1 ? "person" : "people"} {friends ? "waved at you" : "liked you"}
         </p>
-        {!isPremium && (
+        {!isPremium && !friends && (
           <p style={{ color: C.primary, fontSize: 12, fontWeight: 600, marginTop: 6, fontFamily: FONT, lineHeight: 1.4 }}>
             Your first 10 reveals are free, then one a week. With Agape+ you see everyone right away.
           </p>
@@ -94,7 +96,7 @@ export default function LikesYou() {
             const profile = like.profile;
             const matched = likedBack.has(like.id);
             const isDoveLike = like.isDove;
-            const isRevealed = isDoveLike || like.revealed || revealedIds.has(like.id) || isPremium;
+            const isRevealed = friends || isDoveLike || like.revealed || revealedIds.has(like.id) || isPremium;
             const isLocked = !isRevealed;
 
             const handleReveal = async (e) => {

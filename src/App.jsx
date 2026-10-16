@@ -9,6 +9,7 @@ import Standouts from "./pages/Standouts";
 import Profile from "./pages/Profile";
 import PasswordInput from "./components/PasswordInput";
 import TutorialOverlay from "./components/TutorialOverlay";
+import ModeSwitch from "./components/ModeSwitch";
 import RoseAlert from "./components/RoseAlert";
 import MatchAlert from "./components/MatchAlert";
 import ReviewAlert from "./components/ReviewAlert";
@@ -142,7 +143,8 @@ function AppContent() {
         <ErrorBoundary key={state.activeTab} name={state.activeTab} compact>{renderPage()}</ErrorBoundary>
       </main>
       <Navigation />
-      <TutorialOverlay screen={state.activeTab} />
+      <ModeSwitch />
+      <TutorialOverlay screen={state.mode === "friends" && ["discover", "likes", "matches"].includes(state.activeTab) ? `${state.activeTab}-friends` : state.activeTab} />
       <RecoveryModal />
       <MatchAlert />
       <RoseAlert />

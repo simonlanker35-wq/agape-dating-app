@@ -12,7 +12,8 @@ export default function MatchAlert() {
 
   const { match } = alert;
   const them = match.profile || {};
-  const name = them.name || "your match";
+  const friend = match.kind === "friend";
+  const name = them.name || (friend ? "your new friend" : "your match");
   const myPhoto = state.currentUser?.photos?.[0];
   const myName = state.currentUser?.name || "You";
 
@@ -49,9 +50,9 @@ export default function MatchAlert() {
         <div className="match-cross">
           <AgapeCross size={22} strokeWidth={1.5} />
         </div>
-        <div className="match-label">It's a Match</div>
+        <div className="match-label">{friend ? "New friend" : "It's a Match"}</div>
         <h2 className="match-title shimmer-gold">You &amp; {name}</h2>
-        <div className="match-subtitle">You both liked each other ✦</div>
+        <div className="match-subtitle">{friend ? "You waved at each other ✦" : "You both liked each other ✦"}</div>
         {them.isVerified && (
           <div style={{ display: "flex", justifyContent: "center", marginTop: 10 }}>
             <VerifiedBadge size={18} label />

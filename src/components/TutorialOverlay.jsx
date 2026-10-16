@@ -30,6 +30,18 @@ const TOURS = {
   likes: [
     { full: true, title: "Sparks", text: "People who liked you land here. Your first 10 reveals are free, then one a week — with Agape+ you see everyone. Like back to match." },
   ],
+  "discover-friends": [
+    { full: true, title: "Meet Christian friends", text: "Seek now shows people who are here for friendship — men and women near you. Wave at someone you'd like to know; if they wave back, you're friends and can chat." },
+  ],
+  "likes-friends": [
+    { full: true, title: "Waves", text: "People who waved at you land here. Wave back to become friends." },
+  ],
+  "matches-friends": [
+    { full: true, title: "Friends", text: "Your friendships live here. No clock and no date plans — just conversation." },
+  ],
+  "chat-friends": [
+    { selector: 'button[aria-label="Safety options"]', title: "Safety options", text: "Report, block or unfriend from here — anytime." },
+  ],
   matches: [
     { full: true, title: "Messages", text: "The chat opens as soon as you match. After the first message he has 5 days to plan a date: he picks what and where, she says which hours she's free, he picks one of them." },
   ],

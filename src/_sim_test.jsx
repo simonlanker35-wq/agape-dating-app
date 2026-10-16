@@ -334,6 +334,43 @@ async function run() {
   await safe("delete account", () => api.deleteAccount());
   check("account and its data gone", !be.db.profiles.some((p) => p.id === idOf(10)) && !be.db.likes.some((l) => l.from_user === idOf(10) || l.to_user === idOf(10)) && !be.db.matches.some((m) => m.user1 === idOf(10) || m.user2 === idOf(10)));
 
+  // ── Phase 9b: friends side ──
+  for (let n = 101; n <= 120; n++) be.db.profiles.find((p) => p.id === idOf(n)).intent = "friends";
+  for (let n = 121; n <= 140; n++) be.db.profiles.find((p) => p.id === idOf(n)).intent = "both";
+  as(121);
+  const fd = await safe("friends discover", () => api.getDiscover("friends"));
+  check("friends seek: both genders", fd && fd.some((p) => p.gender === "male") && fd.some((p) => p.gender === "female"), `${fd?.length} profiles`);
+  check("friends seek: only people here for friends", fd && fd.length > 0 && fd.every((p) => ["friends", "both"].includes(p.intent)));
+  const dd = await api.getDiscover("date");
+  check("dating seek: nobody who is only here for friends", dd.every((p) => p.intent !== "friends") && dd.every((p) => p.gender !== "male"));
+  const wavesTo = fd.slice(0, 17);
+  let waved = 0;
+  for (const p of wavesTo.slice(0, 15)) { const r = await safe("wave", () => api.sendLike(p.id, "profile", 0, null, false, "friend")); if (r) waved++; }
+  check("15 waves allowed", waved === 15);
+  if (wavesTo[15]) await expectThrow("16th wave refused", () => api.sendLike(wavesTo[15].id, "profile", 0, null, false, "friend"), /waves/);
+  if (wavesTo[16]) await expectThrow("a Dove on the friends side counts as a wave", () => api.sendLike(wavesTo[16].id, "profile", 0, null, true, "friend"), /waves/);
+  const u121 = await api.getUsage();
+  check("waves counted separately from likes", u121.wavesUsed === 15 && u121.likesUsed < 15, JSON.stringify(u121));
+  const target = wavesTo[0];
+  be.setUser(target.id);
+  const wl = await api.getLikesReceived("friends");
+  check("wave shows under Waves of the other person", wl.some((l) => l.fromId === idOf(121) && l.kind === "friend"));
+  check("wave does not show under dating Sparks", !(await api.getLikesReceived("date")).some((l) => l.fromId === idOf(121)));
+  const back = await safe("wave back", () => api.sendLike(idOf(121), "profile", 0, null, false, "friend"));
+  check("waving back makes friends", back?.matched && back.matchId);
+  const fm = await api.getMatches("friends");
+  check("friend listed under Friends with kind", fm.some((m) => m.id === back?.matchId && m.kind === "friend" && m.profileId === idOf(121)));
+  check("friend not listed under dating Messages", !(await api.getMatches("date")).some((m) => m.id === back?.matchId));
+  await safe("friend chat message", () => api.sendMessage(back.matchId, "Hi friend"));
+  be.setUser(idOf(121));
+  check("other side sees the friend too", (await api.getMatches("friends")).some((m) => m.id === back?.matchId));
+  const dl = await safe("dating like to the same person", () => api.sendLike(target.id, "profile", 0, null, false, "date"));
+  check("dating like is separate from the wave", dl && !dl.matched);
+  const nf = await api.updateProfile({ intent: "friends" });
+  check("intent saved", nf.intent === "friends");
+  as(1);
+  check("friends-only person gone from dating seek", !(await api.getDiscover("date")).some((p) => p.id === idOf(121)));
+
   // ── Phase 10: logged-out access ──
   be.setUser(null);
   const { data: anon } = await sb2.from("profiles_public").select("*").limit(5);

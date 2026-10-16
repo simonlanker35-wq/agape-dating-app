@@ -840,6 +840,8 @@ function ChatThread({ match, onBack }) {
 
   const currentUserId = state.currentUser?._id || state.currentUser?.id;
   const isMale = state.currentUser?.gender === "male";
+  // A friends chat has no planning clock, no date plans and no roses
+  const friendChat = match.kind === "friend";
   const conversation = state.conversations[match.id];
   const profile = match.profile;
 
@@ -902,7 +904,7 @@ function ChatThread({ match, onBack }) {
 
   // The planning clock (see utils/deadline.js); recomputed on every render so it ticks with the UI
   const { firstMessageTime, deadlinePaused, callAt, hasVideoCall, timerStopped, deadlineMs, timeLeftMs, chatLocked } =
-    computeDeadline({ messages, match, dateInvitations, confirmedDate, openInvite, videoCallStarted, nudgeSent });
+    computeDeadline({ messages, match: friendChat ? { ...match, deadlinePaused: true } : match, dateInvitations, confirmedDate, openInvite, videoCallStarted, nudgeSent });
 
   const dateTimeMs = confirmedDate?.confirmed_time?.date
     ? new Date(`${confirmedDate.confirmed_time.date}T${confirmedDate.confirmed_time.time || "12:00"}:00`).getTime()
@@ -1192,7 +1194,8 @@ function ChatThread({ match, onBack }) {
       {(() => {
         let status = profile.denomination || "";
         let statusColor = C.sub;
-        if (chatLocked) { status = "Chat closed · no date was planned in time"; statusColor = "#B91C1C"; }
+        if (friendChat) { status = [profile.denomination, profile.location].filter(Boolean).join(" · "); }
+        else if (chatLocked) { status = "Chat closed · no date was planned in time"; statusColor = "#B91C1C"; }
         else if (confirmedDate && !datePassed) { status = `Date set · ${longDay(confirmedDate.confirmed_time?.date)} · ${confirmedDate.confirmed_time?.time || ""}`; statusColor = "#15803D"; }
         else if (openInvite) {
           status = openInvite.status === "pending"
@@ -1226,9 +1229,11 @@ function ChatThread({ match, onBack }) {
       <div style={{ flex: 1, minHeight: 0, overflowY: "auto", WebkitOverflowScrolling: "touch", padding: "18px 16px 20px", display: "flex", flexDirection: "column", gap: 6 }}>
         {timeline.length === 0 && !lastDeclined && (
           <div style={{ borderRadius: 16, padding: "16px", background: C.card, border: `1px solid ${C.border}`, marginBottom: 8 }}>
-            <p style={{ fontSize: 15, fontWeight: 600, color: C.text, fontFamily: FONT, margin: "0 0 6px", letterSpacing: "-0.2px" }}>You matched with {profile.name}</p>
+            <p style={{ fontSize: 15, fontWeight: 600, color: C.text, fontFamily: FONT, margin: "0 0 6px", letterSpacing: "-0.2px" }}>{friendChat ? `You and ${profile.name} are friends now` : `You matched with ${profile.name}`}</p>
             <p style={{ fontSize: 13, color: C.sub, fontFamily: FONT, lineHeight: 1.55, margin: 0 }}>
-              {isMale
+              {friendChat
+                ? "Say hello. Ask about their church, their week, what they are praying for. No clock, no plans to make — just a friendship starting."
+                : isMale
                 ? "Say hello. Once the conversation starts you have five days to plan a date — she'll tell you when she's free and you pick one of her times."
                 : "Say hello. Once the conversation starts he has five days to plan a date. A rose lets him know you'd love to go, and gives him extra time."}
             </p>
@@ -1483,17 +1488,17 @@ function ChatThread({ match, onBack }) {
 
             {/* Action chips */}
             <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 8, scrollbarWidth: "none" }}>
-              {isMale && !openInvite && !confirmedDate && (
+              {isMale && !friendChat && !openInvite && !confirmedDate && (
                 <button aria-label="Plan a date" onClick={() => { track("plan_date_tapped"); setShowDateBuilder(true); }} style={chip({ background: C.text, color: "#fff", border: `1px solid ${C.text}` })}>
                   <Calendar size={14} color="#fff" strokeWidth={1.8} /> {lastCancelled ? "Reschedule" : lastDeclined ? "Plan another date" : "Plan a date"}
                 </button>
               )}
-              {!isMale && !nudgeSent && !openInvite && !confirmedDate && (
+              {!isMale && !friendChat && !nudgeSent && !openInvite && !confirmedDate && (
                 <button aria-label="Send a rose" onClick={handleNudge} disabled={nudgeSending} style={chip()}>
                   <Flower2 size={14} color={C.primary} strokeWidth={1.8} /> {nudgeSending ? "Sending…" : "Send a rose"}
                 </button>
               )}
-              {!isMale && nudgeSent && !openInvite && !confirmedDate && (
+              {!isMale && !friendChat && nudgeSent && !openInvite && !confirmedDate && (
                 <span style={chip({ color: C.sub, cursor: "default" })}>
                   <Flower2 size={14} color={C.primary} strokeWidth={1.8} /> Rose sent
                 </span>
@@ -1569,7 +1574,7 @@ function ChatThread({ match, onBack }) {
       </div>
 
       {/* The chat tips wait while the date builder is open, so they never cover it */}
-      <TutorialOverlay screen="chat" paused={showDateBuilder} />
+      <TutorialOverlay screen={friendChat ? "chat-friends" : "chat"} paused={showDateBuilder} />
 
       {lightbox && (
         <div onClick={() => setLightbox(null)} style={{ position: "fixed", inset: 0, zIndex: 10001, background: "rgba(0,0,0,0.94)", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -1725,7 +1730,7 @@ export default function Matches() {
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: C.bg }}>
       <div style={{ padding: "40px 20px 16px" }}>
-        <h1 style={{ color: C.text, fontFamily: FONT, fontSize: 24, fontWeight: 700, letterSpacing: "-0.4px", margin: 0 }}>Messages</h1>
+        <h1 style={{ color: C.text, fontFamily: FONT, fontSize: 24, fontWeight: 700, letterSpacing: "-0.4px", margin: 0 }}>{state.mode === "friends" ? "Friends" : "Messages"}</h1>
       </div>
 
       <NotificationPrompt />
@@ -1734,8 +1739,8 @@ export default function Matches() {
         {sortedMatches.length === 0 ? (
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", padding: "60px 20px", textAlign: "center" }}>
             <MessageCircle size={48} strokeWidth={1.4} color={C.primary} style={{ marginBottom: 16 }} />
-            <h2 style={{ color: C.text, fontFamily: FONT, fontSize: 20, fontWeight: 700 }}>No messages yet</h2>
-            <p style={{ color: C.sub, fontSize: 14, marginTop: 4 }}>When you match with someone, you can chat here.</p>
+            <h2 style={{ color: C.text, fontFamily: FONT, fontSize: 20, fontWeight: 700 }}>{state.mode === "friends" ? "No friends yet" : "No messages yet"}</h2>
+            <p style={{ color: C.sub, fontSize: 14, marginTop: 4 }}>{state.mode === "friends" ? "When someone waves back, you can chat here." : "When you match with someone, you can chat here."}</p>
           </div>
         ) : (
           sortedMatches.map((m) => {
