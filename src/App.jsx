@@ -1,3 +1,4 @@
+import { useState, useEffect, useRef, useCallback } from "react";
 import { AppProvider, useApp } from "./context/AppContext";
 import Navigation from "./components/Navigation";
 import Onboarding from "./pages/Onboarding";
@@ -13,7 +14,6 @@ import MatchAlert from "./components/MatchAlert";
 import ReviewAlert from "./components/ReviewAlert";
 import ErrorBoundary from "./components/ErrorBoundary";
 import UpdateBanner from "./components/UpdateBanner";
-import { useState } from "react";
 import "./App.css";
 
 // Shown after opening a password-reset email link
@@ -53,24 +53,67 @@ function RecoveryModal() {
 }
 
 // Shown for the moment it takes to restore a stored login, instead of flashing the sign-up screen
-function Splash() {
+// How long opening the app usually takes on this device: a running average of the measured start-ups,
+// so the bar below moves at a believable pace (1.5 s until the first measurement exists)
+const BOOT_KEY = "agape_boot_ms";
+const readBootEstimate = () => { try { const v = Number(localStorage.getItem(BOOT_KEY)); return v >= 400 && v <= 8000 ? v : 1500; } catch { return 1500; } };
+const recordBoot = (ms) => { try { const prev = readBootEstimate(); localStorage.setItem(BOOT_KEY, String(Math.round(Math.min(8000, Math.max(400, prev * 0.7 + ms * 0.3))))); } catch {} };
+
+// Shown while a stored login is restored, instead of flashing the sign-up screen. The bar eases
+// towards 90% over the expected start-up time and completes when the session is known.
+function Splash({ done, onFinished }) {
+  const [progress, setProgress] = useState(0);
+  const [fading, setFading] = useState(false);
+  const started = useRef(performance.now());
+  const estimate = useRef(readBootEstimate());
+
+  useEffect(() => {
+    let raf = 0;
+    const tick = () => {
+      const t = performance.now() - started.current;
+      // fast at first, then slower and slower, never quite reaching the end on its own
+      const eased = 0.9 * (1 - Math.exp(-(t / estimate.current) * 2.2));
+      setProgress((p) => Math.max(p, eased));
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
+  useEffect(() => {
+    if (!done) return;
+    recordBoot(performance.now() - started.current);
+    setProgress(1);
+    const t1 = setTimeout(() => setFading(true), 180);
+    const t2 = setTimeout(onFinished, 420);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [done, onFinished]);
+
   return (
-    <div style={{ position: "fixed", inset: 0, background: "#FFFFFF", display: "flex", alignItems: "center", justifyContent: "center" }}>
+    <div aria-busy={!done} style={{ position: "fixed", inset: 0, zIndex: 20000, background: "#FFFFFF", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 28, opacity: fading ? 0 : 1, transition: "opacity 240ms ease", pointerEvents: fading ? "none" : "auto" }}>
       <img src="/logo.svg" alt="Agape" width={88} height={88} style={{ borderRadius: 22, boxShadow: "0 4px 24px rgba(0,0,0,0.08)" }} />
+      <div role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress * 100)} style={{ width: 140, height: 4, borderRadius: 2, background: "#EFEBE4", overflow: "hidden" }}>
+        <div style={{ width: `${progress * 100}%`, height: "100%", borderRadius: 2, background: "#B8912A", transition: done ? "width 160ms ease-out" : "width 120ms linear" }} />
+      </div>
     </div>
   );
 }
 
 function AppContent() {
   const { state } = useApp();
+  // The splash stays a moment after the session is known so the bar can finish and fade out
+  const [splashGone, setSplashGone] = useState(false);
+  const hideSplash = useCallback(() => setSplashGone(true), []);
 
-  if (!state.sessionChecked) return <Splash />;
+  if (!state.sessionChecked) return <Splash done={false} onFinished={hideSplash} />;
+  const splash = !splashGone ? <Splash done onFinished={hideSplash} /> : null;
 
   if (!state.onboardingComplete) {
     return (
       <>
         <Onboarding />
         <RecoveryModal />
+        {splash}
       </>
     );
   }
@@ -104,6 +147,7 @@ function AppContent() {
       <MatchAlert />
       <RoseAlert />
       <ReviewAlert />
+      {splash}
     </div>
   );
 }
@@ -120,3 +164,4 @@ export default function App() {
     </ErrorBoundary>
   );
 }
+
