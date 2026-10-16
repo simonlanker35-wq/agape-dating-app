@@ -85,6 +85,7 @@ revoke all on function public.create_match_if_mutual(uuid) from public, anon;
 grant execute on function public.create_match_if_mutual(uuid) to authenticated;
 
 -- ── limits: dating likes and Doves as before, friend waves have their own daily allowance ──
+drop function if exists public.plan_limits(uuid);
 create or replace function public.plan_limits(p_user uuid)
 returns table (premium boolean, daily_likes integer, weekly_doves integer, weekly_reveals integer, daily_waves integer)
 language sql stable security definer set search_path = public as $$
