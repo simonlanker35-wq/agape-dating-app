@@ -1729,7 +1729,7 @@ export default function Matches() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: C.bg }}>
-      <div style={{ padding: "40px 20px 16px" }}>
+      <div style={{ padding: "max(64px, calc(env(safe-area-inset-top, 0px) + 60px)) 20px 16px" }}>
         <h1 style={{ color: C.text, fontFamily: FONT, fontSize: 24, fontWeight: 700, letterSpacing: "-0.4px", margin: 0 }}>{state.mode === "friends" ? "Friends" : "Messages"}</h1>
       </div>
 

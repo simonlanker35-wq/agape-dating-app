@@ -565,7 +565,7 @@ function SettingsScreen({ onBack, initialSection = null }) {
                       if ((currentUser?.intent || "date") === o.value) return;
                       track("intent_changed", { intent: o.value });
                       try {
-                        const updated = await actions.updateProfile({ intent: o.value });
+                        const updated = await actions.updateProfile({ intent: o.value, details: { ...(currentUser?.details || {}), intentChosen: true } });
                         dispatch({ type: "SET_USER", payload: updated });
                       } catch (_) {}
                     } }} />

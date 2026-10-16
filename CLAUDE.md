@@ -112,6 +112,7 @@ src/
 - **Stripe Secret Key**: nur als Env-Var in Supabase Edge Functions, nie im Frontend
 - **Seed-Script** (`seed-supabase.mjs`): braucht `SUPABASE_SERVICE_KEY` als Env-Var
 - **Dating + Freunde (seit 2026-10-16)**: `profiles.intent` ('date' | 'friends' | 'both'), `likes.kind` und `matches.kind` ('date' | 'friend'). `state.mode` ('date'/'friends') wählt das Frontend; `ModeSwitch` oben nur bei intent 'both'. `api.getDiscover/getLikesReceived/getMatches(mode)` und `sendLike(..., kind)`. Freunde-Chat hat keine Deadline, keine Dates, keine Rose. Waves: 15/Tag (Agape+ 30), getrennt von Likes. SQL: `supabase/friends_mode.sql`.
+- **Community (Freunde-Seite, seit 2026-10-16)**: Forum-Tab mit Posts (Kategorien prayer/faith/meetups/life/church/general), Antworten und «Amen»; Tabellen `community_posts/_replies/_amens` (SQL: `supabase/community.sql`), Zähler per Trigger. `ModeSwitch` zeigt die nicht aktivierte Seite ausgegraut; Tippen bietet «Activate both» an.
 - **Simulation**: `sim-test.html` (200 Accounts gegen `src/_sim/fakeSupabase.js`) und `ui-test.html` (ganze App auf dem Fake-Backend, eingeloggt als User 1). Beide nur im Dev-Server.
 - **5-Tage-Deadline + Rose**: Der Chat öffnet sofort nach dem Match. Nach der ersten echten Nachricht hat der Mann 5 Tage, um ein Date zu planen. Die Frau kann eine Rose senden (+36h); ein geplanter Videocall pausiert die Uhr bis 2h nach dem Call; eine abgesagte Planung gibt 5 neue Tage. Danach schliesst der Chat.
 

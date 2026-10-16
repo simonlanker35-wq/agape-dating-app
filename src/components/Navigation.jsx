@@ -14,6 +14,7 @@ const TABS = [
 // The friends side has no weekly pick; waves and friends replace sparks and messages
 const FRIEND_TABS = [
   { id: "discover", label: "Seek" },
+  { id: "community", label: "Community" },
   { id: "likes", label: "Waves" },
   { id: "matches", label: "Friends" },
   { id: "profile", label: "Me" },
@@ -35,6 +36,13 @@ function NavIcon({ id, active }) {
       return (
         <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={sw}>
           <path d="M12 2L9 9H2l6 4.5L5.5 21 12 16.5 18.5 21 16 13.5 22 9h-7z" fill={active ? "white" : "none"} />
+        </svg>
+      );
+    case "community":
+      return (
+        <svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M17 9a5 5 0 0 1-5 5H8l-4 3V9a5 5 0 0 1 5-5h3a5 5 0 0 1 5 5z" fill={active ? "white" : "none"} />
+          <path d="M20 11v1a5 5 0 0 1-5 5h-1l-3 2.5" />
         </svg>
       );
     case "likes":

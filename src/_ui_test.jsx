@@ -23,6 +23,11 @@ for (let i = 1; i <= 40; i++) {
 // signed in as user 1 (male, here for both)
 be.db.profiles.find((p) => p.id === ids[0]).intent = new URLSearchParams(location.search).get("intent") || "both";
 if (new URLSearchParams(location.search).get("old")) be.db.profiles.find((p) => p.id === ids[0]).created_at = "2026-09-01T10:00:00.000Z";
+be.db.community_posts.push(
+  { id: "11111111-1111-4111-8111-111111111111", author: ids[2], category: "prayer", title: "Prayers for my grandmother", body: "She is in hospital this week. Would be grateful for your prayers.", reply_count: 1, amen_count: 3, created_at: new Date(Date.now() - 3600e3).toISOString(), last_activity: new Date(Date.now() - 600e3).toISOString() },
+  { id: "22222222-2222-4222-8222-222222222222", author: ids[4], category: "meetups", title: "Hike + picnic Sunday after mass?", body: "Thinking Mythen, easy pace, bring something to share. Who is in?", reply_count: 0, amen_count: 1, created_at: new Date(Date.now() - 7200e3).toISOString(), last_activity: new Date(Date.now() - 7200e3).toISOString() },
+);
+be.db.community_replies.push({ id: "33333333-3333-4333-8333-333333333333", post_id: "11111111-1111-4111-8111-111111111111", author: ids[6], body: "Praying for her tonight. 🙏", created_at: new Date(Date.now() - 600e3).toISOString() });
 be.setUser(ids[0]);
 window.__BE = be;
 

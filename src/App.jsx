@@ -7,6 +7,7 @@ import LikesYou from "./pages/LikesYou";
 import Matches from "./pages/Matches";
 import Standouts from "./pages/Standouts";
 import Profile from "./pages/Profile";
+import Community from "./pages/Community";
 import PasswordInput from "./components/PasswordInput";
 import TutorialOverlay from "./components/TutorialOverlay";
 import ModeSwitch from "./components/ModeSwitch";
@@ -130,6 +131,8 @@ function AppContent() {
         return <Matches />;
       case "standouts":
         return <Standouts />;
+      case "community":
+        return <Community />;
       case "profile":
         return <Profile />;
       default:
@@ -145,7 +148,7 @@ function AppContent() {
       </main>
       <Navigation />
       <ModeSwitch />
-      <TutorialOverlay screen={state.mode === "friends" && ["discover", "likes", "matches"].includes(state.activeTab) ? `${state.activeTab}-friends` : state.activeTab} />
+      <TutorialOverlay screen={state.mode === "friends" && ["discover", "likes", "matches", "community"].includes(state.activeTab) ? `${state.activeTab}-friends` : state.activeTab} />
       <RecoveryModal />
       <MatchAlert />
       <RoseAlert />

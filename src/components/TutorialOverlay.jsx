@@ -33,6 +33,9 @@ const TOURS = {
   "discover-friends": [
     { full: true, title: "Meet Christian friends", text: "Seek now shows people who are here for friendship — men and women near you. Wave at someone you'd like to know; if they wave back, you're friends and can chat." },
   ],
+  "community-friends": [
+    { full: true, title: "Community", text: "A place to talk with everyone here for friendship: prayer requests, Bible questions, meetups and life. Open a post to reply, tap Amen to say you're with them." },
+  ],
   "likes-friends": [
     { full: true, title: "Waves", text: "People who waved at you land here. Wave back to become friends." },
   ],

@@ -1165,3 +1165,91 @@ export function setToken() {}
 export async function clearToken() {
   await supabase.auth.signOut();
 }
+
+// ─── COMMUNITY (friends side forum) ───
+
+const mapPost = (p, authors, myAmens) => ({
+  id: p.id,
+  author: authors[p.author] ? mapProfile(authors[p.author]) : { id: p.author, name: "Member", photos: [] },
+  category: p.category || "general",
+  title: p.title,
+  body: p.body,
+  replyCount: p.reply_count || 0,
+  amenCount: p.amen_count || 0,
+  amened: myAmens.has(p.id),
+  createdAt: new Date(p.created_at).getTime(),
+  lastActivity: new Date(p.last_activity || p.created_at).getTime(),
+});
+
+// Newest activity first. Returns null while community.sql has not been run.
+export async function getCommunityPosts(category = "all", limit = 60) {
+  const user = await currentUser();
+  if (!user) return [];
+  let q = supabase.from("community_posts").select("*").order("last_activity", { ascending: false }).limit(limit);
+  if (category && category !== "all") q = q.eq("category", category);
+  const { data: posts, error } = await q;
+  if (error) { if (notSetUp(error)) return null; throw new Error(error.message); }
+  const list = posts || [];
+  const authors = await fetchPublicProfiles(list.map((p) => p.author));
+  const { data: amens } = await supabase.from("community_amens").select("post_id").eq("user_id", user.id);
+  const mine = new Set((amens || []).map((a) => a.post_id));
+  return list.map((p) => mapPost(p, authors, mine));
+}
+
+export async function getCommunityPost(postId) {
+  const user = await currentUser();
+  if (!user) return null;
+  const { data: p, error } = await supabase.from("community_posts").select("*").eq("id", postId).maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!p) return null;
+  const { data: replies, error: rErr } = await supabase.from("community_replies").select("*").eq("post_id", postId).order("created_at", { ascending: true });
+  if (rErr) throw new Error(rErr.message);
+  const authors = await fetchPublicProfiles([p.author, ...(replies || []).map((r) => r.author)]);
+  const { data: amen } = await supabase.from("community_amens").select("post_id").eq("user_id", user.id).eq("post_id", postId).maybeSingle();
+  return {
+    post: mapPost(p, authors, new Set(amen ? [postId] : [])),
+    replies: (replies || []).map((r) => ({
+      id: r.id,
+      author: authors[r.author] ? mapProfile(authors[r.author]) : { id: r.author, name: "Member", photos: [] },
+      body: r.body,
+      createdAt: new Date(r.created_at).getTime(),
+    })),
+  };
+}
+
+export async function createCommunityPost({ category, title, body }) {
+  const user = await currentUser();
+  if (!user) throw new Error("Not signed in");
+  const { data, error } = await withTimeout(
+    supabase.from("community_posts").insert({ author: user.id, category: category || "general", title: String(title).trim().slice(0, 120), body: String(body).trim().slice(0, 4000) }).select().single(),
+    20000
+  );
+  if (error) throw new Error(notSetUp(error) ? "The community is not open yet." : error.message);
+  return mapPost(data, {}, new Set());
+}
+
+export async function replyToCommunityPost(postId, body) {
+  const user = await currentUser();
+  if (!user) throw new Error("Not signed in");
+  const { error } = await withTimeout(supabase.from("community_replies").insert({ post_id: postId, author: user.id, body: String(body).trim().slice(0, 2000) }), 20000);
+  if (error) throw new Error(error.message);
+}
+
+export async function amenCommunityPost(postId, on) {
+  const user = await currentUser();
+  if (!user) throw new Error("Not signed in");
+  const { error } = on
+    ? await supabase.from("community_amens").upsert({ post_id: postId, user_id: user.id }, { onConflict: "post_id,user_id" })
+    : await supabase.from("community_amens").delete().eq("post_id", postId).eq("user_id", user.id);
+  if (error) throw new Error(error.message);
+}
+
+export async function deleteCommunityPost(postId) {
+  const { error } = await supabase.from("community_posts").delete().eq("id", postId);
+  if (error) throw new Error(error.message);
+}
+
+export async function deleteCommunityReply(replyId) {
+  const { error } = await supabase.from("community_replies").delete().eq("id", replyId);
+  if (error) throw new Error(error.message);
+}

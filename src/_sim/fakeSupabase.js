@@ -3,7 +3,7 @@
 import { supabase } from "../services/supabase";
 
 const uuid = () => crypto.randomUUID();
-const TABLES = ["profiles", "likes", "skips", "matches", "messages", "date_invitations", "date_feedback", "blocks", "reports", "photo_verifications", "spark_reveals", "push_subscriptions", "photo_originals"];
+const TABLES = ["profiles", "likes", "skips", "matches", "messages", "date_invitations", "date_feedback", "blocks", "reports", "photo_verifications", "spark_reveals", "push_subscriptions", "photo_originals", "community_posts", "community_replies", "community_amens"];
 const PUBLIC_PROFILE_COLS = ["id", "name", "age", "height", "gender", "denomination", "job", "school", "location_city", "location_lat", "location_lng", "photos", "prompts", "interests", "traits", "who_are_you", "looking_for", "bio", "filters", "is_active", "is_standout", "compatibility_reason", "verified_photos", "details", "paused", "last_active", "created_at", "intent"];
 const PROTECTED = ["subscription_status", "doves", "is_active", "stripe_customer_id", "subscription_id", "is_standout", "email"];
 
@@ -109,6 +109,7 @@ export function createFakeBackend() {
       case "spark_reveals": return db.spark_reveals.filter((r) => r.user_id === u);
       case "push_subscriptions": return db.push_subscriptions.filter((r) => r.user_id === u);
       case "photo_originals": return db.photo_originals.filter((r) => r.user_id === u);
+      case "community_posts": case "community_replies": case "community_amens": return db[table];
       default: state.unsupported.push(`table ${table}`); return [];
     }
   };
@@ -184,6 +185,9 @@ export function createFakeBackend() {
         break;
       }
       case "push_subscriptions": case "photo_originals": if (r.user_id !== u) throw err(401, "42501", `RLS ${table}`); break;
+      case "community_posts": if (r.author !== u) throw err(401, "42501", "RLS community_posts"); Object.assign(r, { reply_count: 0, amen_count: 0, last_activity: r.created_at, category: r.category || "general" }); break;
+      case "community_replies": { if (r.author !== u) throw err(401, "42501", "RLS community_replies"); const post = db.community_posts.find((p) => p.id === r.post_id); if (post) { post.reply_count++; post.last_activity = nowIso(); } break; }
+      case "community_amens": { if (r.user_id !== u) throw err(401, "42501", "RLS community_amens"); if (db.community_amens.some((a) => a.post_id === r.post_id && a.user_id === r.user_id)) throw err(409, "23505", "duplicate"); const post = db.community_posts.find((p) => p.id === r.post_id); if (post) post.amen_count++; break; }
       default: state.unsupported.push(`insert ${table}`);
     }
     db[table].push(r);
@@ -192,6 +196,7 @@ export function createFakeBackend() {
 
   const upsertRow = (table, row, conflictCols) => {
     const cols = conflictCols ? conflictCols.split(",").map((c) => c.trim()) : ["id"];
+    if (table === "community_amens" && db.community_amens.some((x) => x.post_id === row.post_id && x.user_id === row.user_id)) return row;
     const existing = db[table].find((x) => cols.every((c) => String(x[c]) === String(row[c])));
     if (existing) { Object.assign(existing, row); return existing; }
     return insertRow(table, row);
@@ -223,6 +228,8 @@ export function createFakeBackend() {
         case "blocks": return row.blocker === u;
         case "photo_verifications": case "push_subscriptions": case "photo_originals": case "spark_reveals": return row.user_id === u;
         case "profiles": return row.id === u;
+        case "community_posts": case "community_replies": return row.author === u;
+        case "community_amens": return row.user_id === u;
         default: return false;
       }
     });
@@ -236,6 +243,9 @@ export function createFakeBackend() {
       }
     }
     if (table === "profiles") cascadeUser([...ids]);
+    if (table === "community_posts") { db.community_replies = db.community_replies.filter((r) => !ids.has(r.post_id)); db.community_amens = db.community_amens.filter((a) => !ids.has(a.post_id)); }
+    if (table === "community_replies") for (const r of allowed) { const post = db.community_posts.find((p) => p.id === r.post_id); if (post) post.reply_count = Math.max(0, post.reply_count - 1); }
+    if (table === "community_amens") for (const a of allowed) { const post = db.community_posts.find((p) => p.id === a.post_id); if (post) post.amen_count = Math.max(0, post.amen_count - 1); }
     return allowed;
   };
   const cascadeUser = (ids) => {

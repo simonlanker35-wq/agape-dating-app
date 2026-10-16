@@ -67,7 +67,7 @@ function reducer(state, action) {
         currentUser: action.payload,
         filters: saved ? { ...state.filters, ...saved } : state.filters,
         mode,
-        activeTab: mode === "friends" && state.activeTab === "standouts" ? "discover" : state.activeTab,
+        activeTab: (mode === "friends" && state.activeTab === "standouts") || (mode === "date" && state.activeTab === "community") ? "discover" : state.activeTab,
         sessionChecked: true, onboardingComplete: !!action.payload,
         needsProfile: false,
       };
@@ -78,7 +78,7 @@ function reducer(state, action) {
       if (mode === state.mode) return state;
       try { localStorage.setItem("agape_mode", mode); } catch {}
       // The lists belong to one side; they are reloaded for the other
-      return { ...state, mode, profiles: [], likesReceived: [], matches: [], conversations: {}, matchesLoaded: false, openChatId: null, activeTab: state.activeTab === "standouts" ? "discover" : state.activeTab };
+      return { ...state, mode, profiles: [], likesReceived: [], matches: [], conversations: {}, matchesLoaded: false, openChatId: null, activeTab: ["standouts", "community"].includes(state.activeTab) ? "discover" : state.activeTab };
     }
 
     // Signed in (e.g. via Google/Apple) but the profile row was never created — resume onboarding
