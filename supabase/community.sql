@@ -90,11 +90,19 @@ drop trigger if exists community_amen_counter on public.community_amens;
 create trigger community_amen_counter after insert or delete on public.community_amens
   for each row execute function public.community_amen_counter();
 
--- Posts cannot be rewritten from the app once published (the counters are the database's job)
+-- Posts cannot be rewritten once published; only the counters and the activity time may change
+-- (the counter triggers run inside a member's request, so they must pass this guard)
 create or replace function public.community_posts_guard()
 returns trigger language plpgsql as $$
 begin
-  if auth.uid() is not null then raise exception 'Posts cannot be edited'; end if;
+  if auth.uid() is not null then
+    new.id := old.id;
+    new.author := old.author;
+    new.category := old.category;
+    new.title := old.title;
+    new.body := old.body;
+    new.created_at := old.created_at;
+  end if;
   return new;
 end;
 $$;
