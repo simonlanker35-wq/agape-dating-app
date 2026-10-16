@@ -1096,6 +1096,7 @@ function mapProfileToUser(p, authPhone) {
     notificationPrefs: p.notification_prefs || {},
     paused: !!p.paused,
     intent: p.intent || "date",
+    createdAt: p.created_at || null,
   };
 }
 

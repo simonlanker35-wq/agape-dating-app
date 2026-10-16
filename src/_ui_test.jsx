@@ -22,6 +22,7 @@ for (let i = 1; i <= 40; i++) {
 }
 // signed in as user 1 (male, here for both)
 be.db.profiles.find((p) => p.id === ids[0]).intent = new URLSearchParams(location.search).get("intent") || "both";
+if (new URLSearchParams(location.search).get("old")) be.db.profiles.find((p) => p.id === ids[0]).created_at = "2026-09-01T10:00:00.000Z";
 be.setUser(ids[0]);
 window.__BE = be;
 
