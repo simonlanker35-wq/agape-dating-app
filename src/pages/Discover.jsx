@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useApp } from "../context/AppContext";
-import { Heart, X, MessageCircle, Ban, Flag, Hand } from "lucide-react";
+import { Heart, X, MessageCircle, Ban, Flag, UserPlus } from "lucide-react";
 import DoveIcon from "../components/DoveIcon";
 import ReliabilityBadge from "../components/ReliabilityBadge";
 import AgapeCross from "../components/AgapeCross";
@@ -101,7 +101,7 @@ export default function Discover() {
     const limit = friends ? (isPremium ? LIMITS.PREMIUM.dailyWaves : LIMITS.FREE.dailyWaves) : (isPremium ? LIMITS.PREMIUM.dailyLikes : LIMITS.FREE.dailyLikes);
     return (
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", padding: "60px 20px", textAlign: "center" }}>
-        {friends ? <Hand size={48} strokeWidth={1.4} color="#B8912A" style={{ marginBottom: 16 }} /> : <Heart size={48} strokeWidth={1.4} color="#B8912A" style={{ marginBottom: 16 }} />}
+        {friends ? <UserPlus size={48} strokeWidth={1.4} color="#B8912A" style={{ marginBottom: 16 }} /> : <Heart size={48} strokeWidth={1.4} color="#B8912A" style={{ marginBottom: 16 }} />}
         <h2 style={{ color: "#1A1612", fontFamily: "'Outfit', system-ui, sans-serif", fontSize: 20, fontWeight: 700, margin: 0 }}>{friends ? "No waves left today" : "No likes left today"}</h2>
         <p style={{ color: "#8C857C", fontSize: 14, marginTop: 4 }}>You've used all {limit} {isPremium ? "" : "free "}{friends ? "waves" : "likes"} for today. Come back tomorrow!</p>
         {dovesLeft > 0 && (
@@ -255,7 +255,7 @@ export default function Discover() {
       {likeFlash && (
         <div className={`like-flash-overlay ${likeFlash}`}>
           <span className="flash-emoji">
-            {likeFlash === "wave" ? <Hand size={120} strokeWidth={1.3} color="#B8912A" /> : likeFlash === "dove" ? <DoveIcon size={120} color="#B8912A" strokeWidth={1.2} /> : likeFlash === "comment" ? <MessageCircle size={120} strokeWidth={1.4} color="#B8912A" /> : likeFlash === "block" ? <Ban size={120} strokeWidth={1.4} color="#EF4444" /> : likeFlash === "report" ? <Flag size={120} strokeWidth={1.4} color="#EF4444" /> : <Heart size={120} strokeWidth={1.4} fill="#DC3232" color="#DC3232" />}
+            {likeFlash === "wave" ? <UserPlus size={120} strokeWidth={1.3} color="#B8912A" /> : likeFlash === "dove" ? <DoveIcon size={120} color="#B8912A" strokeWidth={1.2} /> : likeFlash === "comment" ? <MessageCircle size={120} strokeWidth={1.4} color="#B8912A" /> : likeFlash === "block" ? <Ban size={120} strokeWidth={1.4} color="#EF4444" /> : likeFlash === "report" ? <Flag size={120} strokeWidth={1.4} color="#EF4444" /> : <Heart size={120} strokeWidth={1.4} fill="#DC3232" color="#DC3232" />}
           </span>
         </div>
       )}
@@ -353,7 +353,7 @@ export default function Discover() {
                     aria-label={friends ? "Wave" : "Like"}
                     style={{ width: 56, height: 38, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", background: "#B8912A", opacity: likesLeft > 0 ? 1 : 0.4, border: "none", cursor: "pointer", boxShadow: "0 3px 12px rgba(184,145,42,0.45)", opacity: likesLeft > 0 ? 1 : 0.5, position: "relative" }}
                   >
-                    {friends ? <Hand size={18} stroke="white" strokeWidth={2.2} /> : <Heart size={18} fill="white" stroke="white" />}
+                    {friends ? <UserPlus size={19} stroke="white" strokeWidth={2.3} /> : <Heart size={18} fill="white" stroke="white" />}
                     <span style={{ position: "absolute", top: -6, right: -6, minWidth: 18, height: 18, padding: "0 5px", borderRadius: 9, background: "white", color: "#B8912A", fontSize: 11, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Outfit', system-ui, sans-serif", boxShadow: "0 1px 4px rgba(0,0,0,0.2)" }}>{likesLeft}</span>
                   </button>
                   {!friends && (
@@ -389,7 +389,7 @@ export default function Discover() {
                 </div>
                 <div className="prompt-side-actions">
                   <button className="mini-btn prompt-heart" onClick={() => onHeartPress("prompt", i)}>
-                    <Heart size={13} fill="white" stroke="white" />
+                    {friends ? <UserPlus size={13} stroke="white" strokeWidth={2.4} /> : <Heart size={13} fill="white" stroke="white" />}
                   </button>
                 </div>
               </div>
@@ -435,8 +435,8 @@ export default function Discover() {
                 </p>
               )}
               <button className="like-choice-btn heart-choice" onClick={onSendHeart}>
-                <Heart size={20} fill="white" stroke="white" />
-                <span>Send a like</span>
+                {friends ? <UserPlus size={20} stroke="white" strokeWidth={2.2} /> : <Heart size={20} fill="white" stroke="white" />}
+                <span>{friends ? "Send a wave" : "Send a like"}</span>
               </button>
               {!theyCommented && (
                 <button className="like-choice-btn comment-choice" onClick={onAddComment}>

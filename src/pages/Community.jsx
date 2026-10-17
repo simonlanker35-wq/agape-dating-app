@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { ChevronLeft, MessageCircle, Plus, Trash2, Flag, RefreshCw, Send, X, Hand, Check } from "lucide-react";
+import { ChevronLeft, MessageCircle, Plus, Trash2, Flag, RefreshCw, Send, X, UserPlus, Check } from "lucide-react";
 import { useApp } from "../context/AppContext";
 import * as api from "../services/api";
 import { track } from "../services/posthog";
@@ -50,7 +50,7 @@ function MemberProfile({ profile, onClose }) {
         actions={[
           alreadyFriends
             ? { label: "Already friends", primary: true, disabled: true, icon: <Check size={16} /> }
-            : { label: waved ? "Waved" : "Wave", primary: true, disabled: busy || waved, icon: waved ? <Check size={16} /> : <Hand size={16} />, onClick: wave },
+            : { label: waved ? "Waved" : "Wave", primary: true, disabled: busy || waved, icon: waved ? <Check size={16} /> : <UserPlus size={16} />, onClick: wave },
         ]}
       />
       {note && <Toast text={note} />}

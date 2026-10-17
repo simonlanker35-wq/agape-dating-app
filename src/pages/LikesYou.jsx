@@ -1,6 +1,6 @@
 import { useApp } from "../context/AppContext";
 import { useState, useEffect } from "react";
-import { Heart, X, Lock } from "lucide-react";
+import { Heart, X, Lock, UserPlus } from "lucide-react";
 import AudioPlayer from "../components/AudioPlayer";
 import VerifiedBadge from "../components/VerifiedBadge";
 import CompatibilityRing from "../components/CompatibilityRing";
@@ -69,9 +69,9 @@ export default function LikesYou() {
   if (likesWithProfiles.length === 0) {
     return (
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", padding: "60px 20px", textAlign: "center" }}>
-        <Heart size={48} strokeWidth={1.4} color={C.primary} style={{ marginBottom: 16 }} />
-        <h2 style={{ color: C.text, fontFamily: FONT, fontSize: 20, fontWeight: 700 }}>No new likes</h2>
-        <p style={{ color: C.sub, fontSize: 14, marginTop: 4 }}>Keep exploring! When someone likes you, they'll appear here.</p>
+        {friends ? <UserPlus size={48} strokeWidth={1.4} color={C.primary} style={{ marginBottom: 16 }} /> : <Heart size={48} strokeWidth={1.4} color={C.primary} style={{ marginBottom: 16 }} />}
+        <h2 style={{ color: C.text, fontFamily: FONT, fontSize: 20, fontWeight: 700 }}>{friends ? "No new waves" : "No new likes"}</h2>
+        <p style={{ color: C.sub, fontSize: 14, marginTop: 4 }}>{friends ? "Keep exploring! When someone waves at you, they'll appear here." : "Keep exploring! When someone likes you, they'll appear here."}</p>
       </div>
     );
   }
@@ -151,7 +151,7 @@ export default function LikesYou() {
 
                 {heartFlash === like.id && (
                   <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10, pointerEvents: "none" }}>
-                    <span style={{ display: "flex", animation: "heartPop 0.8s ease-out forwards" }}><Heart size={64} fill={C.primary} color={C.primary} /></span>
+                    <span style={{ display: "flex", animation: "heartPop 0.8s ease-out forwards" }}>{friends ? <UserPlus size={64} color={C.primary} strokeWidth={2} /> : <Heart size={64} fill={C.primary} color={C.primary} />}</span>
                   </div>
                 )}
 
@@ -216,7 +216,7 @@ export default function LikesYou() {
                         {matched ? (
                           <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={3}><path d="M20 6L9 17l-5-5" /></svg>
                         ) : (
-                          <Heart size={18} fill="white" stroke="white" />
+                          friends ? <UserPlus size={18} stroke="white" strokeWidth={2.3} /> : <Heart size={18} fill="white" stroke="white" />
                         )}
                       </button>
                     </div>
