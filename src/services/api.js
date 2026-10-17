@@ -519,6 +519,15 @@ export async function sendLike(to, targetType, targetIndex, comment = null, isDo
   return { matched, matchId };
 }
 
+// Ask the database for the match between me and someone of this kind; it is created only when both
+// likes exist. Used when a like already existed (the earlier like-back never produced the match).
+export async function ensureMatch(otherId, kind = "date") {
+  let { data, error } = await supabase.rpc("create_match_if_mutual", { p_other: otherId, p_kind: kind });
+  if (error && /function .*create_match_if_mutual|schema cache/i.test(error.message || "")) ({ data, error } = await supabase.rpc("create_match_if_mutual", { p_other: otherId }));
+  if (error) throw new Error(error.message);
+  return data || null;
+}
+
 export async function getLikesReceived(mode = "date") {
   const user = await currentUser();
   const kind = kindOf(mode);
@@ -549,8 +558,24 @@ export async function getLikesReceived(mode = "date") {
     query = query.not("from_user", "in", `(${matchedIds.join(",")})`);
   }
 
-  const { data: likes, error } = await query;
+  let { data: likes, error } = await query;
   if (error) throw new Error(error.message);
+
+  // Someone I already liked back but who is not a match yet (an older app version, a failed call):
+  // let the database create the match now and keep them out of this list
+  if ((likes || []).length) {
+    let mineQ = supabase.from("likes").select("to_user").eq("from_user", user.id).in("to_user", likes.map((l) => l.from_user));
+    if (!kindless) mineQ = mineQ.eq("kind", kind);
+    const { data: mine } = await mineQ;
+    const mutual = new Set((mine || []).map((m) => m.to_user));
+    if (mutual.size) {
+      const healed = new Set();
+      for (const other of mutual) {
+        try { if (await ensureMatch(other, kind)) healed.add(other); } catch (_) {}
+      }
+      if (healed.size) likes = likes.filter((l) => !healed.has(l.from_user));
+    }
+  }
 
   const senders = await fetchPublicProfiles((likes || []).map((l) => l.from_user));
   const reliability = await getReliability((likes || []).map((l) => l.from_user));

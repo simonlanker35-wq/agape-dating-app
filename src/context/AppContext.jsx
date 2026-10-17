@@ -695,7 +695,10 @@ export function AppProvider({ children }) {
         res = await api.sendLike(like.fromId, "profile", 0, null, false, kind);
       } catch (err) {
         if (err.message === "Already liked") {
-          res = { matched: true };
+          // My like exists already; the database creates the match if theirs does too
+          const matchId = await api.ensureMatch(like.fromId, kind);
+          res = { matched: !!matchId, matchId };
+          if (!matchId) throw new Error("Could not connect right now. Please try again.");
         } else {
           throw err;
         }

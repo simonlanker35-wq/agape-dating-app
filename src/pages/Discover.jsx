@@ -320,7 +320,7 @@ export default function Discover() {
             <div className="id-block">
               <div className="id-info">
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                  <CompatibilityRing profile={profile} size={46} light />
+                  {!friends && <CompatibilityRing profile={profile} size={46} light />}
                   {profile.isVerified && <VerifiedBadge size={18} label />}
                 </div>
                 <div className="id-line1">

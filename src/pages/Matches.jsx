@@ -1217,7 +1217,7 @@ function ChatThread({ match, onBack }) {
               </p>
               <p style={{ fontSize: 12, color: statusColor, fontFamily: FONT, margin: "2px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{status}</p>
             </div>
-            <CompatibilityRing profile={profile} size={36} style={{ marginRight: 4 }} />
+            {!friendChat && <CompatibilityRing profile={profile} size={36} style={{ marginRight: 4 }} />}
             <button onClick={() => setShowReportMenu(true)} aria-label="Safety options" style={{ width: 36, height: 36, borderRadius: 18, background: "none", border: "none", cursor: "pointer", color: C.sub, display: "flex", alignItems: "center", justifyContent: "center" }}>
               <Shield size={19} strokeWidth={1.7} />
             </button>
@@ -1648,7 +1648,7 @@ function ChatThread({ match, onBack }) {
                 <span style={{ color: "white", fontSize: 28, fontWeight: 600, fontFamily: SERIF }}>{profile.name}</span>
                 <span style={{ color: "rgba(255,255,255,0.8)", fontSize: 22, fontWeight: 300 }}>{profile.age}</span>
                 {profile.isVerified && <VerifiedBadge size={20} label />}
-                <CompatibilityRing profile={profile} size={44} light style={{ marginLeft: "auto" }} />
+                {!friendChat && <CompatibilityRing profile={profile} size={44} light style={{ marginLeft: "auto" }} />}
               </div>
               <p style={{ color: "rgba(255,255,255,0.7)", fontSize: 12, marginTop: 4 }}>{profile.denomination}{profile.location ? ` · ${profile.location}` : ""}</p>
               {profile.reliability?.dates > 0 && <div style={{ marginTop: 8 }}><ReliabilityBadge reliability={profile.reliability} light /></div>}
