@@ -43,6 +43,7 @@ export default function LikesYou() {
   const regularLikes = allLikes.filter((l) => !l.isDove);
   const likesWithProfiles = [...doveLikes, ...regularLikes];
 
+  const [likeError, setLikeError] = useState("");
   const handleLikeBack = async (like) => {
     track("sparks_like_back", { isDove: !!like.isDove });
     setHeartFlash(like.id);
@@ -53,6 +54,9 @@ export default function LikesYou() {
     } catch (err) {
       console.error("Match failed:", err);
       setLikedBack((prev) => { const n = new Set(prev); n.delete(like.id); return n; });
+      // Say what went wrong instead of quietly putting the card back
+      setLikeError(err?.message || "That didn't go through. Please try again.");
+      setTimeout(() => setLikeError(""), 6000);
     }
   };
 
@@ -78,6 +82,11 @@ export default function LikesYou() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: C.bg }}>
+      {likeError && (
+        <div style={{ position: "fixed", top: "max(56px, calc(env(safe-area-inset-top, 0px) + 52px))", left: "50%", transform: "translateX(-50%)", zIndex: 300, background: "#1A1612", color: "#F5F0E8", padding: "10px 16px", borderRadius: 12, fontSize: 13.5, fontFamily: FONT, maxWidth: 340, textAlign: "center" }}>
+          {likeError}
+        </div>
+      )}
       <div style={{ padding: "max(64px, calc(env(safe-area-inset-top, 0px) + 60px)) 20px 8px" }}>
         <h1 style={{ color: C.text, fontFamily: FONT, fontSize: 24, fontWeight: 700, letterSpacing: "-0.4px", margin: 0 }}>{friends ? "Waves" : "Sparks"}</h1>
         <p style={{ color: C.sub, fontSize: 13, marginTop: 4 }}>
