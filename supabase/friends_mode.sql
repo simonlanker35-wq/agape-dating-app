@@ -174,3 +174,24 @@ end;
 $$;
 revoke all on function public.usage_limits() from public, anon;
 grant execute on function public.usage_limits() to authenticated;
+
+-- ── one match per pair of people per kind (the old one-per-pair index blocked a friendship next to a dating match) ──
+do $$
+declare r record;
+begin
+  for r in
+    select indexname from pg_indexes
+    where schemaname = 'public' and tablename = 'matches'
+      and indexdef ilike '%unique%' and indexname not in ('matches_pkey', 'matches_pair_kind_key')
+  loop
+    execute format('drop index if exists public.%I', r.indexname);
+  end loop;
+  for r in
+    select conname from pg_constraint
+    where conrelid = 'public.matches'::regclass and contype = 'u'
+  loop
+    execute format('alter table public.matches drop constraint %I', r.conname);
+  end loop;
+end $$;
+create unique index if not exists matches_pair_kind_key
+  on public.matches (least(user1, user2), greatest(user1, user2), kind);
