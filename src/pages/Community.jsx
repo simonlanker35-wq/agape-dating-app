@@ -102,10 +102,11 @@ function Avatar({ profile, size = 36, onClick }) {
 function Byline({ profile, when, mine }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0, fontSize: 12.5, color: C.sub, fontFamily: FONT }}>
-      <span style={{ fontWeight: 700, color: C.text, fontFamily: SERIF, fontSize: 14, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{mine ? "You" : profile?.name || "Member"}</span>
+      <span style={{ fontWeight: 700, color: C.text, fontFamily: SERIF, fontSize: 14, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", flexShrink: 0, maxWidth: 120 }}>{mine ? "You" : profile?.name || "Member"}</span>
       {profile?.isVerified && <VerifiedBadge size={13} />}
-      {profile?.denomination && <span style={{ whiteSpace: "nowrap" }}>· {profile.denomination}</span>}
-      {profile?.location && <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>· {profile.location}</span>}
+      {profile?.points > 0 && <span title="Community points" style={{ color: C.primary, fontWeight: 700, whiteSpace: "nowrap" }}>✦ {profile.points}</span>}
+      {profile?.denomination && <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", minWidth: 0 }}>· {profile.denomination}</span>}
+      {profile?.location && <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", minWidth: 0 }}>· {profile.location}</span>}
       <span style={{ whiteSpace: "nowrap" }}>· {timeAgo(when)}</span>
     </div>
   );
@@ -312,15 +313,21 @@ export default function Community() {
   const [open, setOpen] = useState(null); // post id
   const [compose, setCompose] = useState(false);
   const [listProfile, setListProfile] = useState(null);
+  const [pointsInfo, setPointsInfo] = useState(false);
 
+  const { dispatch } = useApp();
+  const refreshMe = useCallback(async () => {
+    try { const me = await api.getMe(); dispatch({ type: "SET_USER", payload: me }); } catch (_) {}
+  }, [dispatch]);
   const load = useCallback(async (cat = category) => {
+    refreshMe();
     try {
       const list = await api.getCommunityPosts(cat);
       if (list === null) { setNotReady(true); setPosts([]); } else { setNotReady(false); setPosts(list); }
       setError("");
     } catch (e) { setError(e.message); }
     setLoading(false);
-  }, [category]);
+  }, [category, refreshMe]);
 
   useEffect(() => { setLoading(true); load(category); }, [category, load]);
   useEffect(() => api.subscribeLive("community", [{ table: "community_posts" }], () => load()), [load]);
@@ -340,6 +347,7 @@ export default function Community() {
         <div>
           <h1 style={{ color: C.text, fontFamily: FONT, fontSize: 24, fontWeight: 700, letterSpacing: "-0.4px", margin: 0 }}>Community</h1>
           <p style={{ color: C.sub, fontSize: 13, marginTop: 4, fontFamily: FONT }}>Prayer, questions, meetups — for everyone here for friendship</p>
+          <button onClick={() => setPointsInfo(true)} style={{ marginTop: 6, display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 10px", borderRadius: 9999, border: `1px solid ${C.border}`, background: C.primarySoft, color: C.primary, fontSize: 12, fontWeight: 700, fontFamily: FONT, cursor: "pointer" }}>✦ {state.currentUser?.points || 0} points · how?</button>
         </div>
         <button onClick={() => load()} aria-label="Refresh" style={{ width: 36, height: 36, borderRadius: 18, border: `1px solid ${C.border}`, background: C.bg, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: C.sub, flexShrink: 0 }}><RefreshCw size={16} /></button>
       </div>
@@ -391,6 +399,22 @@ export default function Community() {
       )}
 
       {listProfile && <MemberProfile profile={listProfile} onClose={() => setListProfile(null)} />}
+      {pointsInfo && (
+        <div onClick={() => setPointsInfo(false)} style={{ position: "fixed", inset: 0, zIndex: 650, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderRadius: 20, padding: 22, width: "100%", maxWidth: 340, fontFamily: FONT }}>
+            <p style={{ fontSize: 18, fontWeight: 800, color: C.text, margin: "0 0 6px" }}>Community points</p>
+            <p style={{ fontSize: 13.5, color: C.sub, margin: "0 0 12px", lineHeight: 1.5 }}>They show next to your name and lift the posts people care about. You earn them by taking part:</p>
+            <ul style={{ margin: "0 0 14px", paddingLeft: 18, fontSize: 14, color: C.text, lineHeight: 1.7 }}>
+              <li>Someone says Amen to your post: <b>+2</b></li>
+              <li>Someone replies to your post: <b>+3</b></li>
+              <li>You write a reply: <b>+1</b></li>
+              <li>You write a post: <b>+1</b></li>
+            </ul>
+            <p style={{ fontSize: 12.5, color: C.sub, margin: "0 0 14px" }}>Posts with more Amens and replies rank higher, and recent activity counts for more.</p>
+            <button onClick={() => setPointsInfo(false)} style={{ width: "100%", padding: "12px 0", borderRadius: 12, border: "none", background: C.primary, color: "#fff", fontWeight: 700, fontFamily: FONT, cursor: "pointer" }}>Got it</button>
+          </div>
+        </div>
+      )}
       {compose && <NewPostSheet initialCategory={category} onClose={() => setCompose(false)} onCreated={(post) => { setCompose(false); load(); setOpen(post.id); }} />}
     </div>
   );

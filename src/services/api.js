@@ -33,6 +33,7 @@ function mapProfile(p) {
     lng: loc.lng,
     denomination: p.denomination || "",
     intent: p.intent || "date",
+    points: p.community_points || 0,
     distance: null,
     // Team-approved verification selfies are shown after the regular photos
     photos: [...(p.photos || []), ...["church", "bible"].map((k) => p.verified_photos?.[k]).filter(Boolean)],
@@ -1122,6 +1123,7 @@ function mapProfileToUser(p, authPhone) {
     paused: !!p.paused,
     intent: p.intent || "date",
     createdAt: p.created_at || null,
+    points: p.community_points || 0,
   };
 }
 
@@ -1206,8 +1208,15 @@ const mapPost = (p, authors, myAmens) => ({
   lastActivity: new Date(p.last_activity || p.created_at).getTime(),
 });
 
-// Newest activity first. Returns null while community.sql has not been run.
-export async function getCommunityPosts(category = "all", limit = 60) {
+// Posts with more Amens and replies rank higher; age pulls a post down slowly so new ones get a chance.
+export function communityScore(p, now = Date.now()) {
+  const ageHours = Math.max(0, (now - (p.lastActivity || p.createdAt)) / 3600e3);
+  const weight = 1 + 2 * (p.amenCount || 0) + 3 * (p.replyCount || 0);
+  return weight / Math.pow(ageHours + 2, 1.2);
+}
+
+// Returns null while community.sql has not been run.
+export async function getCommunityPosts(category = "all", limit = 80) {
   const user = await currentUser();
   if (!user) return [];
   let q = supabase.from("community_posts").select("*").order("last_activity", { ascending: false }).limit(limit);
@@ -1218,7 +1227,8 @@ export async function getCommunityPosts(category = "all", limit = 60) {
   const authors = await fetchPublicProfiles(list.map((p) => p.author));
   const { data: amens } = await supabase.from("community_amens").select("post_id").eq("user_id", user.id);
   const mine = new Set((amens || []).map((a) => a.post_id));
-  return list.map((p) => mapPost(p, authors, mine));
+  const now = Date.now();
+  return list.map((p) => mapPost(p, authors, mine)).sort((a, b) => communityScore(b, now) - communityScore(a, now));
 }
 
 export async function getCommunityPost(postId) {

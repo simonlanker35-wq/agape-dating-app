@@ -47,6 +47,7 @@ export default function ProfileSheet({ profile, onClose, actions = [], onReport,
               {profile.location && <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><MapPin size={13} /> {profile.location}</span>}
               {profile.denomination && <span>· ✝ {profile.denomination}</span>}
               {profile.job && <span>· {profile.job}</span>}
+              {profile.points > 0 && <span>· ✦ {profile.points} community points</span>}
             </p>
           </div>
         </div>

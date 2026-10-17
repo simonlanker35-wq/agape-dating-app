@@ -4,7 +4,7 @@ import { supabase } from "../services/supabase";
 
 const uuid = () => crypto.randomUUID();
 const TABLES = ["profiles", "likes", "skips", "matches", "messages", "date_invitations", "date_feedback", "blocks", "reports", "photo_verifications", "spark_reveals", "push_subscriptions", "photo_originals", "community_posts", "community_replies", "community_amens"];
-const PUBLIC_PROFILE_COLS = ["id", "name", "age", "height", "gender", "denomination", "job", "school", "location_city", "location_lat", "location_lng", "photos", "prompts", "interests", "traits", "who_are_you", "looking_for", "bio", "filters", "is_active", "is_standout", "compatibility_reason", "verified_photos", "details", "paused", "last_active", "created_at", "intent"];
+const PUBLIC_PROFILE_COLS = ["id", "name", "age", "height", "gender", "denomination", "job", "school", "location_city", "location_lat", "location_lng", "photos", "prompts", "interests", "traits", "who_are_you", "looking_for", "bio", "filters", "is_active", "is_standout", "compatibility_reason", "verified_photos", "details", "paused", "last_active", "created_at", "intent", "community_points"];
 const PROTECTED = ["subscription_status", "doves", "is_active", "stripe_customer_id", "subscription_id", "is_standout", "email"];
 
 export function createFakeBackend() {
@@ -185,15 +185,16 @@ export function createFakeBackend() {
         break;
       }
       case "push_subscriptions": case "photo_originals": if (r.user_id !== u) throw err(401, "42501", `RLS ${table}`); break;
-      case "community_posts": if (r.author !== u) throw err(401, "42501", "RLS community_posts"); Object.assign(r, { reply_count: 0, amen_count: 0, last_activity: r.created_at, category: r.category || "general" }); break;
-      case "community_replies": { if (r.author !== u) throw err(401, "42501", "RLS community_replies"); const post = db.community_posts.find((p) => p.id === r.post_id); if (post) { post.reply_count++; post.last_activity = nowIso(); } break; }
-      case "community_amens": { if (r.user_id !== u) throw err(401, "42501", "RLS community_amens"); if (db.community_amens.some((a) => a.post_id === r.post_id && a.user_id === r.user_id)) throw err(409, "23505", "duplicate"); const post = db.community_posts.find((p) => p.id === r.post_id); if (post) post.amen_count++; break; }
+      case "community_posts": if (r.author !== u) throw err(401, "42501", "RLS community_posts"); Object.assign(r, { reply_count: 0, amen_count: 0, last_activity: r.created_at, category: r.category || "general" }); addPoints(r.author, 1); break;
+      case "community_replies": { if (r.author !== u) throw err(401, "42501", "RLS community_replies"); const post = db.community_posts.find((p) => p.id === r.post_id); if (post) { post.reply_count++; post.last_activity = nowIso(); if (post.author !== r.author) addPoints(post.author, 3); } addPoints(r.author, 1); break; }
+      case "community_amens": { if (r.user_id !== u) throw err(401, "42501", "RLS community_amens"); if (db.community_amens.some((a) => a.post_id === r.post_id && a.user_id === r.user_id)) throw err(409, "23505", "duplicate"); const post = db.community_posts.find((p) => p.id === r.post_id); if (post) { post.amen_count++; if (post.author !== r.user_id) addPoints(post.author, 2); } break; }
       default: state.unsupported.push(`insert ${table}`);
     }
     db[table].push(r);
     return r;
   };
 
+  const addPoints = (uid, delta) => { const p = profileOf(uid); if (p) p.community_points = Math.max(0, (p.community_points || 0) + delta); };
   const upsertRow = (table, row, conflictCols) => {
     const cols = conflictCols ? conflictCols.split(",").map((c) => c.trim()) : ["id"];
     if (table === "community_amens" && db.community_amens.some((x) => x.post_id === row.post_id && x.user_id === row.user_id)) return row;
