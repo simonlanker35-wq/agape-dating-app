@@ -1,9 +1,70 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { ChevronLeft, MessageCircle, Plus, Trash2, Flag, RefreshCw, Send, X } from "lucide-react";
+import { ChevronLeft, MessageCircle, Plus, Trash2, Flag, RefreshCw, Send, X, Hand, Check } from "lucide-react";
 import { useApp } from "../context/AppContext";
 import * as api from "../services/api";
 import { track } from "../services/posthog";
 import VerifiedBadge from "../components/VerifiedBadge";
+import ProfileSheet from "../components/ProfileSheet";
+import ReportSheet from "../components/ReportSheet";
+
+function Toast({ text }) {
+  return (
+    <div style={{ position: "fixed", left: "50%", transform: "translateX(-50%)", bottom: "calc(max(20px, env(safe-area-inset-bottom, 20px)) + 86px)", zIndex: 900, background: "#1A1612", color: "#F5F0E8", padding: "10px 16px", borderRadius: 12, fontSize: 13.5, fontFamily: "'Outfit', system-ui, sans-serif", maxWidth: 320, textAlign: "center", pointerEvents: "none" }}>{text}</div>
+  );
+}
+
+// Tapping a name or photo opens the person's profile with a wave button; report and block live there too
+function MemberProfile({ profile, onClose }) {
+  const { state, actions } = useApp();
+  const [report, setReport] = useState(false);
+  const [waved, setWaved] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState("");
+  const myId = state.currentUser?.id;
+  if (!profile || profile.id === myId) return null;
+  const alreadyFriends = (state.matches || []).some((m) => m.profileId === profile.id);
+  const wave = async () => {
+    if (busy || waved) return;
+    setBusy(true);
+    try {
+      const res = await actions.likeProfile(profile.id, "profile", 0, null, false);
+      setWaved(true);
+      setNote(res?.matched ? "You are friends now. Find them under Friends." : "Wave sent");
+    } catch (e) {
+      const dup = /Already liked/.test(e.message || "");
+      setNote(dup ? "You already waved at them" : e.message);
+      if (dup) setWaved(true);
+    }
+    setBusy(false);
+  };
+  const block = async () => {
+    try { await actions.blockProfile(profile); onClose(); } catch (e) { setNote(e.message); }
+  };
+  return (
+    <>
+      <ProfileSheet
+        profile={profile}
+        onClose={onClose}
+        onReport={() => setReport(true)}
+        onBlock={block}
+        actions={[
+          alreadyFriends
+            ? { label: "Already friends", primary: true, disabled: true, icon: <Check size={16} /> }
+            : { label: waved ? "Waved" : "Wave", primary: true, disabled: busy || waved, icon: waved ? <Check size={16} /> : <Hand size={16} />, onClick: wave },
+        ]}
+      />
+      {note && <Toast text={note} />}
+      {report && (
+        <ReportSheet
+          profileName={profile.name}
+          onReport={(reason) => actions.reportProfile(profile, reason, "community").catch(() => {})}
+          onBlock={block}
+          onClose={() => setReport(false)}
+        />
+      )}
+    </>
+  );
+}
 
 const C = { bg: "#FFFFFF", card: "#FAFAF8", surface: "#F4F2EE", primary: "#B8912A", primarySoft: "#FBF5E6", text: "#1A1612", sub: "#8C857C", border: "#E8E4DF", sent: "#111111" };
 const FONT = "'Outfit', system-ui, sans-serif";
@@ -63,7 +124,9 @@ function PostView({ postId, initial, onBack, onChanged }) {
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
   const [reported, setReported] = useState(false);
+  const [viewProfile, setViewProfile] = useState(null);
   const [error, setError] = useState("");
   const listRef = useRef(null);
 
@@ -107,10 +170,15 @@ function PostView({ postId, initial, onBack, onChanged }) {
   const removeReply = async (id) => {
     try { await api.deleteCommunityReply(id); await load(); onChanged?.(); } catch (e) { setError(e.message); }
   };
-  const report = async () => {
-    if (!post || reported) return;
-    try { await actions.reportProfile(post.author, "Inappropriate community post", "community", `post:${post.id} · ${post.title}`); setReported(true); } catch (e) { setError(e.message); }
+  const report = async (reason) => {
+    if (!post) return;
+    try { await actions.reportProfile(post.author, reason || "Inappropriate community post", "community", `post:${post.id} · ${post.title}`); setReported(true); } catch (e) { setError(e.message); }
   };
+  const blockAuthor = async () => {
+    if (!post) return;
+    try { await actions.blockProfile(post.author); onChanged?.(); onBack(); } catch (e) { setError(e.message); }
+  };
+  const openProfile = (p) => { if (p && p.id !== myId) { track("community_profile_opened"); setViewProfile(p); } };
 
   return (
     <div className="thread-panel" style={{ background: C.bg }}>
@@ -118,7 +186,7 @@ function PostView({ postId, initial, onBack, onChanged }) {
         <button onClick={onBack} aria-label="Back" style={{ width: 36, height: 36, borderRadius: 18, background: "none", border: "none", cursor: "pointer", color: C.text, display: "flex", alignItems: "center", justifyContent: "center" }}><ChevronLeft size={22} strokeWidth={1.8} /></button>
         <p style={{ flex: 1, margin: 0, fontSize: 15, fontWeight: 700, color: C.text, fontFamily: FONT, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{post ? catLabel(post.category) : "Post"}</p>
         {post && post.author?.id !== myId && (
-          <button onClick={report} aria-label="Report post" title={reported ? "Reported" : "Report"} style={{ width: 36, height: 36, borderRadius: 18, background: "none", border: "none", cursor: "pointer", color: reported ? C.primary : C.sub, display: "flex", alignItems: "center", justifyContent: "center" }}><Flag size={18} strokeWidth={1.8} /></button>
+          <button onClick={() => (reported ? null : setReportOpen(true))} aria-label={reported ? "Reported" : "Report post"} style={{ height: 36, padding: "0 10px", borderRadius: 18, background: reported ? C.primarySoft : "none", border: "none", cursor: reported ? "default" : "pointer", color: reported ? C.primary : C.sub, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, fontSize: 12.5, fontWeight: 700, fontFamily: FONT }}><Flag size={18} strokeWidth={1.8} />{reported ? "Reported" : ""}</button>
         )}
         {post && post.author?.id === myId && (
           <button onClick={() => setConfirmDelete(true)} aria-label="Delete post" style={{ width: 36, height: 36, borderRadius: 18, background: "none", border: "none", cursor: "pointer", color: C.sub, display: "flex", alignItems: "center", justifyContent: "center" }}><Trash2 size={18} strokeWidth={1.8} /></button>
@@ -128,7 +196,7 @@ function PostView({ postId, initial, onBack, onChanged }) {
       <div ref={listRef} style={{ flex: 1, minHeight: 0, overflowY: "auto", WebkitOverflowScrolling: "touch", padding: "16px 16px 20px" }}>
         {post && (
           <div style={{ marginBottom: 18 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, cursor: post.author?.id !== myId ? "pointer" : "default" }} onClick={() => openProfile(post.author)}>
               <Avatar profile={post.author} size={40} />
               <Byline profile={post.author} when={post.createdAt} mine={post.author?.id === myId} />
             </div>
@@ -143,9 +211,9 @@ function PostView({ postId, initial, onBack, onChanged }) {
         {loading && !post && <p style={{ color: C.sub, fontFamily: FONT, textAlign: "center" }}>Loading…</p>}
         {replies.map((r) => (
           <div key={r.id} style={{ display: "flex", gap: 10, padding: "12px 0", borderTop: `1px solid ${C.border}` }}>
-            <Avatar profile={r.author} size={32} />
+            <Avatar profile={r.author} size={32} onClick={r.author?.id !== myId ? () => openProfile(r.author) : undefined} />
             <div style={{ flex: 1, minWidth: 0 }}>
-              <Byline profile={r.author} when={r.createdAt} mine={r.author?.id === myId} />
+              <div onClick={() => openProfile(r.author)} style={{ cursor: r.author?.id !== myId ? "pointer" : "default" }}><Byline profile={r.author} when={r.createdAt} mine={r.author?.id === myId} /></div>
               <p style={{ fontSize: 14.5, color: C.text, fontFamily: FONT, lineHeight: 1.55, margin: "4px 0 0", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{r.body}</p>
             </div>
             {r.author?.id === myId && (
@@ -164,6 +232,15 @@ function PostView({ postId, initial, onBack, onChanged }) {
         <button onClick={send} disabled={!text.trim() || sending} aria-label="Send reply" style={{ width: 42, height: 42, borderRadius: 21, border: "none", background: text.trim() ? C.primary : C.border, color: "#fff", cursor: text.trim() ? "pointer" : "default", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Send size={18} strokeWidth={2} /></button>
       </div>
 
+      {viewProfile && <MemberProfile profile={viewProfile} onClose={() => setViewProfile(null)} />}
+      {reportOpen && post && (
+        <ReportSheet
+          profileName={post.author?.name || "this member"}
+          onReport={(reason) => report(reason)}
+          onBlock={blockAuthor}
+          onClose={() => setReportOpen(false)}
+        />
+      )}
       {confirmDelete && (
         <div onClick={() => setConfirmDelete(false)} style={{ position: "fixed", inset: 0, zIndex: 700, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
           <div onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderRadius: 20, padding: 22, width: "100%", maxWidth: 340 }}>
@@ -234,6 +311,7 @@ export default function Community() {
   const [error, setError] = useState("");
   const [open, setOpen] = useState(null); // post id
   const [compose, setCompose] = useState(false);
+  const [listProfile, setListProfile] = useState(null);
 
   const load = useCallback(async (cat = category) => {
     try {
@@ -288,7 +366,9 @@ export default function Community() {
           posts.map((p) => (
             <button key={p.id} onClick={() => { track("community_post_opened"); setOpen(p.id); }} style={{ display: "block", width: "100%", textAlign: "left", background: C.card, border: `1px solid ${C.border}`, borderRadius: 18, padding: "14px 14px 12px", marginBottom: 10, cursor: "pointer" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-                <Avatar profile={p.author} size={32} />
+                <span onClick={(e) => { if (p.author?.id !== myId) { e.stopPropagation(); track("community_profile_opened"); setListProfile(p.author); } }} style={{ display: "contents" }}>
+                  <Avatar profile={p.author} size={32} />
+                </span>
                 <div style={{ flex: 1, minWidth: 0 }}><Byline profile={p.author} when={p.lastActivity} mine={p.author?.id === myId} /></div>
                 <span style={{ fontSize: 11, fontWeight: 700, color: C.primary, background: C.primarySoft, padding: "4px 9px", borderRadius: 9999, fontFamily: FONT, whiteSpace: "nowrap" }}>{catLabel(p.category)}</span>
               </div>
@@ -310,6 +390,7 @@ export default function Community() {
         </button>
       )}
 
+      {listProfile && <MemberProfile profile={listProfile} onClose={() => setListProfile(null)} />}
       {compose && <NewPostSheet initialCategory={category} onClose={() => setCompose(false)} onCreated={(post) => { setCompose(false); load(); setOpen(post.id); }} />}
     </div>
   );
