@@ -1053,9 +1053,18 @@ export default function Profile() {
     if (row) setDetailDraft(Object.fromEntries(row.keys.map((k) => [k, currentUser?.details?.[k]]).filter(([, v]) => v)));
   };
   const promptsRef = useRef(null);
-  useEffect(() => {
-    if (currentUser?.id) getPhotoOriginals().then(setOriginals).catch(() => {});
-  }, [currentUser?.id]);
+  // The full-size originals are large; they are fetched once, the first time the editor needs them
+  const originalsLoaded = useRef(false);
+  const ensureOriginals = async () => {
+    if (originalsLoaded.current) return originals;
+    try {
+      const o = await getPhotoOriginals();
+      originalsLoaded.current = true;
+      setOriginals(o || []);
+      return o || [];
+    } catch (_) { return originals; }
+  };
+  useEffect(() => { originalsLoaded.current = false; setOriginals([]); }, [currentUser?.id]);
   // Asked to open the photo editor from elsewhere (e.g. the "photo reviewed" popup)
   useEffect(() => {
     if (!state.openPhotoEditor) return;
@@ -1179,9 +1188,10 @@ export default function Profile() {
 
   const photos = currentUser.photos || [];
 
-  const openCropper = (src, idx = null) => {
+  const openCropper = async (src, idx = null) => {
     // Re-cropping starts from the kept original when we have one, so you can zoom back out
-    setCropSrc(idx !== null && originals[idx] ? originals[idx] : src);
+    const o = idx !== null ? await ensureOriginals() : originals;
+    setCropSrc(idx !== null && o[idx] ? o[idx] : src);
     setCropIdx(idx);
     setCropOffset({ x: 0, y: 0 });
     setCropScale(1);
@@ -1235,8 +1245,9 @@ export default function Profile() {
         const updated = [...photos];
         updated[cropIdx] = dataUrl;
         await actions.updateProfile({ photos: updated });
-        if (!originals[cropIdx]) {
-          const next = [...originals];
+        const o = await ensureOriginals();
+        if (!o[cropIdx]) {
+          const next = [...o];
           next[cropIdx] = await downscaleDataUrl(cropSrc);
           persistOriginals(next);
         }
@@ -1245,7 +1256,8 @@ export default function Profile() {
         if (regularPhotos.length >= 4) return;
         const verifiedPhotos = photos.slice(4);
         await actions.updateProfile({ photos: [...regularPhotos, dataUrl, ...verifiedPhotos] });
-        const next = [...originals];
+        const o = await ensureOriginals();
+        const next = [...o];
         next.splice(regularPhotos.length, 0, await downscaleDataUrl(cropSrc));
         persistOriginals(next);
       }
@@ -1312,7 +1324,8 @@ export default function Profile() {
     track("photo_removed", { photoIndex: idx });
     const updated = photos.filter((_, i) => i !== idx);
     await actions.updateProfile({ photos: updated });
-    if (originals.length) persistOriginals(originals.filter((_, i) => i !== idx));
+    const o = await ensureOriginals();
+    if (o.length) persistOriginals(o.filter((_, i) => i !== idx));
   };
 
   const handleMovePhoto = async (idx, dir) => {
@@ -1322,8 +1335,9 @@ export default function Profile() {
     const updated = [...photos];
     [updated[idx], updated[newIdx]] = [updated[newIdx], updated[idx]];
     await actions.updateProfile({ photos: updated });
-    if (originals.length) {
-      const next = [...originals];
+    const o = await ensureOriginals();
+    if (o.length) {
+      const next = [...o];
       [next[idx], next[newIdx]] = [next[newIdx], next[idx]];
       persistOriginals(next);
     }

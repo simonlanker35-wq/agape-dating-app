@@ -862,7 +862,7 @@ function ChatThread({ match, onBack }) {
       tick += 1;
       if (live && tick % 6 !== 0) return;
       refresh();
-    }, 5000);
+    }, 15000);
     const stopLive = api.subscribeLive(`chat-${match.id}`, [
       { table: "messages", filter: `match_id=eq.${match.id}` },
       { table: "date_invitations", filter: `match_id=eq.${match.id}` },
@@ -899,7 +899,7 @@ function ChatThread({ match, onBack }) {
         const m = matches.find((x) => x.id === match.id);
         if (m?.nudgeAt) { setNudgeSent(true); clearInterval(check); }
       } catch (_) {}
-    }, 10000);
+    }, 60000);
     return () => clearInterval(check);
   }, [nudgeSent, isMale, match.id]);
 

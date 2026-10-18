@@ -382,7 +382,7 @@ export function AppProvider({ children }) {
         if (tick % 6 === 0) { loadVerifications(); loadUsage(); }
         if (live && tick % 6 !== 0) return;
         refresh();
-      }, 10000);
+      }, 30000);
       const stopLive = uid
         ? api.subscribeLive(`user-${uid}`, [
             { table: "likes", filter: `to_user=eq.${uid}` },
