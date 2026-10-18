@@ -297,7 +297,7 @@ export async function updateProfile(data) {
   if (data.notificationPrefs !== undefined) updates.notification_prefs = data.notificationPrefs;
   if (data.paused !== undefined) updates.paused = !!data.paused;
   if (data.intent !== undefined && ["date", "friends", "both"].includes(data.intent)) updates.intent = data.intent;
-  if (data.photos !== undefined) updates.photos = (data.photos || []).filter(isAllowedMediaUrl);
+  if (data.photos !== undefined) updates.photos = await storePhotos((data.photos || []).filter(isAllowedMediaUrl));
 
   const { data: profile, error } = await withTimeout(
     supabase.from("profiles").update(updates).eq("id", user.id).select().single(),
@@ -305,6 +305,24 @@ export async function updateProfile(data) {
   );
   if (error) throw new Error(error.message);
   return mapProfileToUser(profile, user.phone);
+}
+
+// Profile photos live in the public "media" bucket (cached by the CDN), never inside the row.
+// An inline image is shrunk to card size and uploaded; if the upload fails it is kept inline.
+export const isInlineImage = (u) => typeof u === "string" && u.startsWith("data:image/");
+export async function storePhotos(photos) {
+  const out = [];
+  for (const u of photos) {
+    if (!isInlineImage(u)) { out.push(u); continue; }
+    try {
+      const small = await downscaleDataUrl(u, 720, 0.72);
+      const blob = await (await fetch(small || u)).blob();
+      out.push(await uploadMedia(blob, "profile", "jpg", "image/jpeg"));
+    } catch (_) {
+      out.push(u);
+    }
+  }
+  return out;
 }
 
 // Photo addresses must be images we produced, app paths or https links; anything else is dropped
@@ -381,7 +399,7 @@ export async function getDiscover(mode = "date") {
       .eq("is_active", true)
       .gte("age", minAge)
       .lte("age", maxAge)
-      .limit(100);
+      .limit(40);
     // Friends are of either gender; dating shows the other gender
     if (!friends) q = q.eq("gender", targetGender);
     if (withIntent) q = q.in("intent", friends ? ["friends", "both"] : ["date", "both"]);
@@ -1169,7 +1187,7 @@ export function downscaleDataUrl(src, max = 1600, quality = 0.85) {
   });
 }
 
-export function compressPhoto(file, maxWidth = 800, quality = 0.75) {
+export function compressPhoto(file, maxWidth = 720, quality = 0.72) {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => {

@@ -377,6 +377,7 @@ export function AppProvider({ children }) {
       api.getBlocks().then((b) => dispatch({ type: "SET_BLOCKED", payload: b })).catch(() => {});
       api.getMyReports().then((r) => dispatch({ type: "SET_REPORTS", payload: r })).catch(() => {});
       const poll = setInterval(() => {
+        if (document.visibilityState !== "visible") return; // nothing to show while hidden; realtime catches up
         tick += 1;
         if (tick % 6 === 0) { loadVerifications(); loadUsage(); }
         if (live && tick % 6 !== 0) return;
@@ -411,6 +412,20 @@ export function AppProvider({ children }) {
       return () => { clearInterval(poll); clearInterval(heartbeat); clearTimeout(debounce); stopLive(); document.removeEventListener("visibilitychange", refreshProfile); };
     }
   }, [state.onboardingComplete, state.currentUser?.id]);
+
+  // Photos still stored inside the profile row are moved to Storage once; the row then holds links only
+  const migratedPhotosFor = useRef(null);
+  useEffect(() => {
+    const u = state.currentUser;
+    if (!u?.id || migratedPhotosFor.current === u.id) return;
+    if (!(u.photos || []).some(api.isInlineImage)) return;
+    migratedPhotosFor.current = u.id;
+    api.updateProfile({ photos: u.photos }).then((updated) => {
+      dispatch({ type: "SET_USER", payload: updated });
+      track("photos_moved_to_storage", { count: (u.photos || []).filter(api.isInlineImage).length });
+    }).catch(() => { migratedPhotosFor.current = null; });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.currentUser?.id, state.currentUser?.photos]);
 
   // Switching between dating and friends reloads the lists for that side
   const firstMode = useRef(true);

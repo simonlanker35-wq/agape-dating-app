@@ -848,6 +848,7 @@ function ChatThread({ match, onBack }) {
 
   useEffect(() => {
     const refresh = () => {
+      if (document.visibilityState !== "visible") return; // no polling while the app is in the background
       actions.loadMessages(match.id).catch(console.error);
       api.getDateInvitations(match.id).then(setDateInvitations).catch(console.error);
     };
