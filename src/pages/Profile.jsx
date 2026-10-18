@@ -1421,11 +1421,11 @@ export default function Profile() {
 
           {editMode ? (
             <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
-              <button onClick={cancelEdit} style={{ padding: "8px 12px", borderRadius: 9999, fontSize: 12, fontWeight: 600, background: C.bg, color: C.sub, border: `1px solid ${C.border}`, cursor: "pointer", fontFamily: FONT }}>Cancel</button>
-              <button onClick={saveEdit} disabled={saving} style={{ padding: "8px 14px", borderRadius: 9999, fontSize: 12, fontWeight: 600, background: C.text, color: "white", border: "none", cursor: "pointer", opacity: saving ? 0.6 : 1, fontFamily: FONT }}>{saving ? "Saving…" : "Save"}</button>
+              <button onClick={cancelEdit} style={{ padding: "11px 14px", borderRadius: 9999, minHeight: 42, fontSize: 14, fontWeight: 600, background: C.bg, color: C.sub, border: `1px solid ${C.border}`, cursor: "pointer", fontFamily: FONT }}>Cancel</button>
+              <button onClick={saveEdit} disabled={saving} style={{ padding: "11px 16px", borderRadius: 9999, minHeight: 42, fontSize: 14, fontWeight: 600, background: C.text, color: "white", border: "none", cursor: "pointer", opacity: saving ? 0.6 : 1, fontFamily: FONT }}>{saving ? "Saving…" : "Save"}</button>
             </div>
           ) : (
-            <button onClick={startEdit} style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 9999, fontSize: 12, fontWeight: 600, background: C.bg, color: C.text, border: `1px solid ${C.border}`, cursor: "pointer", flexShrink: 0, fontFamily: FONT }}>
+            <button onClick={startEdit} style={{ display: "flex", alignItems: "center", gap: 6, padding: "11px 16px", borderRadius: 9999, minHeight: 42, fontSize: 14, fontWeight: 600, background: C.bg, color: C.text, border: `1px solid ${C.border}`, cursor: "pointer", flexShrink: 0, fontFamily: FONT }}>
               <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke={C.text} strokeWidth={2}><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" /></svg>
               Edit
             </button>
@@ -2244,7 +2244,7 @@ export default function Profile() {
                   <button
                     key={cat}
                     onClick={() => setEditingPromptData((d) => ({ ...d, category: cat }))}
-                    style={{ flexShrink: 0, padding: "7px 14px", borderRadius: 999, fontSize: 13, fontWeight: 600, fontFamily: FONT, cursor: "pointer", border: `1.5px solid ${cat === editingPromptData.category ? C.primary : C.border}`, background: cat === editingPromptData.category ? C.primary : C.card, color: cat === editingPromptData.category ? "#fff" : C.text }}
+                    style={{ flexShrink: 0, padding: "11px 16px", borderRadius: 999, minHeight: 42, fontSize: 14, fontWeight: 600, fontFamily: FONT, cursor: "pointer", border: `1.5px solid ${cat === editingPromptData.category ? C.primary : C.border}`, background: cat === editingPromptData.category ? C.primary : C.card, color: cat === editingPromptData.category ? "#fff" : C.text }}
                   >
                     {cat}
                   </button>

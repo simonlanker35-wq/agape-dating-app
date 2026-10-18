@@ -1418,13 +1418,13 @@ export default function Onboarding() {
       <Wrap {...wrapProps}>
         <h2 style={{ color: S.text, fontSize: 28, fontWeight: 800, marginBottom: 4, fontFamily: "'Outfit', system-ui, sans-serif" }}>What describes you?</h2>
         <p style={{ color: S.sub, fontSize: 14, marginBottom: 20 }}>Pick 3-8 values that describe you. They show on your profile.</p>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16, flex: 1, alignContent: "flex-start", overflowY: "auto" }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 16, flex: 1, alignContent: "flex-start", overflowY: "auto" }}>
           {LOOKING_FOR_POOL.map((trait) => (
             <button
               key={trait}
               onClick={() => toggleTrait(trait, "whoAreYou")}
               style={{
-                padding: "8px 16px", borderRadius: 999, fontSize: 14, fontWeight: 500,
+                padding: "12px 18px", borderRadius: 999, fontSize: 15, fontWeight: 500, minHeight: 44, lineHeight: 1.2,
                 border: `1.5px solid ${form.whoAreYou.includes(trait) ? S.primary : S.border}`,
                 background: form.whoAreYou.includes(trait) ? S.primary : "transparent",
                 color: form.whoAreYou.includes(trait) ? "#000" : S.text,
@@ -1447,13 +1447,13 @@ export default function Onboarding() {
       <Wrap {...wrapProps}>
         <h2 style={{ color: S.text, fontSize: 28, fontWeight: 800, marginBottom: 4, fontFamily: "'Outfit', system-ui, sans-serif" }}>What are you into?</h2>
         <p style={{ color: S.sub, fontSize: 14, marginBottom: 20 }}>Pick 3-8 interests</p>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16, flex: 1, alignContent: "flex-start", overflowY: "auto" }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginBottom: 16, flex: 1, alignContent: "flex-start", overflowY: "auto" }}>
           {TRAITS_POOL.map((trait) => (
             <button
               key={trait}
               onClick={() => toggleTrait(trait, "traits")}
               style={{
-                padding: "8px 16px", borderRadius: 999, fontSize: 14, fontWeight: 500,
+                padding: "12px 18px", borderRadius: 999, fontSize: 15, fontWeight: 500, minHeight: 44, lineHeight: 1.2,
                 border: `1.5px solid ${form.traits.includes(trait) ? S.primary : S.border}`,
                 background: form.traits.includes(trait) ? S.primary : "transparent",
                 color: form.traits.includes(trait) ? "#000" : S.text,
@@ -1632,13 +1632,13 @@ export default function Onboarding() {
           {LIFESTYLE_CATEGORIES.map((cat) => (
             <div key={cat.label}>
               <p style={{ color: S.sub, fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10 }}>{cat.label}</p>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
                 {cat.options.map((opt) => (
                   <button
                     key={opt}
                     onClick={() => setForm({ ...form, lifestyle: { ...form.lifestyle, [cat.label]: form.lifestyle[cat.label] === opt ? undefined : opt } })}
                     style={{
-                      padding: "8px 14px", borderRadius: 999, fontSize: 13, fontWeight: 500,
+                      padding: "11px 16px", borderRadius: 999, fontSize: 14, fontWeight: 500, minHeight: 44, lineHeight: 1.2,
                       border: `1.5px solid ${form.lifestyle[cat.label] === opt ? S.primary : S.border}`,
                       background: form.lifestyle[cat.label] === opt ? S.primary : "transparent",
                       color: form.lifestyle[cat.label] === opt ? "#000" : S.text,
