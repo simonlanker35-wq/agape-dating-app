@@ -28,6 +28,8 @@ be.db.community_posts.push(
   { id: "22222222-2222-4222-8222-222222222222", author: ids[4], category: "meetups", title: "Hike + picnic Sunday after mass?", body: "Thinking Mythen, easy pace, bring something to share. Who is in?", reply_count: 0, amen_count: 1, created_at: new Date(Date.now() - 7200e3).toISOString(), last_activity: new Date(Date.now() - 7200e3).toISOString() },
 );
 be.db.community_replies.push({ id: "33333333-3333-4333-8333-333333333333", post_id: "11111111-1111-4111-8111-111111111111", author: ids[6], body: "Praying for her tonight. 🙏", created_at: new Date(Date.now() - 600e3).toISOString() });
+if (new URLSearchParams(location.search).get("premium")) be.db.profiles.find((p) => p.id === ids[0]).subscription_status = "active";
+be.db.profiles.find((p) => p.id === ids[0]).email = "simon@example.com";
 be.setUser(ids[0]);
 window.__BE = be;
 

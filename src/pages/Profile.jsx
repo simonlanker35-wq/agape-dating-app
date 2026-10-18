@@ -383,6 +383,28 @@ function SubscriptionPlans({ initialStatus }) {
           </div>
         ))}
       </div>
+      {/* Waitlist invite rewards are granted by matching emails; until that runs, people can ask */}
+      {subStatus?.status !== "active" && !(state.currentUser?.premiumUntil > Date.now()) && (
+        <button
+          onClick={() => {
+            track("waitlist_reward_help_tapped");
+            const accountEmail = state.currentUser?.email && state.currentUser.email.includes("@") ? state.currentUser.email : "(no email on my account)";
+            const body = `Hi agape team,
+
+I invited friends to the waitlist on agapeapp.net but don't see my agape+ days in the app yet.
+
+My account email: ${accountEmail}
+The email I used on the waitlist (if different): 
+
+Thank you!`;
+            window.location.href = `mailto:agape_dating@outlook.com?subject=${encodeURIComponent("agape+ invite reward")}&body=${encodeURIComponent(body)}`;
+          }}
+          style={{ width: "100%", marginTop: 4, padding: "12px 14px", borderRadius: 14, border: `1px dashed ${C.border}`, background: "none", textAlign: "left", cursor: "pointer" }}
+        >
+          <p style={{ fontSize: 13, color: C.text, margin: 0, lineHeight: 1.5 }}>Invited friends to the waitlist and don't see your agape+ days yet?</p>
+          <p style={{ fontSize: 13, fontWeight: 700, color: C.primary, margin: "2px 0 0" }}>Tap here and we'll sort it out</p>
+        </button>
+      )}
     </>
   );
 }

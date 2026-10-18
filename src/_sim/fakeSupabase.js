@@ -326,7 +326,7 @@ export function createFakeBackend() {
 
     if (path.startsWith("/functions/v1/")) {
       const name = path.split("/")[3];
-      if (name === "stripe-checkout") return json(200, { status: "none", plan: null });
+      if (name === "stripe-checkout") return json(200, premium(state.cur?.id) ? { status: "active", plan: "price_1UF5K3CBLGZ7l0PdrdfmSFjw", currentPeriodEnd: Math.floor(Date.now() / 1000) + 20 * 86400, startedAt: Math.floor(Date.now() / 1000) - 10 * 86400, cancelAtPeriodEnd: false } : { status: "none", plan: null });
       if (name === "send-push") { state.pushes.push(body); return json(200, { ok: true, sent: 1 }); }
       if (name === "delete-account") { const u = state.cur?.id; if (u) { state.deleted.push(u); cascadeUser([u]); state.cur = null; } return json(200, { ok: true }); }
       return json(200, { ok: true });
