@@ -364,6 +364,8 @@ async function run() {
   await safe("friend chat message", () => api.sendMessage(back.matchId, "Hi friend"));
   be.setUser(idOf(121));
   check("other side sees the friend too", (await api.getMatches("friends")).some((m) => m.id === back?.matchId));
+  check("one side or the other: a friend never shows in dating Seek", !(await api.getDiscover("date")).some((p) => p.id === target.id));
+  check("one side or the other: people I waved at are out of dating Seek", !(await api.getDiscover("date")).some((p) => wavesTo.slice(0, 15).some((w) => w.id === p.id)));
   const dl = await safe("dating like to the same person", () => api.sendLike(target.id, "profile", 0, null, false, "date"));
   check("dating like is separate from the wave", dl && !dl.matched);
   const nf = await api.updateProfile({ intent: "friends" });

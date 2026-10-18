@@ -391,16 +391,17 @@ export async function getDiscover(mode = "date") {
   const myLat = me.location_lat;
   const myLng = me.location_lng;
 
-  // Only likes of this kind hide a profile: a friend wave does not remove someone from dating Seek
-  let { data: likedIds, error: likedErr } = await supabase.from("likes").select("to_user").eq("from_user", user.id).eq("kind", kind);
-  if (likedErr && missingColumn(likedErr, "kind")) ({ data: likedIds } = await supabase.from("likes").select("to_user").eq("from_user", user.id));
+  // One side or the other: anyone I liked, waved at or matched with on either side stays out of Seek on both
+  const { data: likedIds } = await supabase.from("likes").select("to_user").eq("from_user", user.id);
   const { data: skippedIds } = await supabase.from("skips").select("to_user").eq("from_user", user.id);
+  const { data: myMatches } = await supabase.from("matches").select("user1, user2").or(`user1.eq.${user.id},user2.eq.${user.id}`);
 
-  const excludeIds = [
+  const excludeIds = [...new Set([
     user.id,
     ...(likedIds || []).map((l) => l.to_user),
     ...(skippedIds || []).map((s) => s.to_user),
-  ];
+    ...(myMatches || []).map((m) => (m.user1 === user.id ? m.user2 : m.user1)),
+  ])];
 
   const buildQuery = (hidePaused, fromTable = false, withIntent = true) => {
     let q = (fromTable ? supabase.from("profiles") : publicProfiles())
@@ -560,16 +561,14 @@ export async function getLikesReceived(mode = "date") {
   const user = await currentUser();
   const kind = kindOf(mode);
 
-  let { data: matchedUserIds, error: mErr } = await supabase
+  // Matches of either kind: once connected on one side, a person does not reappear on the other
+  const { data: matchedUserIds } = await supabase
     .from("matches")
     .select("user1, user2")
-    .eq("kind", kind)
     .or(`user1.eq.${user.id},user2.eq.${user.id}`);
+  const { error: mErr } = await supabase.from("likes").select("id").eq("kind", kind).limit(1);
   const kindless = !!(mErr && missingColumn(mErr, "kind"));
-  if (kindless) {
-    if (mode === "friends") return []; // friends_mode.sql not run yet
-    ({ data: matchedUserIds } = await supabase.from("matches").select("user1, user2").or(`user1.eq.${user.id},user2.eq.${user.id}`));
-  }
+  if (kindless && mode === "friends") return []; // friends_mode.sql not run yet
 
   const matchedIds = (matchedUserIds || []).map((m) =>
     m.user1 === user.id ? m.user2 : m.user1
