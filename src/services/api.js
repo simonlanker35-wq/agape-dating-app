@@ -159,10 +159,15 @@ export async function createProfile(data) {
     ({ error: profileError } = await supabase.from("profiles").insert(profile));
   }
 
-  // The same email may already sit on another account (e.g. typed into a phone sign-up earlier) — keep going without it
+  // The same email may already sit on another account (e.g. typed into a phone sign-up earlier) — keep going without it.
+  // Older databases require an email on every profile, so a placeholder that is not an address stands in.
   if (profileError && profileError.code === "23505" && profile.email) {
     profile.email = null;
     ({ error: profileError } = await supabase.from("profiles").insert(profile));
+    if (profileError && /null value in column "email"/i.test(profileError.message || "")) {
+      profile.email = `no-email:${user.id}`;
+      ({ error: profileError } = await supabase.from("profiles").insert(profile));
+    }
   }
   if (profileError) throw new Error(profileError.message);
 
@@ -1115,7 +1120,7 @@ function mapProfileToUser(p, authPhone) {
   return {
     _id: p.id,
     id: p.id,
-    email: p.email,
+    email: p.email && String(p.email).includes("@") ? p.email : "", // a placeholder for "no email" never shows
     phone: authPhone || "",
     name: p.name,
     age: p.age,
