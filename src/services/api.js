@@ -1118,7 +1118,12 @@ function mapProfileToUser(p, authPhone) {
     filters: p.filters || { minAge: 18, maxAge: 50, maxDistance: 80, denomination: "" },
     isActive: p.is_active,
     lastActive: p.last_active,
-    subscriptionStatus: p.subscription_status || "none",
+    // A gift of Agape+ (from an invite) counts as active until it runs out
+    subscriptionStatus: p.subscription_status === "active" || (p.premium_until && new Date(p.premium_until).getTime() > Date.now()) ? "active" : (p.subscription_status || "none"),
+    paidSubscription: p.subscription_status === "active",
+    premiumUntil: p.premium_until ? new Date(p.premium_until).getTime() : null,
+    referralCode: p.referral_code || null,
+    referralsCount: p.referrals_count || 0,
     notificationPrefs: p.notification_prefs || {},
     paused: !!p.paused,
     intent: p.intent || "date",
@@ -1191,6 +1196,24 @@ export function setToken() {}
 
 export async function clearToken() {
   await supabase.auth.signOut();
+}
+
+// ─── INVITES ───
+
+// The link a member shares; a friend who signs up through it gives both sides 7 days of Agape+
+export function inviteLink(code) {
+  if (!code) return null;
+  return `${window.location.origin}/?ref=${encodeURIComponent(code)}`;
+}
+
+// Redeem the code from an invite link right after sign-up. The database checks it and applies the gift.
+export async function applyReferral(code) {
+  const { data, error } = await supabase.rpc("apply_referral", { p_code: String(code || "").trim() });
+  if (error) {
+    if (/function .*apply_referral|schema cache/i.test(error.message || "")) return { ok: false, reason: "not_set_up" };
+    throw new Error(error.message);
+  }
+  return data || { ok: false };
 }
 
 // ─── COMMUNITY (friends side forum) ───

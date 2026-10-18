@@ -19,6 +19,7 @@ const initialState = {
   conversations: {},
   // "date" or "friends": which of the two front ends is showing (people here for both can switch)
   mode: (() => { try { return localStorage.getItem("agape_mode") === "friends" ? "friends" : "date"; } catch { return "date"; } })(),
+  notice: null, // a short message shown at the top of the app, e.g. a welcome gift
   sessionChecked: false, // true once we know whether a stored login exists; the app shows a splash until then
   doves: 3,
   blocked: [],
@@ -87,6 +88,9 @@ function reducer(state, action) {
 
     case "SESSION_CHECKED":
       return { ...state, sessionChecked: true };
+
+    case "SET_NOTICE":
+      return { ...state, notice: action.payload || null };
 
     case "SET_SUBSCRIPTION_STATUS":
       return state.currentUser ? { ...state, currentUser: { ...state.currentUser, subscriptionStatus: action.payload } } : state;
@@ -296,7 +300,9 @@ export function AppProvider({ children }) {
       track("subscription_checkout_returned", { result: params.get("subscription") });
     }
     if (params.get("tab")) dispatch({ type: "SET_TAB", payload: params.get("tab") });
-    if (params.has("subscription") || params.has("tab")) window.history.replaceState({}, "", window.location.pathname);
+    // An invite link: keep the code until the sign-up is complete
+    if (params.get("ref")) { try { localStorage.setItem("agape_ref", params.get("ref")); } catch {} track("invite_link_opened"); }
+    if (params.has("subscription") || params.has("tab") || params.has("ref")) window.history.replaceState({}, "", window.location.pathname);
 
     // A tapped notification hands us its target URL while the app is already open
     const onSwMessage = (e) => {
@@ -619,6 +625,20 @@ export function AppProvider({ children }) {
       dispatch({ type: "COMPLETE_ONBOARDING", payload: user });
       identify(user.id, { gender: user.gender });
       track("signup_completed", { gender: user.gender, denomination: user.denomination });
+      // Signed up through a friend's link: both get their gift
+      let code = null;
+      try { code = localStorage.getItem("agape_ref"); } catch {}
+      if (code) {
+        try {
+          const res = await api.applyReferral(code);
+          track("invite_redeemed", { ok: !!res?.ok, reason: res?.reason || null });
+          if (res?.ok) {
+            try { const me = await api.getMe(); dispatch({ type: "SET_USER", payload: me }); } catch (_) {}
+            dispatch({ type: "SET_NOTICE", payload: `Welcome gift: ${res.referrerName ? `${res.referrerName} invited you, so` : ""} you both get 7 days of Agape+.` });
+          }
+        } catch (_) {}
+        try { localStorage.removeItem("agape_ref"); } catch {}
+      }
       return user;
     },
 

@@ -102,6 +102,21 @@ function Splash({ done, onFinished }) {
   );
 }
 
+function Notice() {
+  const { state, dispatch } = useApp();
+  useEffect(() => {
+    if (!state.notice) return;
+    const t = setTimeout(() => dispatch({ type: "SET_NOTICE", payload: null }), 8000);
+    return () => clearTimeout(t);
+  }, [state.notice, dispatch]);
+  if (!state.notice) return null;
+  return (
+    <div onClick={() => dispatch({ type: "SET_NOTICE", payload: null })} style={{ position: "fixed", top: "max(56px, calc(env(safe-area-inset-top, 0px) + 52px))", left: "50%", transform: "translateX(-50%)", zIndex: 9400, background: "#1A1612", color: "#F5F0E8", padding: "12px 16px", borderRadius: 14, fontSize: 14, fontFamily: "'Outfit', system-ui, sans-serif", maxWidth: 340, textAlign: "center", boxShadow: "0 8px 24px rgba(0,0,0,0.3)", cursor: "pointer" }}>
+      {state.notice}
+    </div>
+  );
+}
+
 function AppContent() {
   const { state } = useApp();
   // The splash stays a moment after the session is known so the bar can finish and fade out
@@ -154,6 +169,7 @@ function AppContent() {
       <RoseAlert />
       <ReviewAlert />
       <IntentPrompt />
+      <Notice />
       {splash}
     </div>
   );

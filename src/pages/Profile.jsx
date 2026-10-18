@@ -47,6 +47,7 @@ import VoiceRecorder from "../components/VoiceRecorder";
 import { extForMime } from "../services/media";
 import { redirectToCheckout, getSubscriptionStatus, cancelSubscription, resumeSubscription } from "../services/stripe";
 import { getDovesRemaining } from "../services/limits";
+import * as api from "../services/api";
 import { resetTours } from "../components/TutorialOverlay";
 import { track } from "../services/posthog";
 import { enablePush, disablePush, isPushEnabled, isPushSupported, getPermission, needsHomeScreenInstall } from "../services/push";
@@ -189,6 +190,45 @@ const PLANS = [
 const fmtDate = (unix) => new Date(unix * 1000).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
 
 // Active subscription: which plan, when it was bought, when it renews or ends, and a way to stop or keep it
+// The invite link with copy and share, and how many friends came through it
+function InviteSection({ user }) {
+  const link = api.inviteLink(user?.referralCode);
+  const [copied, setCopied] = useState(false);
+  const text = `Join me on Agape, the Christian dating and friendship app. Sign up with my link and we both get 7 days of Agape+: ${link}`;
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 2000); track("invite_link_copied"); } catch (_) {}
+  };
+  const share = async () => {
+    track("invite_link_shared");
+    if (navigator.share) { try { await navigator.share({ title: "Agape", text, url: link }); } catch (_) {} }
+    else copy();
+  };
+  if (!link) {
+    return <p style={{ fontSize: 14, color: C.sub, padding: 4 }}>Your invite link is being prepared. Check back in a moment.</p>;
+  }
+  return (
+    <div>
+      <div style={{ borderRadius: 16, padding: 18, background: C.primary, color: "white", marginBottom: 12 }}>
+        <p style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", opacity: 0.7, margin: "0 0 4px" }}>Bring a friend</p>
+        <p style={{ fontSize: 19, fontWeight: 700, lineHeight: 1.3, margin: "0 0 6px" }}>Every friend who joins with your link gives you both 7 days of Agape+</p>
+        <p style={{ fontSize: 13, opacity: 0.8, margin: 0 }}>15 likes a day, 3 Doves a week, see everyone who likes you. The days add up with every friend.</p>
+      </div>
+      <div style={{ borderRadius: 16, background: C.card, padding: 14, marginBottom: 12 }}>
+        <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: C.sub, margin: "0 0 6px" }}>Your link</p>
+        <p style={{ fontSize: 14, color: C.text, wordBreak: "break-all", margin: "0 0 12px", fontFamily: "monospace" }}>{link}</p>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={copy} style={{ flex: 1, padding: "12px 0", borderRadius: 12, border: `1px solid ${C.border}`, background: C.bg, color: C.text, fontWeight: 700, cursor: "pointer" }}>{copied ? "Copied" : "Copy link"}</button>
+          <button onClick={share} style={{ flex: 1, padding: "12px 0", borderRadius: 12, border: "none", background: C.text, color: "#fff", fontWeight: 700, cursor: "pointer" }}>Share</button>
+        </div>
+      </div>
+      <div style={{ borderRadius: 16, background: C.card, padding: 14 }}>
+        <p style={{ fontSize: 15, fontWeight: 700, color: C.text, margin: "0 0 2px" }}>{user?.referralsCount || 0} {user?.referralsCount === 1 ? "friend has" : "friends have"} joined through your link</p>
+        <p style={{ fontSize: 13, color: C.sub, margin: 0, lineHeight: 1.5 }}>{user?.premiumUntil && user.premiumUntil > Date.now() ? `Your Agape+ gift runs until ${new Date(user.premiumUntil).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}.` : "The gift starts the moment a friend finishes signing up."}</p>
+      </div>
+    </div>
+  );
+}
+
 function SubscriptionStatusCard({ subStatus, onChange }) {
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -253,6 +293,7 @@ function SubscriptionStatusCard({ subStatus, onChange }) {
 }
 
 function SubscriptionPlans({ initialStatus }) {
+  const { state } = useApp();
   const [loading, setLoading] = useState(null);
   const [subStatus, setSubStatus] = useState(initialStatus === "active" ? { status: "active" } : null);
   const [error, setError] = useState(null);
@@ -283,6 +324,12 @@ function SubscriptionPlans({ initialStatus }) {
         </div>
       </div>
       {subStatus?.status === "active" && <SubscriptionStatusCard subStatus={subStatus} onChange={setSubStatus} />}
+      {subStatus?.status !== "active" && state.currentUser?.premiumUntil > Date.now() && (
+        <div style={{ borderRadius: 16, padding: 16, background: "#E8F5E9", marginTop: 4 }}>
+          <p style={{ fontSize: 15, fontWeight: 700, color: "#2E7D32", margin: 0 }}>Agape+ gift active</p>
+          <p style={{ fontSize: 13, color: "#3C8D40", marginTop: 6, lineHeight: 1.5 }}>From an invite. You have Agape+ until {new Date(state.currentUser.premiumUntil).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}. Invite more friends under Settings → Invite a friend to extend it, or subscribe to keep it for good.</p>
+        </div>
+      )}
       {error && (
         <div style={{ borderRadius: 12, padding: 12, background: "#FFF3F0", marginTop: 4 }}>
           <p style={{ fontSize: 13, color: "#D32F2F" }}>{error}</p>
@@ -439,6 +486,7 @@ function SettingsScreen({ onBack, initialSection = null }) {
       notifications: "Notifications",
       faith: "Faith preferences",
       intent: "Here for",
+      invite: "Invite a friend",
       location: "Location",
       privacy: "Privacy",
       safety: "Safety centre",
@@ -551,6 +599,7 @@ function SettingsScreen({ onBack, initialSection = null }) {
               </div>
             </>
           )}
+          {section === "invite" && <InviteSection user={currentUser} />}
           {section === "intent" && (
             <div>
               <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: C.sub, padding: "0 4px", marginBottom: 8 }}>What brings you here</p>
@@ -880,6 +929,7 @@ function SettingsScreen({ onBack, initialSection = null }) {
           <div style={{ borderRadius: 16, overflow: "hidden", background: C.card }}>
             <SettingsRow icon={I.user} label="Personal info" sub="Name, phone, denomination" onPress={() => setSection("account")} />
             <SettingsRow icon={I.cross} label="Faith preferences" sub="Only show my denomination" onPress={() => setSection("faith")} />
+            <SettingsRow icon={I.sparkle} label="Invite a friend" sub="7 days of Agape+ for you both" onPress={() => setSection("invite")} />
             <SettingsRow icon={I.user} label="Here for" sub={{ date: "Dating", friends: "Meeting friends", both: "Dating and friends" }[currentUser?.intent || "date"]} onPress={() => setSection("intent")} />
             <SettingsRow icon={I.mapPin} label="Location" sub="Distance, visibility" onPress={() => setSection("location")} />
           </div>
