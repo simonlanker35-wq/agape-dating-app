@@ -391,18 +391,18 @@ function SubscriptionPlans({ initialStatus }) {
             const accountEmail = state.currentUser?.email && state.currentUser.email.includes("@") ? state.currentUser.email : "(no email on my account)";
             const body = `Hi agape team,
 
-I invited friends to the waitlist on agapeapp.net but don't see my agape+ days in the app yet.
+I invited friends to the waitlist on agapeapp.net and would like my agape+ days added.
 
 My account email: ${accountEmail}
-The email I used on the waitlist (if different): 
+The email I used on the waitlist: 
 
 Thank you!`;
             window.location.href = `mailto:agape_dating@outlook.com?subject=${encodeURIComponent("agape+ invite reward")}&body=${encodeURIComponent(body)}`;
           }}
           style={{ width: "100%", marginTop: 4, padding: "12px 14px", borderRadius: 14, border: `1px dashed ${C.border}`, background: "none", textAlign: "left", cursor: "pointer" }}
         >
-          <p style={{ fontSize: 13, color: C.text, margin: 0, lineHeight: 1.5 }}>Invited friends to the waitlist and don't see your agape+ days yet?</p>
-          <p style={{ fontSize: 13, fontWeight: 700, color: C.primary, margin: "2px 0 0" }}>Tap here and we'll sort it out</p>
+          <p style={{ fontSize: 13, color: C.text, margin: 0, lineHeight: 1.5 }}>Invited friends to the waitlist? Your agape+ days are added by hand for now, so let us know which email you used on the waitlist.</p>
+          <p style={{ fontSize: 13, fontWeight: 700, color: C.primary, margin: "2px 0 0" }}>Tap here to send it to us</p>
         </button>
       )}
     </>
