@@ -648,7 +648,7 @@ export default function Onboarding() {
       case "gender": return form.gender !== "";
       case "intent": return form.intent !== "";
       case "denomination": return form.denomination !== "";
-      case "email": return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email);
+      case "email": return form.email.trim() === "" || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email);
       case "location": return form.location.trim().length > 0;
       case "distance": return true;
       case "prompt_faith":
@@ -1317,7 +1317,7 @@ export default function Onboarding() {
     return (
       <Wrap {...wrapProps}>
         <h2 style={{ color: S.text, fontSize: 30, fontWeight: 800, marginBottom: 8, fontFamily: "'Outfit', system-ui, sans-serif" }}>Your email?</h2>
-        <p style={{ color: S.sub, fontSize: 14, marginBottom: 24 }}>Don't lose access to your account</p>
+        <p style={{ color: S.sub, fontSize: 14, marginBottom: 24 }}>Optional. Your phone number is enough to sign in; an email lets you reset your password and get receipts.</p>
         <input
           ref={inputRef}
           type="email" value={form.email}
@@ -1327,7 +1327,7 @@ export default function Onboarding() {
           style={{ width: "100%", padding: "16px", background: S.surface, border: `1.5px solid ${S.border}`, borderRadius: 12, fontSize: 18, color: S.text, outline: "none", fontFamily: "'Outfit', system-ui, sans-serif" }}
           autoComplete="email" autoFocus
         />
-        <BigBtn onClick={goNext} disabled={!canProceed()}>Continue</BigBtn>
+        <BigBtn onClick={goNext} disabled={!canProceed()}>{form.email.trim() ? "Continue" : "Skip for now"}</BigBtn>
       </Wrap>
     );
   }

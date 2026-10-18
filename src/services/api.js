@@ -158,6 +158,10 @@ export async function createProfile(data) {
     delete profile.intent;
     ({ error: profileError } = await supabase.from("profiles").insert(profile));
   }
+  if (profileError && /null value in column "email"/i.test(profileError.message || "")) {
+    profile.email = `no-email:${user.id}`;
+    ({ error: profileError } = await supabase.from("profiles").insert(profile));
+  }
 
   // The same email may already sit on another account (e.g. typed into a phone sign-up earlier) — keep going without it.
   // Older databases require an email on every profile, so a placeholder that is not an address stands in.
