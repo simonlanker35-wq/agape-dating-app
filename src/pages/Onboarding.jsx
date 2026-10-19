@@ -283,7 +283,12 @@ export default function Onboarding() {
     const { birthDay, birthMonth, birthYear } = form;
     if (!birthDay || !birthMonth || !birthYear || birthYear.length < 4) return null;
     const d = parseInt(birthDay), m = parseInt(birthMonth), y = parseInt(birthYear);
+    // the day, month and year must form a real calendar date (no 44.11.2000, no 31 February)
+    if (!(d >= 1 && d <= 31 && m >= 1 && m <= 12 && y >= 1900)) return null;
+    const probe = new Date(y, m - 1, d);
+    if (probe.getFullYear() !== y || probe.getMonth() !== m - 1 || probe.getDate() !== d) return null;
     const today = new Date();
+    if (probe > today) return null;
     let age = today.getFullYear() - y;
     if (today.getMonth() + 1 < m || (today.getMonth() + 1 === m && today.getDate() < d)) age--;
     return age;

@@ -285,12 +285,20 @@ export default function TutorialOverlay({ screen, paused = false }) {
           <div style={{ position: "absolute", left: arrowX, [placeBelow ? "top" : "bottom"]: -8, width: 16, height: 16, background: "#fff", transform: "rotate(45deg)", borderRadius: 3 }} />
         )}
         {step.full ? (
-          <div style={{ display: "flex", justifyContent: "center", marginBottom: 4 }}><Pip pose={POSE_FOR_TITLE[step.title] || "curious"} size={150} float /></div>
+          <>
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: 4 }}><Pip pose={POSE_FOR_TITLE[step.title] || "curious"} size={150} float /></div>
+            <p style={{ fontSize: 17, fontWeight: 800, color: C.text, margin: "0 0 6px" }}>{step.title}</p>
+            <p style={{ fontSize: 14, color: C.sub, lineHeight: 1.5, margin: 0 }}>{step.text}</p>
+          </>
         ) : (
-          <Pip pose={POSE_FOR_TITLE[step.title] || "curious"} size={84} style={{ position: "absolute", right: 10, top: -46 }} />
+          <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ fontSize: 17, fontWeight: 800, color: C.text, margin: "0 0 6px" }}>{step.title}</p>
+              <p style={{ fontSize: 14, color: C.sub, lineHeight: 1.5, margin: 0 }}>{step.text}</p>
+            </div>
+            <Pip pose={POSE_FOR_TITLE[step.title] || "curious"} size={96} style={{ flexShrink: 0, alignSelf: "center" }} />
+          </div>
         )}
-        <p style={{ fontSize: 17, fontWeight: 800, color: C.text, margin: "0 0 6px", paddingRight: step.full ? 0 : 70 }}>{step.title}</p>
-        <p style={{ fontSize: 14, color: C.sub, lineHeight: 1.5, margin: 0 }}>{step.text}</p>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 14 }}>
           {steps.length > 1 && (
             <div style={{ display: "flex", gap: 5, flex: 1 }} aria-label={`Step ${idx + 1} of ${steps.length}`}>
