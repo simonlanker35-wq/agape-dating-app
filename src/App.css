@@ -4161,3 +4161,8 @@ input[type="range"] {
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.45; transform: scale(0.8); }
 }
+
+/* Pip the dove: a slow bob where he sits on a screen */
+.pip-float { animation: pipFloat 3.2s ease-in-out infinite; }
+@keyframes pipFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+@media (prefers-reduced-motion: reduce) { .pip-float { animation: none; } }

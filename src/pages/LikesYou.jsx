@@ -1,6 +1,7 @@
 import { useApp } from "../context/AppContext";
 import { useState, useEffect } from "react";
 import { Heart, X, Lock, UserPlus } from "lucide-react";
+import Pip from "../components/Pip";
 import AudioPlayer from "../components/AudioPlayer";
 import VerifiedBadge from "../components/VerifiedBadge";
 import CompatibilityRing from "../components/CompatibilityRing";
@@ -73,7 +74,7 @@ export default function LikesYou() {
   if (likesWithProfiles.length === 0) {
     return (
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", padding: "60px 20px", textAlign: "center" }}>
-        {friends ? <UserPlus size={48} strokeWidth={1.4} color={C.primary} style={{ marginBottom: 16 }} /> : <Heart size={48} strokeWidth={1.4} color={C.primary} style={{ marginBottom: 16 }} />}
+        <Pip pose={friends ? "lookback" : "sprig"} size={160} float style={{ marginBottom: 12 }} />
         <h2 style={{ color: C.text, fontFamily: FONT, fontSize: 20, fontWeight: 700 }}>{friends ? "No new waves" : "No new likes"}</h2>
         <p style={{ color: C.sub, fontSize: 14, marginTop: 4 }}>{friends ? "Keep exploring! When someone waves at you, they'll appear here." : "Keep exploring! When someone likes you, they'll appear here."}</p>
       </div>

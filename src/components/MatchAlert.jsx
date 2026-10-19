@@ -1,6 +1,7 @@
 import { useApp } from "../context/AppContext";
 import AgapeCross from "./AgapeCross";
 import VerifiedBadge from "./VerifiedBadge";
+import Pip from "./Pip";
 import { track } from "../services/posthog";
 
 // Full-screen "It's a Match" celebration. Shown for every new match, on whatever screen the user is on:
@@ -47,9 +48,7 @@ export default function MatchAlert() {
         ))}
       </div>
       <div className="match-reveal" onClick={(e) => e.stopPropagation()}>
-        <div className="match-cross">
-          <AgapeCross size={22} strokeWidth={1.5} />
-        </div>
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 2 }}><Pip pose={friend ? "fly" : "love"} size={130} float /></div>
         <div className="match-label">{friend ? "New friend" : "It's a Match"}</div>
         <h2 className="match-title shimmer-gold">You &amp; {name}</h2>
         <div className="match-subtitle">{friend ? "You waved at each other ✦" : "You both liked each other ✦"}</div>

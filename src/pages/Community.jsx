@@ -6,6 +6,7 @@ import { track } from "../services/posthog";
 import VerifiedBadge from "../components/VerifiedBadge";
 import ProfileSheet from "../components/ProfileSheet";
 import ReportSheet from "../components/ReportSheet";
+import Pip from "../components/Pip";
 
 function Toast({ text }) {
   return (
@@ -366,7 +367,7 @@ export default function Community() {
           <p style={{ color: C.sub, fontFamily: FONT, textAlign: "center", padding: 40 }}>Loading…</p>
         ) : posts.length === 0 ? (
           <div style={{ textAlign: "center", padding: "60px 20px", color: C.sub, fontFamily: FONT }}>
-            <MessageCircle size={44} strokeWidth={1.4} color={C.primary} style={{ marginBottom: 12 }} />
+            <Pip pose="sprig" size={150} float style={{ marginBottom: 10, marginLeft: "auto", marginRight: "auto" }} />
             <p style={{ fontSize: 16, fontWeight: 700, color: C.text, margin: "0 0 4px" }}>Nothing here yet</p>
             <p style={{ fontSize: 13.5, margin: 0 }}>Start the first conversation — a prayer request, a question, or a meetup.</p>
           </div>

@@ -11,6 +11,7 @@ import AudioPlayer from "../components/AudioPlayer";
 import VerifiedBadge from "../components/VerifiedBadge";
 import CompatibilityRing from "../components/CompatibilityRing";
 import FilterSheet from "../components/FilterSheet";
+import Pip from "../components/Pip";
 import ReportSheet from "../components/ReportSheet";
 import { getLikesRemaining, getDovesRemaining, recordLike, recordDove, getWavesRemaining, recordWave, LIMITS } from "../services/limits";
 import * as api from "../services/api";
@@ -101,7 +102,7 @@ export default function Discover() {
     const limit = friends ? (isPremium ? LIMITS.PREMIUM.dailyWaves : LIMITS.FREE.dailyWaves) : (isPremium ? LIMITS.PREMIUM.dailyLikes : LIMITS.FREE.dailyLikes);
     return (
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", padding: "60px 20px", textAlign: "center" }}>
-        {friends ? <UserPlus size={48} strokeWidth={1.4} color="#B8912A" style={{ marginBottom: 16 }} /> : <Heart size={48} strokeWidth={1.4} color="#B8912A" style={{ marginBottom: 16 }} />}
+        <Pip pose="sleepy" size={160} float style={{ marginBottom: 12 }} />
         <h2 style={{ color: "#1A1612", fontFamily: "'Outfit', system-ui, sans-serif", fontSize: 20, fontWeight: 700, margin: 0 }}>{friends ? "No waves left today" : "No likes left today"}</h2>
         <p style={{ color: "#8C857C", fontSize: 14, marginTop: 4 }}>You've used all {limit} {isPremium ? "" : "free "}{friends ? "waves" : "likes"} for today. Come back tomorrow!</p>
         {dovesLeft > 0 && (
@@ -121,7 +122,7 @@ export default function Discover() {
   if (!profile) {
     return (
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", padding: "60px 20px", textAlign: "center" }}>
-        <Heart size={48} strokeWidth={1.4} color="#B8912A" style={{ marginBottom: 16 }} />
+        <Pip pose="curious" size={160} float style={{ marginBottom: 12 }} />
         <h2 style={{ color: "#1A1612", fontFamily: "'Outfit', system-ui, sans-serif", fontSize: 20, fontWeight: 700, margin: 0 }}>You've seen everyone!</h2>
         <p style={{ color: "#8C857C", fontSize: 14, marginTop: 4 }}>Check back later for new profiles or adjust your filters.</p>
         <button className="filter-apply-btn" style={{ marginTop: 16, flex: "none" }} onClick={() => setShowFilter(true)}>

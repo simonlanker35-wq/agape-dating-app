@@ -2,6 +2,7 @@ import { useState } from "react";
 import { createPortal } from "react-dom";
 import { Heart, Users, Sparkles } from "lucide-react";
 import { useApp } from "../context/AppContext";
+import Pip from "./Pip";
 import { track } from "../services/posthog";
 
 const FONT = "'Outfit', system-ui, sans-serif";
@@ -46,8 +47,9 @@ export default function IntentPrompt() {
 
   return createPortal(
     <div role="dialog" aria-label="What brings you here?" style={{ position: "fixed", inset: 0, zIndex: 9600, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "flex-end", justifyContent: "center", fontFamily: FONT }}>
-      <div style={{ width: "100%", maxWidth: 430, background: "#fff", borderRadius: "24px 24px 0 0", padding: "18px 20px max(28px, env(safe-area-inset-bottom, 28px))", boxShadow: "0 -12px 40px rgba(0,0,0,0.25)" }}>
+      <div style={{ position: "relative", width: "100%", maxWidth: 430, background: "#fff", borderRadius: "24px 24px 0 0", padding: "18px 20px max(28px, env(safe-area-inset-bottom, 28px))", boxShadow: "0 -12px 40px rgba(0,0,0,0.25)" }}>
         <div style={{ width: 36, height: 4, borderRadius: 2, background: C.border, margin: "0 auto 16px" }} />
+        <Pip pose="fly" size={110} style={{ position: "absolute", right: 14, top: -48 }} />
         <p style={{ fontSize: 12, fontWeight: 700, color: C.primary, textTransform: "uppercase", letterSpacing: "0.1em", margin: "0 0 6px" }}>New on Agape</p>
         <h2 style={{ fontSize: 24, fontWeight: 800, color: C.text, margin: "0 0 6px", letterSpacing: "-0.3px" }}>What brings you here?</h2>
         <p style={{ fontSize: 14, color: C.sub, margin: "0 0 16px", lineHeight: 1.5 }}>Agape now also helps you meet Christian friends. Choose what you are here for — you can change it any time under Settings → Here for.</p>

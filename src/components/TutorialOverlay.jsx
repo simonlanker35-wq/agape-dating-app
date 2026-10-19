@@ -2,6 +2,14 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { track } from "../services/posthog";
 import { useApp } from "../context/AppContext";
+import Pip from "./Pip";
+
+// Which pose of the dove goes with a tip
+const POSE_FOR_TITLE = {
+  "How well you match": "curious", "Like": "love", "Send a Dove": "fly", "Like a prompt": "sprig", "Not for you?": "sleepy",
+  "Safety": "angry", "Safety options": "angry", "Filters": "curious", "Plan a date": "sprig", "Send a rose": "love", "Video call": "lookback",
+  "Chosen": "sprig", "Sparks": "love", "Messages": "curious", "Meet Christian friends": "lookback", "Waves": "lookback", "Friends": "fly", "Community": "sprig",
+};
 
 const FONT = "'Outfit', system-ui, sans-serif";
 const C = { primary: "#B8912A", text: "#1A1612", sub: "#8C857C", border: "#E8E4DF" };
@@ -272,11 +280,16 @@ export default function TutorialOverlay({ screen, paused = false }) {
         <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.64)" }} />
       )}
 
-      <div ref={bubbleRef} onClick={(e) => e.stopPropagation()} style={{ position: "fixed", boxSizing: "border-box", left: vLeft + 16, width: vw - 32, top: bubbleTop, background: "#fff", borderRadius: 18, padding: "16px 16px 12px", boxShadow: "0 12px 40px rgba(0,0,0,0.3)" }}>
+      <div ref={bubbleRef} onClick={(e) => e.stopPropagation()} style={{ position: "fixed", boxSizing: "border-box", left: vLeft + 16, width: vw - 32, top: bubbleTop, background: "#fff", borderRadius: 18, padding: step.full ? "12px 16px 12px" : "16px 16px 12px", boxShadow: "0 12px 40px rgba(0,0,0,0.3)" }}>
         {rect && (
           <div style={{ position: "absolute", left: arrowX, [placeBelow ? "top" : "bottom"]: -8, width: 16, height: 16, background: "#fff", transform: "rotate(45deg)", borderRadius: 3 }} />
         )}
-        <p style={{ fontSize: 17, fontWeight: 800, color: C.text, margin: "0 0 6px" }}>{step.title}</p>
+        {step.full ? (
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 4 }}><Pip pose={POSE_FOR_TITLE[step.title] || "curious"} size={150} float /></div>
+        ) : (
+          <Pip pose={POSE_FOR_TITLE[step.title] || "curious"} size={84} style={{ position: "absolute", right: 10, top: -46 }} />
+        )}
+        <p style={{ fontSize: 17, fontWeight: 800, color: C.text, margin: "0 0 6px", paddingRight: step.full ? 0 : 70 }}>{step.title}</p>
         <p style={{ fontSize: 14, color: C.sub, lineHeight: 1.5, margin: 0 }}>{step.text}</p>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 14 }}>
           {steps.length > 1 && (

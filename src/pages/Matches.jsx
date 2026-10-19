@@ -11,6 +11,7 @@ import NotificationPrompt from "../components/NotificationPrompt";
 import TutorialOverlay from "../components/TutorialOverlay";
 import AudioPlayer from "../components/AudioPlayer";
 import VerifiedBadge from "../components/VerifiedBadge";
+import Pip from "../components/Pip";
 import { computeDeadline, FIVE_DAYS, NUDGE_BONUS, COOLDOWN_48H, CALL_GRACE } from "../utils/deadline";
 import CompatibilityRing from "../components/CompatibilityRing";
 import VoiceRecorder from "../components/VoiceRecorder";
@@ -1434,9 +1435,9 @@ function ChatThread({ match, onBack }) {
       {/* Compose */}
       <div style={{ flexShrink: 0, padding: "8px 12px calc(10px + env(safe-area-inset-bottom, 0px))", background: C.bg, borderTop: `1px solid ${C.border}` }}>
         {chatLocked ? (
-          <div style={{ textAlign: "center", padding: "12px 0", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-            <Lock size={14} color={C.sub} strokeWidth={1.8} />
-            <p style={{ fontSize: 13, color: C.sub, fontFamily: FONT, margin: 0 }}>This chat has closed · no date was planned in time</p>
+          <div style={{ textAlign: "center", padding: "6px 0 12px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6 }}>
+            <Pip pose="sad" size={90} />
+            <p style={{ fontSize: 13, color: C.sub, fontFamily: FONT, margin: 0, display: "flex", alignItems: "center", gap: 6 }}><Lock size={14} color={C.sub} strokeWidth={1.8} /> This chat has closed · no date was planned in time</p>
           </div>
         ) : (
           <>
@@ -1739,7 +1740,7 @@ export default function Matches() {
       <div style={{ flex: 1, overflowY: "auto", paddingBottom: 24 }}>
         {sortedMatches.length === 0 ? (
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", padding: "60px 20px", textAlign: "center" }}>
-            <MessageCircle size={48} strokeWidth={1.4} color={C.primary} style={{ marginBottom: 16 }} />
+            <Pip pose={state.mode === "friends" ? "lookback" : "curious"} size={160} float style={{ marginBottom: 12 }} />
             <h2 style={{ color: C.text, fontFamily: FONT, fontSize: 20, fontWeight: 700 }}>{state.mode === "friends" ? "No friends yet" : "No messages yet"}</h2>
             <p style={{ color: C.sub, fontSize: 14, marginTop: 4 }}>{state.mode === "friends" ? "When someone waves back, you can chat here." : "When you match with someone, you can chat here."}</p>
           </div>
