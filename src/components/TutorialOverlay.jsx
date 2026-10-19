@@ -8,7 +8,7 @@ import Pip from "./Pip";
 const POSE_FOR_TITLE = {
   "How well you match": "curious", "Like": "love", "Send a Dove": "fly", "Like a prompt": "sprig", "Not for you?": "sleepy",
   "Safety": "angry", "Safety options": "angry", "Filters": "curious", "Plan a date": "sprig", "Send a rose": "love", "Video call": "lookback",
-  "Chosen": "sprig", "Sparks": "love", "Messages": "curious", "Meet Christian friends": "lookback", "Waves": "lookback", "Friends": "fly", "Community": "sprig",
+  "Chosen": "sprig", "Sparks": "love", "Messages": "curious", "Meet Christian friends": "lookback", "Waves": "love", "Friends": "fly", "Community": "sprig",
 };
 
 const FONT = "'Outfit', system-ui, sans-serif";
