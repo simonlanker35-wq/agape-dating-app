@@ -1746,8 +1746,8 @@ export default function Matches() {
           </div>
         ) : (
           sortedMatches.map((m) => {
-            const profile = m.profile;
-            if (!profile) return null;
+            // The partner's profile can be missing for one refresh; the row stays, greyed, instead of vanishing
+            const profile = m.profile || { id: m.profileId, name: "Loading…", photos: [], placeholder: true };
             const convo = state.conversations[m.id];
             const lastMsg = convo?.messages?.[convo.messages.length - 1] || m.lastMessage;
             const hasUnread = lastMsg && lastMsg.sender !== currentUserId && !lastMsg.read && !lastMsg.isComment;
@@ -1755,11 +1755,13 @@ export default function Matches() {
             return (
               <button
                 key={m.id}
-                onClick={() => { track("chat_opened"); setActiveChat(m.id); }}
-                style={{ display: "flex", alignItems: "center", gap: 16, width: "100%", padding: "20px 20px", background: hasUnread ? C.primarySoft : "none", border: "none", cursor: "pointer", borderBottom: `1px solid ${C.border}`, textAlign: "left" }}
+                onClick={() => { if (profile.placeholder) return; track("chat_opened"); setActiveChat(m.id); }}
+                style={{ display: "flex", alignItems: "center", gap: 16, width: "100%", padding: "20px 20px", background: hasUnread ? C.primarySoft : "none", border: "none", cursor: profile.placeholder ? "default" : "pointer", borderBottom: `1px solid ${C.border}`, textAlign: "left", opacity: profile.placeholder ? 0.55 : 1 }}
               >
                 <div style={{ position: "relative", flexShrink: 0 }}>
-                  <img src={profile.photos[0]} alt={profile.name} style={{ width: 88, height: 88, borderRadius: "50%", objectFit: "cover", objectPosition: "50% 20%", display: "block" }} onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${profile.name}&size=88&background=random`; }} />
+                  {profile.placeholder
+                    ? <div style={{ width: 88, height: 88, borderRadius: "50%", background: C.surface }} />
+                    : <img src={profile.photos[0]} alt={profile.name} style={{ width: 88, height: 88, borderRadius: "50%", objectFit: "cover", objectPosition: "50% 20%", display: "block" }} onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${profile.name}&size=88&background=random`; }} />}
                   {hasUnread && <div style={{ position: "absolute", inset: -3, borderRadius: "50%", border: `3px solid ${C.primary}`, pointerEvents: "none" }} />}
                   {api.isOnline(profile.lastActive) && <div title="Online now" style={{ position: "absolute", bottom: 4, right: 4, width: 14, height: 14, borderRadius: "50%", background: "#22C55E", border: `2.5px solid ${hasUnread ? C.primarySoft : C.bg}` }} />}
                 </div>

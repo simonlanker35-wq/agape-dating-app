@@ -117,8 +117,13 @@ function reducer(state, action) {
         matches: state.matches.map((m) => (m.id === action.payload && m.lastMessage ? { ...m, lastMessage: { ...m.lastMessage, read: true } } : m)),
       };
 
-    case "SET_MATCHES":
-      return { ...state, matches: action.payload, matchesLoaded: true };
+    case "SET_MATCHES": {
+      // A partner's profile can be missing for one load (network hiccup, a view timing out); keep the
+      // last one we had so the chat does not disappear from the list for a polling interval
+      const prev = new Map((state.matches || []).map((m) => [m.id, m]));
+      const merged = (action.payload || []).map((m) => (!m.profile && prev.get(m.id)?.profile ? { ...m, profile: prev.get(m.id).profile } : m));
+      return { ...state, matches: merged, matchesLoaded: true };
+    }
 
     case "SET_VERIFICATIONS":
       return { ...state, myVerifications: action.payload, verificationsLoaded: true };

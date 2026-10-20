@@ -37,7 +37,7 @@ function mapProfile(p) {
     distance: null,
     // Team-approved verification selfies are shown after the regular photos
     photos: [...(p.photos || []), ...["church", "bible"].map((k) => p.verified_photos?.[k]).filter(Boolean)],
-    isVerified: ["church", "bible"].some((k) => !!p.verified_photos?.[k]),
+    isVerified: !!p.is_verified || ["church", "bible"].some((k) => !!p.verified_photos?.[k]),
     prompts: p.prompts || [],
     interests: p.interests || [],
     traits: p.traits || [],
@@ -1153,6 +1153,7 @@ function mapProfileToUser(p, authPhone) {
     notificationPrefs: p.notification_prefs || {},
     paused: !!p.paused,
     intent: p.intent || "date",
+    isVerified: !!p.is_verified || ["church", "bible"].some((k) => !!p.verified_photos?.[k]),
     createdAt: p.created_at || null,
     points: p.community_points || 0,
   };

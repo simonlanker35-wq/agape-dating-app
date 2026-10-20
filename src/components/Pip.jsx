@@ -8,7 +8,7 @@ export default function Pip({ pose = "curious", size = 140, float = false, style
       aria-hidden="true"
       draggable={false}
       loading="lazy"
-      className={float ? "pip-float" : undefined}
+      className={undefined /* no motion: the dove holds still */}
       style={{ height: size, width: "auto", display: "block", userSelect: "none", pointerEvents: "none", ...style }}
       {...rest}
     />

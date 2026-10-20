@@ -4,7 +4,7 @@ import { supabase } from "../services/supabase";
 
 const uuid = () => crypto.randomUUID();
 const TABLES = ["profiles", "likes", "skips", "matches", "messages", "date_invitations", "date_feedback", "blocks", "reports", "photo_verifications", "spark_reveals", "push_subscriptions", "photo_originals", "community_posts", "community_replies", "community_amens"];
-const PUBLIC_PROFILE_COLS = ["id", "name", "age", "height", "gender", "denomination", "job", "school", "location_city", "location_lat", "location_lng", "photos", "prompts", "interests", "traits", "who_are_you", "looking_for", "bio", "filters", "is_active", "is_standout", "compatibility_reason", "verified_photos", "details", "paused", "last_active", "created_at", "intent", "community_points"];
+const PUBLIC_PROFILE_COLS = ["id", "name", "age", "height", "gender", "denomination", "job", "school", "location_city", "location_lat", "location_lng", "photos", "prompts", "interests", "traits", "who_are_you", "looking_for", "bio", "filters", "is_active", "is_standout", "compatibility_reason", "verified_photos", "details", "paused", "last_active", "created_at", "intent", "community_points", "is_verified"];
 const PROTECTED = ["subscription_status", "doves", "is_active", "stripe_customer_id", "subscription_id", "is_standout", "email"];
 
 export function createFakeBackend() {

@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useApp } from "../context/AppContext";
-import { compressPhoto, sendTestPush, getPhotoOriginals, savePhotoOriginals, downscaleDataUrl, uploadMedia, submitVerification, removeVerification, deleteAccount } from "../services/api";
-import { Hourglass, Check, X as XIcon, Plus } from "lucide-react";
+import { compressPhoto, sendTestPush, getPhotoOriginals, savePhotoOriginals, downscaleDataUrl, uploadMedia, deleteAccount } from "../services/api";
 import { PROMPT_CATEGORIES, TRAITS_POOL, LOOKING_FOR_POOL, DETAIL_FIELDS } from "../data/profiles";
 
 // Details editable on the profile page (lifestyle ones are answered in onboarding and required there)
@@ -42,6 +41,7 @@ import AgapeCross from "../components/AgapeCross";
 import LocationPicker from "../components/LocationPicker";
 import NumberField from "../components/NumberField";
 import VerifiedBadge from "../components/VerifiedBadge";
+import ProfileSheet from "../components/ProfileSheet";
 import AudioPlayer from "../components/AudioPlayer";
 import VoiceRecorder from "../components/VoiceRecorder";
 import { extForMime } from "../services/media";
@@ -610,7 +610,7 @@ function SettingsScreen({ onBack, initialSection = null }) {
                   {[
                     ["Shown", "Your first name, age, photos, prompts, interests, denomination and the details you add."],
                     ["Blurred", "Your location is shown as a city and a distance rounded to about 2 km, never your exact position."],
-                    ["Never shown", "Your phone number, email, birthday and verification selfies that are still in review."],
+                    ["Never shown", "Your phone number, email and birthday."],
                   ].map(([k, v]) => (
                     <div key={k} style={{ display: "flex", gap: 12, padding: "6px 0" }}>
                       <span style={{ width: 92, flexShrink: 0, fontSize: 12, fontWeight: 700, color: C.primary, textTransform: "uppercase", letterSpacing: "0.06em", paddingTop: 2 }}>{k}</span>
@@ -1036,19 +1036,7 @@ export default function Profile() {
   const [saving, setSaving] = useState(false);
   const [voiceUploading, setVoiceUploading] = useState(false);
   const [voiceError, setVoiceError] = useState("");
-  const [verif, setVerif] = useState({});            // my verification selfies: { church: { url, status }, bible: { ... } }
-  const [verifDraft, setVerifDraft] = useState(null); // { kind, dataUrl } waiting for the user to confirm
-  const [verifBusy, setVerifBusy] = useState(false);
-  const [verifMsg, setVerifMsg] = useState("");
-  const verifInputRef = useRef(null);
-  const verifKindRef = useRef(null);
-  // Kept in step with the app-wide copy, which updates live when the team reviews a selfie
-  useEffect(() => {
-    if (state.verificationsLoaded) setVerif(state.myVerifications || {});
-  }, [state.myVerifications, state.verificationsLoaded]);
-  useEffect(() => {
-    if (currentUser?.id) actions.refreshVerifications?.();
-  }, [currentUser?.id]);
+  const [preview, setPreview] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [editPhotos, setEditPhotos] = useState(false);
   const [editingPromptIdx, setEditingPromptIdx] = useState(null);
@@ -1301,46 +1289,6 @@ export default function Profile() {
   };
   const handleCropPointerUp = () => setCropDragging(false);
 
-  // ── Verification selfies ──
-  const pickVerification = (kind) => {
-    verifKindRef.current = kind;
-    setVerifMsg("");
-    verifInputRef.current?.click();
-  };
-  const handleVerifFile = async (e) => {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-    try {
-      const dataUrl = await compressPhoto(file, 900, 0.82);
-      setVerifDraft({ kind: verifKindRef.current, dataUrl });
-    } catch (_) {
-      setVerifMsg("That image could not be read. Try another one.");
-    }
-  };
-  const confirmVerification = async () => {
-    if (!verifDraft) return;
-    setVerifBusy(true);
-    try {
-      const saved = await submitVerification(verifDraft.kind, verifDraft.dataUrl);
-      setVerif((v) => ({ ...v, [verifDraft.kind]: saved }));
-      track("verification_selfie_submitted", { kind: verifDraft.kind });
-      setVerifDraft(null);
-      actions.refreshVerifications?.();
-    } catch (err) {
-      console.error("Selfie upload failed:", err);
-      setVerifMsg(/photo_verifications|schema cache|relation/i.test(err.message || "") ? "Verification isn't available right now. Please try again later." : "Couldn't upload the selfie. Try again.");
-      setVerifDraft(null);
-    }
-    setVerifBusy(false);
-  };
-  const deleteVerification = async (kind) => {
-    const before = verif;
-    setVerif((v) => { const n = { ...v }; delete n[kind]; return n; });
-    try { await removeVerification(kind); track("verification_selfie_removed", { kind }); actions.refreshVerifications?.(); }
-    catch (err) { console.error("Selfie remove failed:", err); setVerif(before); }
-  };
-
   const handleRemovePhoto = async (idx) => {
     if (idx >= 4) return;
     track("photo_removed", { photoIndex: idx });
@@ -1371,12 +1319,18 @@ export default function Profile() {
       <div style={{ flexShrink: 0, padding: "44px 20px 0", background: C.surface }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <span style={{ fontSize: 18, fontWeight: 800, letterSpacing: "-0.3px", color: C.text, fontFamily: FONT }}>My Profile</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <button onClick={() => { track("profile_preview_opened"); setPreview(true); }} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 9999, border: `1px solid ${C.border}`, background: C.bg, color: C.text, fontSize: 12.5, fontWeight: 700, fontFamily: FONT, cursor: "pointer" }}>
+            <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={C.text} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
+            Preview
+          </button>
           <button onClick={() => setShowSettings(true)} aria-label="Settings" style={{ background: "none", border: "none", cursor: "pointer", padding: 4, display: "flex" }}>
             <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={C.sub} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="3" />
               <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
             </svg>
           </button>
+          </div>
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 14, paddingTop: 12 }}>
@@ -1409,9 +1363,7 @@ export default function Profile() {
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
               <span style={{ color: C.text, fontFamily: SERIF, fontSize: 20, fontWeight: 600, lineHeight: 1.1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{currentUser.name}</span>
               <span style={{ color: C.sub, fontFamily: FONT, fontSize: 16, fontWeight: 400 }}>{currentUser.age}</span>
-              {(verif.church?.status === "approved" || verif.bible?.status === "approved")
-                ? <VerifiedBadge size={20} />
-                : <VerifiedBadge size={20} empty />}
+              {currentUser.isVerified ? <VerifiedBadge size={20} /> : <VerifiedBadge size={20} empty />}
             </div>
             <p style={{ color: C.sub, fontSize: 12, fontFamily: FONT, margin: "3px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {currentUser.denomination}{currentUser.location?.city ? ` · ${currentUser.location.city}` : ""}
@@ -1638,68 +1590,7 @@ export default function Profile() {
                 </button>
               )}
 
-              {/* Verification selfies: private until the Agape team has approved them */}
-              {[
-                { kind: "church", label: "Selfie with a church", icon: <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={C.primary} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><path d="M18 2H6a2 2 0 0 0-2 2v16l8-4 8 4V4a2 2 0 0 0-2-2z"/><path d="M12 6v4M10 8h4"/></svg> },
-                { kind: "bible", label: "Selfie with a Bible", icon: <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={C.primary} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M12 6v6M9.5 8.5h5"/></svg> },
-              ].map(({ kind, label, icon }) => {
-                const v = verif[kind];
-                const pending = v?.status === "pending";
-                const rejected = v?.status === "rejected";
-                const approved = v?.status === "approved";
-                return (
-                  <div key={kind} style={{ position: "relative", aspectRatio: "3/4", borderRadius: 12, overflow: "hidden", border: v ? `1px solid ${C.border}` : `2px dashed ${C.primary}40`, background: `linear-gradient(145deg, ${C.primarySoft}, ${C.surface})` }}>
-                    {v ? (
-                      <>
-                        <img src={v.url} alt={label} style={{ width: "100%", height: "100%", objectFit: "cover", filter: approved ? "none" : "brightness(0.55)" }} />
-                        {pending && (
-                          <div title="Waiting for review" style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, pointerEvents: "none" }}>
-                            <div style={{ width: 36, height: 36, borderRadius: "50%", background: "rgba(255,255,255,0.92)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                              <Hourglass size={18} color={C.primary} strokeWidth={2} />
-                            </div>
-                            <span style={{ fontSize: 9, fontWeight: 700, color: "#fff", textTransform: "uppercase", letterSpacing: "0.06em", textShadow: "0 1px 3px rgba(0,0,0,0.5)" }}>In review</span>
-                          </div>
-                        )}
-                        {rejected && (
-                          <button onClick={() => pickVerification(kind)} style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, background: "none", border: "none", cursor: "pointer", padding: 6 }}>
-                            <span style={{ fontSize: 9, fontWeight: 700, color: "#fff", background: "#DC2626", padding: "3px 7px", borderRadius: 6, textTransform: "uppercase", letterSpacing: "0.05em" }}>Not approved</span>
-                            <span style={{ fontSize: 9, fontWeight: 600, color: "#fff", textShadow: "0 1px 3px rgba(0,0,0,0.5)" }}>Tap to try again</span>
-                          </button>
-                        )}
-                        {approved && (
-                          <div style={{ position: "absolute", top: 4, left: 4, display: "flex", alignItems: "center", gap: 3, padding: "2px 6px", borderRadius: 6, background: "#22C55E", color: "white" }}>
-                            <Check size={8} color="#fff" strokeWidth={3.5} />
-                            <span style={{ fontSize: 8, fontWeight: 700, textTransform: "uppercase" }}>Verified</span>
-                          </div>
-                        )}
-                        <button onClick={() => deleteVerification(kind)} aria-label={`Remove ${label}`} style={{ position: "absolute", top: 4, right: 4, width: 22, height: 22, borderRadius: "50%", background: "rgba(0,0,0,0.55)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
-                          <XIcon size={12} color="#fff" strokeWidth={2.5} />
-                        </button>
-                      </>
-                    ) : (
-                      <button onClick={() => pickVerification(kind)} aria-label={`Upload ${label}`} style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", width: "100%", height: "100%", gap: 4, padding: 8, background: "none", border: "none", cursor: "pointer" }}>
-                        {icon}
-                        <span style={{ fontSize: 8, fontWeight: 700, color: C.primary, textTransform: "uppercase", letterSpacing: "0.05em", textAlign: "center", lineHeight: 1.2 }}>{label}</span>
-                        <Plus size={13} color={C.sub} strokeWidth={2.2} />
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
             </div>
-            <input ref={verifInputRef} type="file" accept="image/*" capture="user" onChange={handleVerifFile} style={{ display: "none" }} />
-            {(verif.church?.status === "pending" || verif.bible?.status === "pending") && (
-              <p style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: C.sub, marginTop: 10, lineHeight: 1.4 }}>
-                <Hourglass size={13} color={C.primary} style={{ flexShrink: 0 }} />
-                Selfies with the hourglass are waiting for the Agape team. Nobody else can see them until they are verified.
-              </p>
-            )}
-            {["church", "bible"].filter((k) => verif[k]?.status === "rejected").map((k) => (
-              <p key={k} style={{ fontSize: 12, color: C.text, marginTop: 10, lineHeight: 1.45, padding: "10px 12px", borderRadius: 12, background: "#FDECEC" }}>
-                <strong>{k === "church" ? "Selfie with a church" : "Selfie with a Bible"} was not approved{verif[k].note ? ":" : "."}</strong>{verif[k].note ? ` ${String(verif[k].note).replace(/[.\s]+$/, "")}.` : ""} Tap the photo to upload a new one.
-              </p>
-            ))}
-            {verifMsg && <p style={{ fontSize: 12, color: "#DC2626", marginTop: 8 }}>{verifMsg}</p>}
             <input ref={fileInputRef} type="file" accept="image/*" onChange={handleAddPhoto} style={{ display: "none" }} />
             <button
               onClick={() => setEditPhotos(false)}
@@ -2106,33 +1997,17 @@ export default function Profile() {
         </div>
       )}
 
-      {/* Verification selfie: confirm before sending for review */}
-      {verifDraft && (
-        <div style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", flexDirection: "column", justifyContent: "flex-end" }} onClick={() => !verifBusy && setVerifDraft(null)}>
-          <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)" }} />
-          <div onClick={(e) => e.stopPropagation()} style={{ position: "relative", background: C.bg, borderRadius: "24px 24px 0 0", padding: "20px 20px calc(env(safe-area-inset-bottom, 0px) + 20px)" }}>
-            <div style={{ width: 36, height: 4, borderRadius: 2, background: C.border, margin: "0 auto 16px" }} />
-            <div style={{ display: "flex", gap: 14, alignItems: "flex-start", marginBottom: 16 }}>
-              <img src={verifDraft.dataUrl} alt="Your selfie" style={{ width: 84, aspectRatio: "3/4", objectFit: "cover", borderRadius: 12, flexShrink: 0 }} />
-              <div>
-                <p style={{ fontSize: 17, fontWeight: 700, color: C.text, fontFamily: FONT, margin: "0 0 6px" }}>
-                  {verifDraft.kind === "church" ? "Selfie with a church" : "Selfie with a Bible"}
-                </p>
-                <p style={{ fontSize: 13.5, color: C.sub, lineHeight: 1.5, margin: 0 }}>
-                  The Agape team checks every verification selfie by hand. <strong style={{ color: C.text }}>Other people will not see this photo until it has been verified.</strong> Until then it shows an hourglass on your profile.
-                </p>
-              </div>
-            </div>
-            <button onClick={confirmVerification} disabled={verifBusy} style={{ width: "100%", padding: 14, borderRadius: 14, background: C.sent, color: "#fff", border: "none", fontSize: 15, fontWeight: 700, fontFamily: FONT, cursor: "pointer", opacity: verifBusy ? 0.6 : 1 }}>
-              {verifBusy ? "Uploading…" : "Send for review"}
-            </button>
-            <button onClick={() => setVerifDraft(null)} disabled={verifBusy} style={{ width: "100%", padding: 12, marginTop: 4, background: "none", border: "none", fontSize: 14, fontWeight: 600, color: C.sub, fontFamily: FONT, cursor: "pointer" }}>
-              Cancel
-            </button>
-          </div>
-        </div>
+      {preview && (
+        <ProfileSheet
+          profile={{
+            id: currentUser.id, name: currentUser.name, age: currentUser.age, photos: (currentUser.photos || []).slice(0, 6), prompts: currentUser.prompts || [],
+            interests: currentUser.interests || [], location: currentUser.location?.city || "", denomination: currentUser.denomination || "", job: currentUser.job || "",
+            isVerified: !!currentUser.isVerified, points: currentUser.points || 0,
+          }}
+          onClose={() => setPreview(false)}
+          actions={[{ label: "This is how others see you", primary: true, disabled: true }]}
+        />
       )}
-
       {/* Prompt editor bottom sheet */}
       {editingPromptIdx !== null && editingPromptData && (
         <div
