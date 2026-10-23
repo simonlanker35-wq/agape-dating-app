@@ -1,8 +1,8 @@
-import { useState } from "react";
 import { createPortal } from "react-dom";
 import { ChevronLeft, MapPin, Ban, Flag } from "lucide-react";
 import VerifiedBadge from "./VerifiedBadge";
 import AudioPlayer from "./AudioPlayer";
+import PhotoCarousel from "./PhotoCarousel";
 
 const C = { bg: "#FFFFFF", card: "#FAFAF8", surface: "#F4F2EE", primary: "#B8912A", primarySoft: "#FBF5E6", text: "#1A1612", sub: "#8C857C", border: "#E8E4DF" };
 const FONT = "'Outfit', system-ui, sans-serif";
@@ -11,34 +11,23 @@ const SERIF = "'Lora', Georgia, serif";
 // A full-screen look at someone's profile, opened from places that are not Seek (the community, a chat).
 // `actions` is a list of { label, onClick, primary, icon } for the bar at the bottom.
 export default function ProfileSheet({ profile, onClose, actions = [], onReport, onBlock }) {
-  const [photo, setPhoto] = useState(0);
   if (!profile) return null;
-  const photos = profile.photos?.length ? profile.photos : [`https://ui-avatars.com/api/?name=${encodeURIComponent(profile.name || "?")}&size=600&background=F4F2EE&color=B8912A`];
   const prompts = (profile.prompts || []).filter((p) => p.prompt && (p.answer || p.voice?.url));
 
   return createPortal(
     <div style={{ position: "fixed", inset: 0, maxWidth: 430, margin: "0 auto", zIndex: 800, background: C.bg, display: "flex", flexDirection: "column", fontFamily: FONT }}>
       <div style={{ flex: 1, minHeight: 0, overflowY: "auto", WebkitOverflowScrolling: "touch", paddingBottom: actions.length ? 96 : 24 }}>
-        <div style={{ position: "relative" }}>
-          <img src={photos[photo]} alt={profile.name} onClick={() => setPhoto((photo + 1) % photos.length)}
-            style={{ width: "100%", aspectRatio: "3/4", maxHeight: "60vh", objectFit: "cover", objectPosition: "50% 20%", display: "block", background: C.surface }}
-            onError={(e) => { e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.name || "?")}&size=600&background=F4F2EE&color=B8912A`; }} />
-          <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.75) 0%, transparent 45%)", pointerEvents: "none" }} />
-          {photos.length > 1 && (
-            <div style={{ position: "absolute", top: "max(14px, env(safe-area-inset-top, 14px))", left: 16, right: 16, display: "flex", gap: 4 }}>
-              {photos.map((_, i) => <span key={i} style={{ flex: 1, height: 3, borderRadius: 2, background: i === photo ? "#fff" : "rgba(255,255,255,0.4)" }} />)}
-            </div>
-          )}
-          <button onClick={onClose} aria-label="Back" style={{ position: "absolute", top: "max(40px, calc(env(safe-area-inset-top, 0px) + 28px))", left: 14, width: 38, height: 38, borderRadius: 19, border: "none", background: "rgba(0,0,0,0.45)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+        <PhotoCarousel photos={profile.photos} name={profile.name} maxHeight="60vh">
+          <button onClick={onClose} aria-label="Back" style={{ zIndex: 3, position: "absolute", top: "max(40px, calc(env(safe-area-inset-top, 0px) + 28px))", left: 14, width: 38, height: 38, borderRadius: 19, border: "none", background: "rgba(0,0,0,0.45)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
             <ChevronLeft size={22} strokeWidth={2.2} />
           </button>
           {(onReport || onBlock) && (
-            <div style={{ position: "absolute", top: "max(40px, calc(env(safe-area-inset-top, 0px) + 28px))", right: 14, display: "flex", gap: 8 }}>
+            <div style={{ position: "absolute", zIndex: 3, top: "max(40px, calc(env(safe-area-inset-top, 0px) + 28px))", right: 14, display: "flex", gap: 8 }}>
               {onReport && <button onClick={onReport} aria-label="Report" style={{ width: 38, height: 38, borderRadius: 19, border: "none", background: "rgba(0,0,0,0.45)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}><Flag size={17} strokeWidth={2} /></button>}
               {onBlock && <button onClick={onBlock} aria-label="Block" style={{ width: 38, height: 38, borderRadius: 19, border: "none", background: "rgba(0,0,0,0.45)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}><Ban size={17} strokeWidth={2} /></button>}
             </div>
           )}
-          <div style={{ position: "absolute", left: 18, right: 18, bottom: 16, color: "#fff" }}>
+          <div style={{ position: "absolute", zIndex: 2, left: 18, right: 18, bottom: 16, color: "#fff" }}>
             <p style={{ margin: 0, fontFamily: SERIF, fontSize: 30, fontWeight: 600, lineHeight: 1.1, display: "flex", alignItems: "center", gap: 8, textShadow: "0 2px 10px rgba(0,0,0,0.35)" }}>
               {profile.name}{profile.age ? <span style={{ fontFamily: FONT, fontWeight: 400, fontSize: 22 }}>, {profile.age}</span> : null}
               {profile.isVerified && <VerifiedBadge size={20} />}
@@ -50,7 +39,7 @@ export default function ProfileSheet({ profile, onClose, actions = [], onReport,
               {profile.points > 0 && <span>· ✦ {profile.points} community points</span>}
             </p>
           </div>
-        </div>
+        </PhotoCarousel>
 
         <div style={{ padding: "16px 16px 0" }}>
           {prompts.map((p, i) => (

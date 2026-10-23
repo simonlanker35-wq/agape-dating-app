@@ -4166,3 +4166,7 @@ input[type="range"] {
 .pip-float { animation: pipFloat 3.2s ease-in-out infinite; }
 @keyframes pipFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
 @media (prefers-reduced-motion: reduce) { .pip-float { animation: none; } }
+
+/* Swipeable profile photos */
+.photo-carousel::-webkit-scrollbar { display: none; }
+@media (hover: none) { .photo-carousel-arrow { display: none !important; } }

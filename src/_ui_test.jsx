@@ -30,6 +30,13 @@ be.db.community_posts.push(
 be.db.community_replies.push({ id: "33333333-3333-4333-8333-333333333333", post_id: "11111111-1111-4111-8111-111111111111", author: ids[6], body: "Praying for her tonight. 🙏", created_at: new Date(Date.now() - 600e3).toISOString() });
 if (new URLSearchParams(location.search).get("premium")) be.db.profiles.find((p) => p.id === ids[0]).subscription_status = "active";
 be.db.profiles.find((p) => p.id === ids[0]).email = "simon@example.com";
+// ?photos=4 gives every profile several numbered photos, for checking swipeable photo views
+const nPhotos = Number(new URLSearchParams(location.search).get("photos") || 0);
+if (nPhotos > 1) {
+  const tint = ["#B8912A", "#3B6E8F", "#7A4B8C", "#4C8A5A", "#A3523F", "#5E6B78"];
+  const mk = (i) => "data:image/svg+xml;utf8," + encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="600" height="800"><rect width="600" height="800" fill="${tint[i % tint.length]}"/><text x="300" y="460" font-size="200" font-family="sans-serif" text-anchor="middle" fill="white">${i + 1}</text></svg>`);
+  be.db.profiles.forEach((p) => { p.photos = Array.from({ length: nPhotos }, (_, i) => mk(i)); });
+}
 be.setUser(ids[0]);
 window.__BE = be;
 
