@@ -145,12 +145,16 @@ export default function LikesYou() {
                   border: isDoveLike ? `2px solid ${C.primary}` : "none",
                 }}
               >
-                <img
-                  src={profile.photos?.[0]}
-                  alt={profile.name}
-                  style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", filter: isLocked ? "blur(20px)" : "none" }}
-                  onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${profile.name}&size=400&background=random`; }}
-                />
+                {isLocked ? (
+                  <div style={{ width: "100%", height: "100%", background: "linear-gradient(135deg, #EFE9DB 0%, #D9CFBE 60%, #C9BBA2 100%)", display: "block" }} />
+                ) : (
+                  <img
+                    src={profile.photos?.[0]}
+                    alt={profile.name}
+                    style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                    onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${profile.name}&size=400&background=random`; }}
+                  />
+                )}
                 <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 50%)", pointerEvents: "none" }} />
 
                 {isDoveLike && !isLocked && (

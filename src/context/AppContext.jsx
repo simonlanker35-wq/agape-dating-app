@@ -718,6 +718,7 @@ export function AppProvider({ children }) {
     revealLike: async (likeId) => {
       const stored = await api.revealLike(likeId);
       loadUsage();
+      await loadLikesReceived(); // the sender's profile is sent only once the reveal is recorded
       return stored;
     },
 

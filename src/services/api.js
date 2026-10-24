@@ -604,23 +604,39 @@ export async function getLikesReceived(mode = "date") {
     }
   }
 
-  const senders = await fetchPublicProfiles((likes || []).map((l) => l.from_user));
-  const reliability = await getReliability((likes || []).map((l) => l.from_user));
   // Reveals are stored per account, so they survive a new device or a cleared browser
   const { data: reveals } = await supabase.from("spark_reveals").select("like_id").eq("user_id", user.id);
   const revealed = new Set((reveals || []).map((r) => r.like_id));
-  return (likes || []).map((like) => ({
-    id: like.id,
-    fromId: like.from_user,
-    kind: like.kind || "date",
-    revealed: revealed.has(like.id),
-    profile: senders[like.from_user] ? { ...mapProfile(senders[like.from_user]), reliability: reliability[like.from_user] || null } : null,
-    targetType: like.target_type,
-    targetIndex: like.target_index,
-    comment: like.comment,
-    isDove: like.is_dove,
-    timestamp: new Date(like.created_at).getTime(),
-  }));
+  // Premium is read from your own row, never trusted from the client
+  const { data: meRow } = await supabase.from("profiles").select("subscription_status, premium_until").eq("id", user.id).maybeSingle();
+  const premium = meRow?.subscription_status === "active" || (!!meRow?.premium_until && new Date(meRow.premium_until).getTime() > Date.now());
+  const isFriend = kind === "friend";
+  // A like is "unlocked" when you're entitled to see who sent it: friends side, Agape+, a Dove, or a reveal you spent.
+  const unlocked = (like) => isFriend || premium || !!like.is_dove || revealed.has(like.id);
+
+  // Only the senders of unlocked likes are fetched, so a locked card never carries a name, photo or id.
+  const visibleIds = (likes || []).filter(unlocked).map((l) => l.from_user);
+  const senders = await fetchPublicProfiles(visibleIds);
+  const reliability = await getReliability(visibleIds);
+
+  return (likes || []).map((like) => {
+    if (!unlocked(like)) {
+      // Everything identifying is withheld until the like is revealed
+      return { id: like.id, kind: like.kind || "date", revealed: false, isDove: false, locked: true, profile: { locked: true, photos: [] }, timestamp: new Date(like.created_at).getTime() };
+    }
+    return {
+      id: like.id,
+      fromId: like.from_user,
+      kind: like.kind || "date",
+      revealed: revealed.has(like.id),
+      profile: senders[like.from_user] ? { ...mapProfile(senders[like.from_user]), reliability: reliability[like.from_user] || null } : null,
+      targetType: like.target_type,
+      targetIndex: like.target_index,
+      comment: like.comment,
+      isDove: like.is_dove,
+      timestamp: new Date(like.created_at).getTime(),
+    };
+  });
 }
 
 export async function dismissLike(likeId) {
