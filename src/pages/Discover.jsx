@@ -39,6 +39,20 @@ export default function Discover() {
   const [likeError, setLikeError] = useState("");
   const [cardEnter, setCardEnter] = useState(true);
   const [photoIdx, setPhotoIdx] = useState(0);
+  const photoStrip = useRef(null);
+  // Photos swipe left and right; the bars follow the scroll position
+  const onPhotoScroll = () => {
+    const el = photoStrip.current;
+    if (!el || !el.clientWidth) return;
+    const i = Math.round(el.scrollLeft / el.clientWidth);
+    setPhotoIdx((p) => (p === i ? p : i));
+  };
+  const goToPhoto = (i, count) => {
+    const el = photoStrip.current;
+    if (!el) return;
+    const n = Math.max(0, Math.min(count - 1, i));
+    el.scrollTo({ left: n * el.clientWidth, behavior: "smooth" });
+  };
   const [likeChoice, setLikeChoice] = useState(null);
   const [doveBrowse, setDoveBrowse] = useState(false); // keep browsing for a Dove after the daily likes are gone
   const [localSkips, setLocalSkips] = useState(new Set());
@@ -94,6 +108,7 @@ export default function Discover() {
   useEffect(() => {
     setCardEnter(true);
     setPhotoIdx(0);
+    photoStrip.current?.scrollTo({ left: 0 });
     const t = setTimeout(() => setCardEnter(false), 400);
     return () => clearTimeout(t);
   }, [profile?.id]);
@@ -264,14 +279,21 @@ export default function Discover() {
         {/* Hero photo — full bleed with overlay */}
         <div className="hero-section">
           <div className="hero-photo-block">
-            <img
-              src={photos[photoIdx] || photos[0]}
-              alt={`${profile.name}'s photo`}
-              className="hero-photo"
-              onError={(e) => {
-                e.target.src = `https://ui-avatars.com/api/?name=${profile.name}&size=400&background=random`;
-              }}
-            />
+            <div ref={photoStrip} onScroll={onPhotoScroll} className="photo-carousel hero-photo-strip">
+              {(photos.length ? photos : [null]).map((src, i) => (
+                <img
+                  key={i}
+                  src={src || `https://ui-avatars.com/api/?name=${profile.name}&size=400&background=random`}
+                  alt={i === 0 ? `${profile.name}'s photo` : `${profile.name}'s photo ${i + 1}`}
+                  className="hero-photo"
+                  draggable={false}
+                  loading={i === 0 ? "eager" : "lazy"}
+                  onError={(e) => {
+                    e.target.src = `https://ui-avatars.com/api/?name=${profile.name}&size=400&background=random`;
+                  }}
+                />
+              ))}
+            </div>
 
             {/* Top gradient */}
             <div className="hero-top-gradient" />
@@ -283,7 +305,7 @@ export default function Discover() {
                   <div
                     key={i}
                     className={`photo-indicator ${i === photoIdx ? "active" : ""}`}
-                    onClick={() => setPhotoIdx(i)}
+                    onClick={() => goToPhoto(i, photos.length)}
                   />
                 ))}
               </div>
@@ -308,11 +330,17 @@ export default function Discover() {
               </div>
             </div>
 
-            {/* Tap zones for photo navigation */}
-            <div className="hero-tap-zones">
-              <div className="hero-tap-zone" onClick={() => setPhotoIdx((p) => Math.max(0, p - 1))} />
-              <div className="hero-tap-zone" onClick={() => setPhotoIdx((p) => Math.min(photos.length - 1, p + 1))} />
-            </div>
+            {/* Arrows for a mouse; on a phone you swipe */}
+            {photos.length > 1 && photoIdx > 0 && (
+              <button className="photo-carousel-arrow hero-photo-arrow" style={{ left: 10 }} onClick={() => goToPhoto(photoIdx - 1, photos.length)} aria-label="Previous photo">
+                <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.5} strokeLinecap="round"><polyline points="15 18 9 12 15 6" /></svg>
+              </button>
+            )}
+            {photos.length > 1 && photoIdx < photos.length - 1 && (
+              <button className="photo-carousel-arrow hero-photo-arrow" style={{ right: 10 }} onClick={() => goToPhoto(photoIdx + 1, photos.length)} aria-label="Next photo">
+                <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.5} strokeLinecap="round"><polyline points="9 18 15 12 9 6" /></svg>
+              </button>
+            )}
 
             {/* Bottom gradient */}
             <div className="hero-gradient" />

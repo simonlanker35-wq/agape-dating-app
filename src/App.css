@@ -4170,3 +4170,8 @@ input[type="range"] {
 /* Swipeable profile photos */
 .photo-carousel::-webkit-scrollbar { display: none; }
 @media (hover: none) { .photo-carousel-arrow { display: none !important; } }
+
+/* Seek: the hero photos are a swipeable strip */
+.hero-photo-strip { display: flex; width: 100%; height: 100%; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; -webkit-overflow-scrolling: touch; scrollbar-width: none; overscroll-behavior-x: contain; }
+.hero-photo-strip > .hero-photo { flex: 0 0 100%; scroll-snap-align: start; scroll-snap-stop: always; object-position: 50% 20%; user-select: none; display: block; }
+.hero-photo-arrow { position: absolute; top: 50%; transform: translateY(-50%); width: 34px; height: 34px; border-radius: 17px; border: none; background: rgba(0,0,0,0.35); display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 6; }
