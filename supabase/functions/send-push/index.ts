@@ -33,8 +33,8 @@ Deno.serve(async (req) => {
     const raw = await req.json();
     const clean = (v: unknown, max: number) => String(v ?? "").replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, max);
     const userId = String(raw.userId || "");
-    const title = clean(raw.title, 80);
-    const body = clean(raw.body, 200);
+    let title = clean(raw.title, 80);
+    let body = clean(raw.body, 200);
     const tag = clean(raw.tag, 60);
     // Only pages inside the app can be opened from a notification
     const url = typeof raw.url === "string" && raw.url.startsWith("/") && !raw.url.startsWith("//") ? raw.url.slice(0, 200) : "/";
@@ -57,6 +57,11 @@ Deno.serve(async (req) => {
           .limit(1)
           .maybeSingle();
         if (!like) throw new Error("Not allowed");
+        // A like is not a conversation. Don't let the sender deliver their own wording to someone
+        // who hasn't matched them; use fixed copy so a like can't be used to message a non-match.
+        const dove = /dove/i.test(tag) || /dove/i.test(title);
+        title = dove ? "Someone sent you a Dove" : "Someone likes you";
+        body = "Open Agape to see who it is.";
       }
     }
 

@@ -776,7 +776,7 @@ export async function sendMessage(matchId, text, media = null, replyTo = null) {
     delete row.reply_to;
     ({ data: message, error } = await withTimeout(supabase.from("messages").insert(row).select().single(), 20000));
   }
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(/CHAT_CLOSED/.test(error.message || "") ? "This chat has closed. No date was planned in time." : error.message);
 
   await supabase.from("matches").update({ last_activity: new Date().toISOString() }).eq("id", matchId);
 
