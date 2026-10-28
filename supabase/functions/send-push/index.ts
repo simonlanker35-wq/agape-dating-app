@@ -15,6 +15,19 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Push subscriptions are registered by the member's browser, so the address is user-supplied.
+// Only real browser push services are contacted; anything else is skipped, so this function can't
+// be pointed at an arbitrary server.
+const PUSH_HOSTS = [/^fcm\.googleapis\.com$/, /^android\.googleapis\.com$/, /(^|\.)push\.services\.mozilla\.com$/, /(^|\.)notify\.windows\.com$/, /(^|\.)push\.apple\.com$/];
+const isPushService = (endpoint: string) => {
+  try {
+    const u = new URL(endpoint);
+    return u.protocol === "https:" && PUSH_HOSTS.some((re) => re.test(u.hostname));
+  } catch (_) {
+    return false;
+  }
+};
+
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
@@ -95,6 +108,7 @@ Deno.serve(async (req) => {
     const errors: { host: string; status?: number; message: string }[] = [];
 
     for (const s of subs || []) {
+      if (!isPushService(s.endpoint)) { errors.push({ host: "invalid", message: "not a push service" }); stale.push(s.id); continue; }
       try {
         await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload, { TTL: 60 * 60 * 24 });
         sent++;

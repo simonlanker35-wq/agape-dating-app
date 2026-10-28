@@ -126,7 +126,16 @@ Deno.serve(async (req) => {
 
     let customerId = await ownCustomerId();
 
-    const origin = req.headers.get("origin") || "https://agape-dating-app-frontend.onrender.com";
+    // Stripe sends the member back here after paying. Only Agape's own sites are allowed, so a forged
+    // Origin header can't turn the checkout into a redirect to someone else's page.
+    const ALLOWED_ORIGINS = [
+      "https://agape-dating-app-frontend.onrender.com",
+      "https://agapeapp.net",
+      "https://www.agapeapp.net",
+      "http://localhost:5173",
+    ];
+    const requested = req.headers.get("origin") || "";
+    const origin = ALLOWED_ORIGINS.includes(requested) ? requested : ALLOWED_ORIGINS[0];
 
     const sessionData: Record<string, unknown> = {
       mode: "subscription",
