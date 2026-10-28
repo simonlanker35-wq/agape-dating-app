@@ -1,4 +1,5 @@
 import { passwordProblem, isLeakedPassword, PASSWORD_HINT, LEAKED_MESSAGE } from "./utils/password";
+import { closeTopLayerOnEscape } from "./utils/a11y";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { AppProvider, useApp } from "./context/AppContext";
 import Navigation from "./components/Navigation";
@@ -125,6 +126,11 @@ function AppContent() {
   const { state } = useApp();
   // The splash stays a moment after the session is known so the bar can finish and fade out
   const [splashGone, setSplashGone] = useState(false);
+  useEffect(() => {
+    document.addEventListener("keydown", closeTopLayerOnEscape);
+    return () => document.removeEventListener("keydown", closeTopLayerOnEscape);
+  }, []);
+
   const hideSplash = useCallback(() => setSplashGone(true), []);
 
   if (!state.sessionChecked) return <Splash done={false} onFinished={hideSplash} />;

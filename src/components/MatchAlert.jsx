@@ -28,7 +28,7 @@ export default function MatchAlert() {
   const colors = ["#B8912A", "#F5D878", "#E8C44A", "#ffffff", "#111111", "#D4AF37"];
 
   return (
-    <div className="match-celebration-overlay" style={{ zIndex: 10000 }} onClick={dismiss}>
+    <div data-dismiss className="match-celebration-overlay" style={{ zIndex: 10000 }} onClick={dismiss}>
       <div className="match-confetti">
         {Array.from({ length: 28 }, (_, i) => (
           <div

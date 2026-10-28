@@ -72,7 +72,7 @@ export default function VerifiedBadge({ size = 20, label = false, empty = false,
 
       {open && createPortal(
         // Events from a portal still bubble to the React parents, so every tap in here is stopped
-        <div
+        <div data-dismiss
           onClick={close}
           onPointerDown={(e) => e.stopPropagation()}
           onTouchStart={(e) => e.stopPropagation()}

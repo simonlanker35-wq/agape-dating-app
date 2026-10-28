@@ -77,7 +77,7 @@ export default function ModeSwitch() {
         {seg("friends", "Friends", Users)}
       </div>
       {ask && createPortal(
-        <div onClick={() => !saving && setAsk(null)} role="dialog" aria-label={offer.title} style={{ position: "fixed", inset: 0, zIndex: 9500, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24, fontFamily: FONT }}>
+        <div data-dismiss onClick={() => !saving && setAsk(null)} role="dialog" aria-label={offer.title} style={{ position: "fixed", inset: 0, zIndex: 9500, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24, fontFamily: FONT }}>
           <div onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderRadius: 20, padding: 22, width: "100%", maxWidth: 360 }}>
             <div style={{ width: 44, height: 44, borderRadius: 22, background: "#FBF5E6", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 12 }}>
               {ask === "friends" ? <Users size={22} color={C.primary} /> : <Heart size={22} color={C.primary} />}

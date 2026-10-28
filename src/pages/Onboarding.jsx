@@ -115,7 +115,7 @@ const Wrap = ({ children, showBack = true, showProgress = true, step, goBack, pr
   <div style={{ minHeight: "100vh", background: S.bg, display: "flex", flexDirection: "column", maxWidth: 430, margin: "0 auto" }}>
     <div style={{ padding: "max(12px, env(safe-area-inset-top, 12px)) 20px 0", display: "flex", alignItems: "center", gap: 12 }}>
       {showBack && step > 0 ? (
-        <button onClick={goBack} style={{ background: "none", border: "none", color: S.sub, padding: 4, cursor: "pointer" }}>
+        <button aria-label="Back" onClick={goBack} style={{ background: "none", border: "none", color: S.sub, padding: 4, cursor: "pointer" }}>
           <ChevronLeft size={24} />
         </button>
       ) : <div style={{ width: 32 }} />}
@@ -759,7 +759,7 @@ export default function Onboarding() {
     return (
       <div style={{ minHeight: "100vh", background: S.bg, display: "flex", flexDirection: "column", maxWidth: 430, margin: "0 auto" }}>
         <div style={{ padding: "max(12px, env(safe-area-inset-top, 12px)) 20px 0" }}>
-          <button onClick={() => { setMode("signup"); setStep(0); }} style={{ background: "none", border: "none", color: S.sub, padding: 4, cursor: "pointer" }}>
+          <button aria-label="Back" onClick={() => { setMode("signup"); setStep(0); }} style={{ background: "none", border: "none", color: S.sub, padding: 4, cursor: "pointer" }}>
             <ChevronLeft size={24} />
           </button>
         </div>
@@ -806,7 +806,7 @@ export default function Onboarding() {
     return (
       <div style={{ minHeight: "100vh", background: S.bg, display: "flex", flexDirection: "column", maxWidth: 430, margin: "0 auto" }}>
         <div style={{ padding: "max(12px, env(safe-area-inset-top, 12px)) 20px 0" }}>
-          <button onClick={() => { if (resetStep === "phone") { setMode("login"); } else { setResetStep(resetStep === "code" ? "phone" : "code"); } setResetError(""); }} style={{ background: "none", border: "none", color: S.sub, padding: 4, cursor: "pointer" }}>
+          <button aria-label="Back" onClick={() => { if (resetStep === "phone") { setMode("login"); } else { setResetStep(resetStep === "code" ? "phone" : "code"); } setResetError(""); }} style={{ background: "none", border: "none", color: S.sub, padding: 4, cursor: "pointer" }}>
             <ChevronLeft size={24} />
           </button>
         </div>
@@ -1519,7 +1519,7 @@ export default function Onboarding() {
                 )}
               </button>
               {photo && (
-                <button
+                <button aria-label="Remove photo"
                   onClick={(e) => { e.stopPropagation(); const next = [...form.photos]; next[i] = null; const nextO = [...form.photoOriginals]; nextO[i] = null; setForm({ ...form, photos: next, photoOriginals: nextO }); }}
                   style={{ position: "absolute", top: 6, right: 6, width: 26, height: 26, borderRadius: 999, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", border: "none", cursor: "pointer", padding: 0 }}
                 >
@@ -1556,7 +1556,7 @@ export default function Onboarding() {
             </div>
 
             <div style={{ display: "flex", alignItems: "center", gap: 16, marginTop: 20 }}>
-              <button onClick={() => setZoom(cropScale - 0.1)} style={{ background: "rgba(255,255,255,0.15)", border: "none", borderRadius: 999, width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+              <button aria-label="Zoom out" onClick={() => setZoom(cropScale - 0.1)} style={{ background: "rgba(255,255,255,0.15)", border: "none", borderRadius: 999, width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
                 <ZoomOut size={22} color="#fff" />
               </button>
               <input
@@ -1566,7 +1566,7 @@ export default function Onboarding() {
                 onChange={(e) => setZoom(parseInt(e.target.value) / 100)}
                 style={{ width: 140, accentColor: S.primary }}
               />
-              <button onClick={() => setZoom(cropScale + 0.1)} style={{ background: "rgba(255,255,255,0.15)", border: "none", borderRadius: 999, width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+              <button aria-label="Zoom in" onClick={() => setZoom(cropScale + 0.1)} style={{ background: "rgba(255,255,255,0.15)", border: "none", borderRadius: 999, width: 44, height: 44, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
                 <ZoomIn size={22} color="#fff" />
               </button>
             </div>
@@ -1596,7 +1596,7 @@ export default function Onboarding() {
           <div style={{ background: S.surface, borderRadius: 14, padding: 16, marginBottom: 16 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
               <span style={{ fontSize: 13, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.3, color: S.sub }}>{currentPromptSelection.prompt}</span>
-              <button onClick={clearPromptForStep} style={{ background: "none", border: "none", color: S.sub, padding: 2, cursor: "pointer" }}>
+              <button aria-label="Remove answer" onClick={clearPromptForStep} style={{ background: "none", border: "none", color: S.sub, padding: 2, cursor: "pointer" }}>
                 <X size={16} />
               </button>
             </div>

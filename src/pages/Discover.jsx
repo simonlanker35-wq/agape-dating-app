@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useApp } from "../context/AppContext";
+import { pressable } from "../utils/a11y";
 import { Heart, X, MessageCircle, Ban, Flag, UserPlus } from "lucide-react";
 import DoveIcon from "../components/DoveIcon";
 import ReliabilityBadge from "../components/ReliabilityBadge";
@@ -305,7 +306,7 @@ export default function Discover() {
                   <div
                     key={i}
                     className={`photo-indicator ${i === photoIdx ? "active" : ""}`}
-                    onClick={() => goToPhoto(i, photos.length)}
+                    {...pressable(() => goToPhoto(i, photos.length), `Photo ${i + 1}`)}
                   />
                 ))}
               </div>
@@ -313,7 +314,7 @@ export default function Discover() {
 
             {/* Top overlay: skip left, shield + filter right */}
             <div className="photo-overlay-icons">
-              <button className="photo-overlay-btn discover-skip-btn" onClick={handleSkip}>
+              <button aria-label="Skip" className="photo-overlay-btn discover-skip-btn" onClick={handleSkip}>
                 <X size={18} strokeWidth={2.5} />
               </button>
               <div style={{ display: "flex", gap: 8 }}>
@@ -417,7 +418,7 @@ export default function Discover() {
                   ) : null}
                 </div>
                 <div className="prompt-side-actions">
-                  <button className="mini-btn prompt-heart" onClick={() => onHeartPress("prompt", i)}>
+                  <button aria-label={friends ? "Wave" : "Like this answer"} className="mini-btn prompt-heart" onClick={() => onHeartPress("prompt", i)}>
                     {friends ? <UserPlus size={13} stroke="white" strokeWidth={2.4} /> : <Heart size={13} fill="white" stroke="white" />}
                   </button>
                 </div>
@@ -456,7 +457,7 @@ export default function Discover() {
         const theyLikedYou = state.likesReceived.find((l) => l.fromId === profile.id);
         const theyCommented = theyLikedYou?.comment;
         return (
-          <div className="like-choice-overlay" onClick={() => setLikeChoice(null)}>
+          <div data-dismiss className="like-choice-overlay" onClick={() => setLikeChoice(null)}>
             <div className="like-choice-sheet" onClick={(e) => e.stopPropagation()}>
               {theyCommented && (
                 <p style={{ fontSize: 12, color: "#8C857C", textAlign: "center", margin: "0 0 8px", fontFamily: "'Outfit', system-ui, sans-serif" }}>
@@ -479,7 +480,7 @@ export default function Discover() {
       })()}
 
       {doveSheet && (
-        <div className="like-choice-overlay" onClick={() => setDoveSheet(false)}>
+        <div data-dismiss className="like-choice-overlay" onClick={() => setDoveSheet(false)}>
           <div className="like-choice-sheet" onClick={(e) => e.stopPropagation()}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
               <span style={{ width: 40, height: 40, borderRadius: "50%", background: "#B8912A", color: "white", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><DoveIcon size={20} strokeWidth={2} /></span>
@@ -503,7 +504,7 @@ export default function Discover() {
       )}
 
       {commentTarget && (
-        <div className="comment-modal-overlay" onClick={() => { setCommentTarget(null); setShowDove(false); }}>
+        <div data-dismiss className="comment-modal-overlay" onClick={() => { setCommentTarget(null); setShowDove(false); }}>
           <div className="comment-modal" onClick={(e) => e.stopPropagation()}>
             {!friends && <button
               onClick={() => { if (dovesLeft > 0 || showDove) setShowDove((v) => !v); }}

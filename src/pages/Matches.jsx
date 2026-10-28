@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useApp } from "../context/AppContext";
+import { pressable } from "../utils/a11y";
 import * as api from "../services/api";
 import { MessageCircle, Ban, Flag, UserMinus, Calendar, CheckCircle, Clock, Video, Heart, Lock, Flower2, ChevronLeft, Shield, ArrowUp, Utensils, Footprints, Coffee, Mountain, MapPin, Image as ImageIcon, Mic, X, SmilePlus, Reply, Sunrise, Sun, Sunset, Moon } from "lucide-react";
 import AgapeCross from "../components/AgapeCross";
@@ -249,7 +250,7 @@ function AvailabilityTable({ rows, mine, theirs, onToggle, themName, highlightKe
 function AvailabilitySheet({ title, subtitle, onClose, children, footer }) {
   // Rendered on the body and sized with the dynamic viewport, so the footer stays above Safari's toolbar
   return createPortal(
-    <div onClick={onClose} style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, height: "100dvh", maxWidth: 430, margin: "0 auto", zIndex: 600, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end" }}>
+    <div data-dismiss onClick={onClose} style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, height: "100dvh", maxWidth: 430, margin: "0 auto", zIndex: 600, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end" }}>
       <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", borderRadius: "24px 24px 0 0", background: C.bg, maxHeight: "88dvh", display: "flex", flexDirection: "column" }}>
         <div style={{ padding: "14px 16px 0", flexShrink: 0 }}>
           <div style={{ width: 36, height: 4, borderRadius: 2, background: C.border, margin: "0 auto 14px" }} />
@@ -360,7 +361,7 @@ function DateBuilder({ profileName, userLocation, onSend, onClose }) {
   };
 
   return (
-    <div onClick={onClose} style={{ position: "fixed", inset: 0, maxWidth: 430, margin: "0 auto", zIndex: 500, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end" }}>
+    <div data-dismiss onClick={onClose} style={{ position: "fixed", inset: 0, maxWidth: 430, margin: "0 auto", zIndex: 500, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end" }}>
       <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", borderRadius: "24px 24px 0 0", background: C.bg, padding: "20px 16px 32px", maxHeight: "80vh", overflowY: "auto" }}>
         <div style={{ width: 36, height: 4, borderRadius: 2, background: C.border, margin: "0 auto 16px" }} />
 
@@ -1213,7 +1214,7 @@ function ChatThread({ match, onBack }) {
               <ChevronLeft size={22} strokeWidth={1.8} />
             </button>
             <img src={profile.photos[0]} alt={profile.name} onClick={() => setViewProfile(true)} style={{ width: 36, height: 36, borderRadius: "50%", objectFit: "cover", objectPosition: "50% 20%", cursor: "pointer", flexShrink: 0 }} onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${profile.name}&size=72&background=F4F2EE&color=B8912A`; }} />
-            <div style={{ flex: 1, minWidth: 0, cursor: "pointer" }} onClick={() => setViewProfile(true)}>
+            <div style={{ flex: 1, minWidth: 0, cursor: "pointer" }} {...pressable(() => setViewProfile(true))}>
               <p style={{ fontWeight: 600, fontSize: 17, lineHeight: 1.15, color: C.text, fontFamily: SERIF, margin: 0, display: "flex", alignItems: "center", gap: 5 }}>
                 <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{profile.name}</span>
                 {profile.isVerified && <VerifiedBadge size={18} />}
@@ -1348,7 +1349,7 @@ function ChatThread({ match, onBack }) {
 
                         {open && (
                           <>
-                            <div onClick={() => setReactFor(null)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
+                            <div data-dismiss onClick={() => setReactFor(null)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
                             <div role="menu" aria-label="Pick a reaction" style={{ position: "absolute", bottom: "calc(100% + 6px)", [isMe ? "right" : "left"]: 0, zIndex: 41, display: "flex", gap: 2, padding: "5px 6px", borderRadius: 999, background: C.bg, border: `1px solid ${C.border}`, boxShadow: "0 8px 24px rgba(0,0,0,0.16)" }}>
                               {REACTIONS.map((e) => (
                                 <button key={e} onClick={() => react(item, e)} aria-label={`React ${e}`} style={{ width: 38, height: 38, borderRadius: 19, border: "none", background: mine === e ? C.primarySoft : "transparent", fontSize: 21, lineHeight: 1, cursor: "pointer", padding: 0 }}>{e}</button>
@@ -1580,7 +1581,7 @@ function ChatThread({ match, onBack }) {
       <TutorialOverlay screen={friendChat ? "chat-friends" : "chat"} paused={showDateBuilder} />
 
       {lightbox && (
-        <div onClick={() => setLightbox(null)} style={{ position: "fixed", inset: 0, zIndex: 10001, background: "rgba(0,0,0,0.94)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <div data-dismiss onClick={() => setLightbox(null)} style={{ position: "fixed", inset: 0, zIndex: 10001, background: "rgba(0,0,0,0.94)", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <button onClick={() => setLightbox(null)} aria-label="Close" style={{ position: "absolute", top: "calc(env(safe-area-inset-top, 0px) + 14px)", right: 14, width: 40, height: 40, borderRadius: 20, background: "rgba(255,255,255,0.15)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
             <X size={20} color="#fff" />
           </button>
@@ -1600,7 +1601,7 @@ function ChatThread({ match, onBack }) {
 
       {/* Report / Block menu */}
       {showReportMenu && (
-        <div onClick={() => { if (!reportDone) setShowReportMenu(false); }} style={{ position: "fixed", inset: 0, maxWidth: 430, margin: "0 auto", zIndex: 400, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+        <div data-dismiss onClick={() => { if (!reportDone) setShowReportMenu(false); }} style={{ position: "fixed", inset: 0, maxWidth: 430, margin: "0 auto", zIndex: 400, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
           <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", borderRadius: "24px 24px 0 0", background: C.bg, padding: "20px 16px 32px" }}>
             {reportDone ? (
               <div style={{ textAlign: "center", padding: "20px 0" }}>
@@ -1641,7 +1642,7 @@ function ChatThread({ match, onBack }) {
       {viewProfile && (
         <div style={{ position: "fixed", inset: 0, maxWidth: 430, margin: "0 auto", zIndex: 300, background: C.bg, overflowY: "auto" }}>
           <PhotoCarousel photos={profile.photos} name={profile.name} maxHeight="56vh">
-            <button onClick={() => setViewProfile(false)} style={{ zIndex: 3, position: "absolute", top: 44, left: 16, width: 36, height: 36, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.4)", backdropFilter: "blur(10px)", border: "none", cursor: "pointer" }}>
+            <button aria-label="Close" onClick={() => setViewProfile(false)} style={{ zIndex: 3, position: "absolute", top: 44, left: 16, width: 36, height: 36, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.4)", backdropFilter: "blur(10px)", border: "none", cursor: "pointer" }}>
               <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2.5}><polyline points="15 18 9 12 15 6" /></svg>
             </button>
             <div style={{ position: "absolute", zIndex: 2, bottom: 20, left: 16, right: 16 }}>

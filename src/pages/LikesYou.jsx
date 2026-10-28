@@ -1,4 +1,5 @@
 import { useApp } from "../context/AppContext";
+import { pressable } from "../utils/a11y";
 import { useState, useEffect } from "react";
 import { Heart, X, Lock, UserPlus } from "lucide-react";
 import Pip from "../components/Pip";
@@ -134,7 +135,7 @@ export default function LikesYou() {
             return (
               <div
                 key={like.id}
-                onClick={() => { if (!isLocked) { track("sparks_profile_viewed"); setViewProfile(profile); } }}
+                {...(isLocked ? {} : pressable(() => { track("sparks_profile_viewed"); setViewProfile(profile); }))}
                 style={{
                   position: "relative",
                   borderRadius: 20,
@@ -212,7 +213,7 @@ export default function LikesYou() {
                       )}
                     </div>
                     <div style={{ position: "absolute", bottom: 10, left: 12, right: 12, display: "flex", gap: 8 }}>
-                      <button
+                      <button aria-label="Dismiss"
                         onClick={(e) => { e.stopPropagation(); handleDismiss(like); }}
                         style={{
                           flex: 1, height: 38, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center",
@@ -246,7 +247,7 @@ export default function LikesYou() {
       {viewProfile && (
         <div style={{ position: "fixed", inset: 0, maxWidth: 430, margin: "0 auto", zIndex: 300, background: C.bg, overflowY: "auto" }}>
           <PhotoCarousel photos={viewProfile.photos} name={viewProfile.name} maxHeight="56vh">
-            <button onClick={() => setViewProfile(null)} style={{ zIndex: 3, position: "absolute", top: 44, left: 16, width: 36, height: 36, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.4)", backdropFilter: "blur(10px)", border: "none", cursor: "pointer" }}>
+            <button aria-label="Close" onClick={() => setViewProfile(null)} style={{ zIndex: 3, position: "absolute", top: 44, left: 16, width: 36, height: 36, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.4)", backdropFilter: "blur(10px)", border: "none", cursor: "pointer" }}>
               <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2.5}><polyline points="15 18 9 12 15 6" /></svg>
             </button>
             <div style={{ position: "absolute", zIndex: 2, bottom: 20, left: 16, right: 16 }}>

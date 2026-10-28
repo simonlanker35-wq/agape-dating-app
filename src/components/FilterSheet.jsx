@@ -65,11 +65,11 @@ export default function FilterSheet({ filters, onApply, onClose }) {
   const activeCount = denominations.length + Object.values(details).reduce((n, arr) => n + arr.length, 0);
 
   return (
-    <div className="filter-overlay" onClick={onClose}>
+    <div data-dismiss className="filter-overlay" onClick={onClose}>
       <div className="filter-sheet" onClick={(e) => e.stopPropagation()} style={{ maxHeight: "88vh", overflowY: "auto" }}>
         <div className="filter-header">
           <h3>Filters{activeCount > 0 ? ` · ${activeCount}` : ""}</h3>
-          <button className="filter-close-btn" onClick={onClose}>
+          <button aria-label="Close" className="filter-close-btn" onClick={onClose}>
             <X size={20} />
           </button>
         </div>
@@ -133,7 +133,7 @@ export default function FilterSheet({ filters, onApply, onClose }) {
         </div>
 
         {popup && (
-          <div className="filter-popup-backdrop" onClick={() => setPopup(null)}>
+          <div data-dismiss className="filter-popup-backdrop" onClick={() => setPopup(null)}>
             <div className="filter-popup" onClick={(e) => e.stopPropagation()}>
               {popup.kind === "denoms" && (
                 <>

@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { useApp } from "../context/AppContext";
+import { pressable } from "../utils/a11y";
 import { Heart, X, MessageCircle, Ban, Flag, Star } from "lucide-react";
 import AgapeCross from "../components/AgapeCross";
 import DoveIcon from "../components/DoveIcon";
@@ -278,7 +279,7 @@ export default function Standouts() {
                   <div
                     key={i}
                     className={`photo-indicator ${i === photoIdx ? "active" : ""}`}
-                    onClick={() => setPhotoIdx(i)}
+                    {...pressable(() => setPhotoIdx(i), `Photo ${i + 1}`)}
                   />
                 ))}
               </div>
@@ -292,7 +293,7 @@ export default function Standouts() {
 
             {/* Shield icon */}
             <div className="photo-overlay-icons">
-              <button className="photo-overlay-btn" onClick={() => setShowReport(true)}>
+              <button aria-label="Report" className="photo-overlay-btn" onClick={() => setShowReport(true)}>
                 <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2.5}>
                   <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                 </svg>
@@ -339,10 +340,10 @@ export default function Standouts() {
                 </div>
               </div>
               <div className="id-actions">
-                <button className="id-btn id-skip" onClick={handleSkip}>
+                <button aria-label="Skip" className="id-btn id-skip" onClick={handleSkip}>
                   <X size={17} />
                 </button>
-                <button className="id-btn id-heart" onClick={() => onDovePress("profile", 0)}>
+                <button aria-label="Send a Dove" className="id-btn id-heart" onClick={() => onDovePress("profile", 0)}>
                   <DoveIcon size={18} strokeWidth={2} />
                 </button>
               </div>
@@ -379,10 +380,10 @@ export default function Standouts() {
                   ) : null}
                 </div>
                 <div className="prompt-side-actions">
-                  <button className="mini-btn prompt-skip" onClick={handleSkip}>
+                  <button aria-label="Skip" className="mini-btn prompt-skip" onClick={handleSkip}>
                     <X size={13} />
                   </button>
-                  <button className="mini-btn prompt-heart" onClick={() => onDovePress("prompt", i)}>
+                  <button aria-label="Send a Dove" className="mini-btn prompt-heart" onClick={() => onDovePress("prompt", i)}>
                     <DoveIcon size={14} strokeWidth={2} />
                   </button>
                 </div>
@@ -405,7 +406,7 @@ export default function Standouts() {
       </div>
 
       {likeChoice && (
-        <div className="like-choice-overlay" onClick={() => setLikeChoice(null)}>
+        <div data-dismiss className="like-choice-overlay" onClick={() => setLikeChoice(null)}>
           <div className="like-choice-sheet" onClick={(e) => e.stopPropagation()}>
             <button className="like-choice-btn dove-choice" onClick={onSendDove}>
               <DoveIcon size={20} strokeWidth={2} />
@@ -421,7 +422,7 @@ export default function Standouts() {
 
       {/* Comment modal */}
       {commentTarget && (
-        <div className="comment-modal-overlay" onClick={() => { setCommentTarget(null); setCommentText(""); }}>
+        <div data-dismiss className="comment-modal-overlay" onClick={() => { setCommentTarget(null); setCommentText(""); }}>
           <div className="comment-modal" onClick={(e) => e.stopPropagation()}>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, fontSize: 13, color: "#B8912A", fontWeight: 600 }}>
               <DoveIcon size={18} strokeWidth={2} />

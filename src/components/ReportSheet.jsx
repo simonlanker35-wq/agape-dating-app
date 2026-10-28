@@ -28,7 +28,7 @@ export default function ReportSheet({ profileName, onReport, onBlock, onClose })
 
   if (submitted) {
     return (
-      <div className="report-overlay" onClick={onClose}>
+      <div data-dismiss className="report-overlay" onClick={onClose}>
         <div className="report-sheet" onClick={(e) => e.stopPropagation()}>
           <div className="report-success">
             <svg width={32} height={32} viewBox="0 0 24 24" fill="none" stroke="#4a9d7f" strokeWidth={2.5}>
@@ -43,11 +43,11 @@ export default function ReportSheet({ profileName, onReport, onBlock, onClose })
   }
 
   return (
-    <div className="report-overlay" onClick={onClose}>
+    <div data-dismiss className="report-overlay" onClick={onClose}>
       <div className="report-sheet" onClick={(e) => e.stopPropagation()}>
         <div className="report-header">
           <h3>Report or Block</h3>
-          <button className="report-close-btn" onClick={onClose}>
+          <button aria-label="Close" className="report-close-btn" onClick={onClose}>
             <X size={20} />
           </button>
         </div>

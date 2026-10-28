@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { ChevronLeft, MessageCircle, Plus, Trash2, Flag, RefreshCw, Send, X, UserPlus, Check } from "lucide-react";
 import { useApp } from "../context/AppContext";
+import { pressable } from "../utils/a11y";
 import * as api from "../services/api";
 import { track } from "../services/posthog";
 import VerifiedBadge from "../components/VerifiedBadge";
@@ -198,7 +199,7 @@ function PostView({ postId, initial, onBack, onChanged }) {
       <div ref={listRef} style={{ flex: 1, minHeight: 0, overflowY: "auto", WebkitOverflowScrolling: "touch", padding: "16px 16px 20px" }}>
         {post && (
           <div style={{ marginBottom: 18 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, cursor: post.author?.id !== myId ? "pointer" : "default" }} onClick={() => openProfile(post.author)}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, cursor: post.author?.id !== myId ? "pointer" : "default" }} {...(post.author?.id !== myId ? pressable(() => openProfile(post.author)) : {})}>
               <Avatar profile={post.author} size={40} />
               <Byline profile={post.author} when={post.createdAt} mine={post.author?.id === myId} />
             </div>
@@ -215,7 +216,7 @@ function PostView({ postId, initial, onBack, onChanged }) {
           <div key={r.id} style={{ display: "flex", gap: 10, padding: "12px 0", borderTop: `1px solid ${C.border}` }}>
             <Avatar profile={r.author} size={32} onClick={r.author?.id !== myId ? () => openProfile(r.author) : undefined} />
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div onClick={() => openProfile(r.author)} style={{ cursor: r.author?.id !== myId ? "pointer" : "default" }}><Byline profile={r.author} when={r.createdAt} mine={r.author?.id === myId} /></div>
+              <div {...(r.author?.id !== myId ? pressable(() => openProfile(r.author)) : {})} style={{ cursor: r.author?.id !== myId ? "pointer" : "default" }}><Byline profile={r.author} when={r.createdAt} mine={r.author?.id === myId} /></div>
               <p style={{ fontSize: 14.5, color: C.text, fontFamily: FONT, lineHeight: 1.55, margin: "4px 0 0", whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{r.body}</p>
             </div>
             {r.author?.id === myId && (
@@ -244,7 +245,7 @@ function PostView({ postId, initial, onBack, onChanged }) {
         />
       )}
       {confirmDelete && (
-        <div onClick={() => setConfirmDelete(false)} style={{ position: "fixed", inset: 0, zIndex: 700, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+        <div data-dismiss onClick={() => setConfirmDelete(false)} style={{ position: "fixed", inset: 0, zIndex: 700, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
           <div onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderRadius: 20, padding: 22, width: "100%", maxWidth: 340 }}>
             <p style={{ fontSize: 17, fontWeight: 700, color: C.text, fontFamily: FONT, margin: "0 0 6px" }}>Delete this post?</p>
             <p style={{ fontSize: 13.5, color: C.sub, fontFamily: FONT, margin: "0 0 16px" }}>The replies go with it. This cannot be undone.</p>
@@ -280,7 +281,7 @@ function NewPostSheet({ onClose, onCreated, initialCategory }) {
   };
 
   return (
-    <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 650, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
+    <div data-dismiss onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 650, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}>
       <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 430, background: C.bg, borderRadius: "24px 24px 0 0", padding: "14px 16px max(20px, env(safe-area-inset-bottom, 20px))", maxHeight: "92dvh", display: "flex", flexDirection: "column" }}>
         <div style={{ width: 36, height: 4, borderRadius: 2, background: C.border, margin: "0 auto 12px" }} />
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
@@ -401,7 +402,7 @@ export default function Community() {
 
       {listProfile && <MemberProfile profile={listProfile} onClose={() => setListProfile(null)} />}
       {pointsInfo && (
-        <div onClick={() => setPointsInfo(false)} style={{ position: "fixed", inset: 0, zIndex: 650, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+        <div data-dismiss onClick={() => setPointsInfo(false)} style={{ position: "fixed", inset: 0, zIndex: 650, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
           <div onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderRadius: 20, padding: 22, width: "100%", maxWidth: 340, fontFamily: FONT }}>
             <p style={{ fontSize: 18, fontWeight: 800, color: C.text, margin: "0 0 6px" }}>Community points</p>
             <p style={{ fontSize: 13.5, color: C.sub, margin: "0 0 12px", lineHeight: 1.5 }}>They show next to your name and lift the posts people care about. You earn them by taking part:</p>

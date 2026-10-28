@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useApp } from "../context/AppContext";
+import { pressable } from "../utils/a11y";
 import { compressPhoto, sendTestPush, getPhotoOriginals, savePhotoOriginals, downscaleDataUrl, uploadMedia, deleteAccount } from "../services/api";
 import { PROMPT_CATEGORIES, TRAITS_POOL, LOOKING_FOR_POOL, DETAIL_FIELDS } from "../data/profiles";
 
@@ -526,7 +527,7 @@ function SettingsScreen({ onBack, initialSection = null }) {
     return (
       <div style={{ display: "flex", flexDirection: "column", height: "100%", background: C.bg }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "40px 16px 16px" }}>
-          <button
+          <button aria-label="Back"
             onClick={() => setSection(null)}
             style={{ width: 36, height: 36, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: C.card, color: C.text, border: "none", cursor: "pointer" }}
           >
@@ -937,7 +938,7 @@ function SettingsScreen({ onBack, initialSection = null }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: C.bg }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "40px 16px 16px" }}>
-        <button
+        <button aria-label="Back"
           onClick={onBack}
           style={{ width: 36, height: 36, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: C.card, color: C.text, border: "none", cursor: "pointer" }}
         >
@@ -1539,18 +1540,18 @@ export default function Profile() {
                       </button>
                       <div style={{ position: "absolute", bottom: 4, left: 4, display: "flex", gap: 2 }}>
                         {i > 0 && (
-                          <button onClick={() => handleMovePhoto(i, -1)} style={{ width: 22, height: 22, borderRadius: "50%", background: "rgba(0,0,0,0.6)", color: "white", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          <button aria-label="Move photo left" onClick={() => handleMovePhoto(i, -1)} style={{ width: 22, height: 22, borderRadius: "50%", background: "rgba(0,0,0,0.6)", color: "white", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
                             <svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={3}><path d="M15 18l-6-6 6-6" /></svg>
                           </button>
                         )}
                         {i < Math.min(photos.length, 4) - 1 && (
-                          <button onClick={() => handleMovePhoto(i, 1)} style={{ width: 22, height: 22, borderRadius: "50%", background: "rgba(0,0,0,0.6)", color: "white", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          <button aria-label="Move photo right" onClick={() => handleMovePhoto(i, 1)} style={{ width: 22, height: 22, borderRadius: "50%", background: "rgba(0,0,0,0.6)", color: "white", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
                             <svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={3}><path d="M9 18l6-6-6-6" /></svg>
                           </button>
                         )}
                       </div>
                       {photos.length > 1 && (
-                        <button
+                        <button aria-label="Remove photo"
                           onClick={() => handleRemovePhoto(i)}
                           style={{ position: "absolute", top: 4, right: 4, width: 22, height: 22, borderRadius: "50%", background: "rgba(239,68,68,0.9)", color: "white", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
                         >
@@ -1804,7 +1805,7 @@ export default function Profile() {
             ].map((item) => (
               <div
                 key={item.label}
-                onClick={() => openSettings(item.section)}
+                {...pressable(() => openSettings(item.section))}
                 style={{
                   borderRadius: 16,
                   overflow: "hidden",
@@ -1850,7 +1851,7 @@ export default function Profile() {
             ].map((item) => (
               <div
                 key={item.label}
-                onClick={() => openSettings(item.section)}
+                {...pressable(() => openSettings(item.section))}
                 style={{
                   borderRadius: 16,
                   overflow: "hidden",
@@ -1920,7 +1921,7 @@ export default function Profile() {
           try { await actions.updateProfile({ details }); } catch (err) { console.error("Detail save failed:", err); }
         };
         return (
-          <div onClick={() => setEditingDetail(null)} style={{ position: "fixed", inset: 0, maxWidth: 430, margin: "0 auto", zIndex: 9000, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "flex-end" }}>
+          <div data-dismiss onClick={() => setEditingDetail(null)} style={{ position: "fixed", inset: 0, maxWidth: 430, margin: "0 auto", zIndex: 9000, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "flex-end" }}>
             <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", borderRadius: "22px 22px 0 0", background: C.bg, padding: "14px 16px calc(20px + env(safe-area-inset-bottom, 0px))", maxHeight: "85vh", overflowY: "auto", display: "flex", flexDirection: "column" }}>
               <div style={{ width: 36, height: 4, borderRadius: 2, background: C.border, margin: "0 auto 14px" }} />
               <p style={{ fontSize: 17, fontWeight: 700, color: C.text, fontFamily: FONT, margin: "0 0 14px", letterSpacing: "-0.2px" }}>{row.label}</p>
@@ -2010,7 +2011,7 @@ export default function Profile() {
       )}
       {/* Prompt editor bottom sheet */}
       {editingPromptIdx !== null && editingPromptData && (
-        <div
+        <div data-dismiss
           style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", flexDirection: "column", justifyContent: "flex-end" }}
           onClick={() => { setEditingPromptIdx(null); setEditingPromptData(null); }}
         >
@@ -2154,7 +2155,7 @@ export default function Profile() {
 
       {/* Chip editor overlay */}
       {editingChips && (
-        <div
+        <div data-dismiss
           style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", flexDirection: "column", justifyContent: "flex-end" }}
           onClick={() => setEditingChips(null)}
         >

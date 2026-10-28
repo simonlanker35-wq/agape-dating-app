@@ -63,7 +63,7 @@ export default function CompatibilityRing({ profile, size = 44, light = false, s
       </span>
 
       {open && createPortal(
-        <div
+        <div data-dismiss
           onClick={close}
           onPointerDown={(e) => e.stopPropagation()}
           onTouchStart={(e) => e.stopPropagation()}

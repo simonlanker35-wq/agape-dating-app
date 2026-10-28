@@ -25,7 +25,7 @@ export default function ReviewAlert() {
   };
 
   return (
-    <div onClick={close} style={{ position: "fixed", inset: 0, zIndex: 10000, background: "rgba(0,0,0,0.45)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 28, animation: "overlayFadeIn 0.2s ease" }}>
+    <div data-dismiss onClick={close} style={{ position: "fixed", inset: 0, zIndex: 10000, background: "rgba(0,0,0,0.45)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 28, animation: "overlayFadeIn 0.2s ease" }}>
       <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 340, background: C.bg, borderRadius: 24, padding: "26px 24px 18px", textAlign: "center", boxShadow: "0 24px 60px rgba(0,0,0,0.3)", animation: "sheetSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1)" }}>
         <div style={{ position: "relative", width: 88, margin: "0 auto 16px" }}>
           {alert.url ? (

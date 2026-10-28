@@ -21,7 +21,7 @@ export default function RoseAlert() {
   const open = () => { track("rose_alert_opened"); dispatch({ type: "DISMISS_ROSE" }); dispatch({ type: "OPEN_CHAT", payload: { id: match.id, planDate: true } }); };
 
   return (
-    <div onClick={dismiss} style={{ position: "fixed", inset: 0, zIndex: 10000, background: "rgba(0,0,0,0.45)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 28, animation: "overlayFadeIn 0.2s ease" }}>
+    <div data-dismiss onClick={dismiss} style={{ position: "fixed", inset: 0, zIndex: 10000, background: "rgba(0,0,0,0.45)", backdropFilter: "blur(4px)", WebkitBackdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: 28, animation: "overlayFadeIn 0.2s ease" }}>
       <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 340, background: C.bg, borderRadius: 24, padding: "28px 24px 20px", textAlign: "center", boxShadow: "0 24px 60px rgba(0,0,0,0.3)", animation: "sheetSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1)" }}>
         <div style={{ position: "relative", width: 96, height: 96, margin: "0 auto 16px" }}>
           {photo ? (

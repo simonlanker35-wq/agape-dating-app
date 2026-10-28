@@ -101,7 +101,9 @@ async function run() {
     const matchedWith = new Set(be.db.matches.filter((m) => m.user1 === idOf(n) || m.user2 === idOf(n)).map((m) => (m.user1 === idOf(n) ? m.user2 : m.user1)));
     const expected = be.db.likes.filter((l) => l.to_user === idOf(n) && !matchedWith.has(l.from_user)).length;
     check(`sparks ${n}: count ${likes.length} = ${expected}`, likes.length === expected);
-    check(`sparks ${n}: sender profiles loaded`, likes.every((l) => l.profile && l.profile.name));
+    // unlocked likes carry the sender's profile; locked ones carry no name, photo or sender id
+    check(`sparks ${n}: sender profiles loaded`, likes.every((l) => l.locked || (l.profile && l.profile.name)));
+    check(`sparks ${n}: locked likes hide who`, likes.filter((l) => l.locked).every((l) => !l.profile.name && !l.profile.photos.length && !l.fromUser));
     if (likes.length >= 2) {
       // ten starter reveals for everyone, then one a week for free members
       const canReveal = Math.min(likes.length, 12);
