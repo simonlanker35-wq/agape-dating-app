@@ -5,6 +5,7 @@ import { ChevronRight, ChevronLeft, Sparkles, Church, X, Check, Plus, Camera, Zo
 import AgapeCross from "../components/AgapeCross";
 import LocationPicker from "../components/LocationPicker";
 import PasswordInput from "../components/PasswordInput";
+import { passwordProblem, isLeakedPassword, PASSWORD_HINT, LEAKED_MESSAGE } from "../utils/password";
 import NumberField from "../components/NumberField";
 import { downscaleDataUrl, savePhotoOriginals } from "../services/api";
 import { track } from "../services/posthog";
@@ -258,9 +259,11 @@ export default function Onboarding() {
   const handleEmailSignup = async () => {
     const { email, password, confirm } = emailSignup;
     if (!EMAIL_RE.test(email)) { setEmailSignup((s) => ({ ...s, error: "Enter a valid email address" })); return; }
-    if (password.length < 6) { setEmailSignup((s) => ({ ...s, error: "Password must be at least 6 characters" })); return; }
+    const pwProblem = passwordProblem(password);
+    if (pwProblem) { setEmailSignup((s) => ({ ...s, error: pwProblem })); return; }
     if (password !== confirm) { setEmailSignup((s) => ({ ...s, error: "Passwords don't match" })); return; }
     setSubmitting(true);
+    if (await isLeakedPassword(password)) { setEmailSignup((s) => ({ ...s, error: LEAKED_MESSAGE })); setSubmitting(false); return; }
     try {
       const res = await actions.signUpWithEmail(email.trim(), password);
       if (res.confirmed) {
@@ -364,10 +367,12 @@ export default function Onboarding() {
   };
 
   const handleSetPassword = async () => {
-    if (password.length < 6) { setPasswordError("Password must be at least 6 characters"); return; }
+    const pwProblem = passwordProblem(password);
+    if (pwProblem) { setPasswordError(pwProblem); return; }
     if (password !== passwordConfirm) { setPasswordError("Passwords don't match"); return; }
     setSubmitting(true);
     setPasswordError("");
+    if (await isLeakedPassword(password)) { setPasswordError(LEAKED_MESSAGE); setSubmitting(false); return; }
     try {
       await actions.setPassword(password);
       track("password_set");
@@ -511,10 +516,12 @@ export default function Onboarding() {
   };
 
   const handleResetPassword = async () => {
-    if (password.length < 6) { setResetError("Password must be at least 6 characters"); return; }
+    const pwProblem = passwordProblem(password);
+    if (pwProblem) { setResetError(pwProblem); return; }
     if (password !== passwordConfirm) { setResetError("Passwords don't match"); return; }
     setSubmitting(true);
     setResetError("");
+    if (await isLeakedPassword(password)) { setResetError(LEAKED_MESSAGE); setSubmitting(false); return; }
     try {
       await actions.completePasswordReset(password);
       track("password_reset_success");
@@ -645,7 +652,7 @@ export default function Onboarding() {
       case "name": return form.name.trim().length > 0;
       case "phone": return phoneNum.length >= 7;
       case "verify": return otpDigits.every(d => d !== "");
-      case "password": return password.length >= 6 && password === passwordConfirm;
+      case "password": return !passwordProblem(password) && password === passwordConfirm;
       case "birthday": {
         const age = calcAge();
         return age !== null && age >= 18 && age < 120;
@@ -774,15 +781,16 @@ export default function Onboarding() {
               />
               <PasswordInput
                 value={emailSignup.password} onChange={(v) => setEmailSignup((s) => ({ ...s, password: v, error: "" }))}
-                placeholder="Password (min. 6 characters)" style={{ ...inputStyle, marginBottom: 10 }} iconColor={S.sub}
+                placeholder="Password" style={{ ...inputStyle, marginBottom: 10 }} iconColor={S.sub}
               />
               <PasswordInput
                 value={emailSignup.confirm} onChange={(v) => setEmailSignup((s) => ({ ...s, confirm: v, error: "" }))}
                 onKeyDown={(e) => e.key === "Enter" && handleEmailSignup()}
                 placeholder="Confirm password" style={inputStyle} iconColor={S.sub}
               />
+              <p style={{ color: S.sub, fontSize: 13, marginTop: 8 }}>{emailSignup.password && passwordProblem(emailSignup.password) ? passwordProblem(emailSignup.password) : PASSWORD_HINT}</p>
               {emailSignup.error && <p style={{ color: "#e53e3e", fontSize: 14, marginTop: 10 }}>{emailSignup.error}</p>}
-              <BigBtn onClick={handleEmailSignup} disabled={submitting || !emailSignup.email || emailSignup.password.length < 6 || emailSignup.password !== emailSignup.confirm}>
+              <BigBtn onClick={handleEmailSignup} disabled={submitting || !emailSignup.email || !!passwordProblem(emailSignup.password) || emailSignup.password !== emailSignup.confirm}>
                 {submitting ? "Creating account…" : "Continue"}
               </BigBtn>
             </>
@@ -868,13 +876,14 @@ export default function Onboarding() {
             <>
               <PasswordInput
                 value={password} onChange={(v) => { setPassword(v); setResetError(""); }}
-                placeholder="New password (min. 6 characters)" style={{ ...inputStyle, marginBottom: 10 }} autoFocus iconColor={S.sub}
+                placeholder="New password" style={{ ...inputStyle, marginBottom: 10 }} autoFocus iconColor={S.sub}
               />
               <PasswordInput
                 value={passwordConfirm} onChange={(v) => { setPasswordConfirm(v); setResetError(""); }}
                 onKeyDown={(e) => e.key === "Enter" && handleResetPassword()}
                 placeholder="Confirm new password" style={inputStyle} iconColor={S.sub}
               />
+              <p style={{ color: S.sub, fontSize: 13, marginTop: 8 }}>{password && passwordProblem(password) ? passwordProblem(password) : PASSWORD_HINT}</p>
             </>
           )}
 
@@ -897,7 +906,7 @@ export default function Onboarding() {
             </BigBtn>
           )}
           {resetStep === "password" && (
-            <BigBtn onClick={handleResetPassword} disabled={submitting || password.length < 6 || password !== passwordConfirm}>
+            <BigBtn onClick={handleResetPassword} disabled={submitting || !!passwordProblem(password) || password !== passwordConfirm}>
               {submitting ? "Saving…" : "Save new password"}
             </BigBtn>
           )}
@@ -1069,7 +1078,7 @@ export default function Onboarding() {
           id="ob-pw1"
           value={password}
           onChange={(v) => { setPassword(v); setPasswordError(""); }}
-          placeholder="Password (min. 6 characters)"
+          placeholder="Password"
           style={{ width: "100%", padding: "16px", background: S.surface, border: `1.5px solid ${S.border}`, borderRadius: 12, fontSize: 18, color: S.text, outline: "none", fontFamily: "'Outfit', system-ui, sans-serif", marginBottom: 10 }}
           iconColor={S.sub}
         />
@@ -1081,6 +1090,7 @@ export default function Onboarding() {
           style={{ width: "100%", padding: "16px", background: S.surface, border: `1.5px solid ${S.border}`, borderRadius: 12, fontSize: 18, color: S.text, outline: "none", fontFamily: "'Outfit', system-ui, sans-serif" }}
           iconColor={S.sub}
         />
+        <p style={{ color: S.sub, fontSize: 13, marginTop: 8 }}>{password && passwordProblem(password) ? passwordProblem(password) : PASSWORD_HINT}</p>
         {passwordError && <p style={{ color: "#e53e3e", fontSize: 14, marginTop: 8 }}>{passwordError}</p>}
         <BigBtn onClick={handleSetPassword} disabled={submitting || !canProceed()}>
           {submitting ? "Setting password…" : "Continue"}

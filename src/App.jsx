@@ -1,3 +1,4 @@
+import { passwordProblem, isLeakedPassword, PASSWORD_HINT, LEAKED_MESSAGE } from "./utils/password";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { AppProvider, useApp } from "./context/AppContext";
 import Navigation from "./components/Navigation";
@@ -29,9 +30,11 @@ function RecoveryModal() {
   if (!state.passwordRecovery) return null;
 
   const save = async () => {
-    if (pw.length < 6) { setErr("Password must be at least 6 characters"); return; }
+    const pwProblem = passwordProblem(pw);
+    if (pwProblem) { setErr(pwProblem); return; }
     if (pw !== pw2) { setErr("Passwords don't match"); return; }
     setBusy(true);
+    if (await isLeakedPassword(pw)) { setErr(LEAKED_MESSAGE); setBusy(false); return; }
     try { await actions.setPassword(pw); actions.clearRecovery(); }
     catch (e) { setErr(e.message); }
     setBusy(false);
@@ -45,6 +48,7 @@ function RecoveryModal() {
         <p style={{ fontSize: 13, color: "#8C857C", margin: "0 0 16px" }}>You opened a password reset link.</p>
         <PasswordInput value={pw} onChange={(v) => { setPw(v); setErr(""); }} placeholder="New password" style={{ ...inputStyle, marginBottom: 10 }} autoFocus />
         <PasswordInput value={pw2} onChange={(v) => { setPw2(v); setErr(""); }} placeholder="Confirm new password" style={inputStyle} onKeyDown={(e) => e.key === "Enter" && save()} />
+        <p style={{ fontSize: 12, color: "#8C857C", margin: "8px 0 0" }}>{pw && passwordProblem(pw) ? passwordProblem(pw) : PASSWORD_HINT}</p>
         {err && <p style={{ fontSize: 13, color: "#EF4444", margin: "8px 0 0" }}>{err}</p>}
         <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
           <button onClick={() => actions.clearRecovery()} style={{ flex: 1, padding: "12px 0", borderRadius: 12, fontSize: 14, fontWeight: 600, background: "#F4F2EE", color: "#8C857C", border: "none", cursor: "pointer" }}>Later</button>
