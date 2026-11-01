@@ -63,3 +63,25 @@ async function changeRenewal(action) {
 
 export const cancelSubscription = () => changeRenewal("cancel");
 export const resumeSubscription = () => changeRenewal("resume");
+
+// Looks up a paid Agape+ subscription in Stripe and links it to this account again.
+// Resolves to the subscription status, with restored: false when nothing was found.
+export async function restorePurchases() {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error("Not authenticated");
+
+  const resp = await fetch(
+    `https://ksscosugtbdzgekrszck.supabase.co/functions/v1/stripe-checkout`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+      body: JSON.stringify({ action: "restore" }),
+    }
+  );
+  const body = await resp.json().catch(() => ({}));
+  if (!resp.ok) {
+    // The server function hasn't been updated yet and treats this as a checkout without a plan
+    throw new Error(body.error === "Missing priceId" ? "Restoring isn't available yet. Please try again later." : body.error || "Could not restore your purchase");
+  }
+  return body;
+}

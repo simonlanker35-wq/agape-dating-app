@@ -46,7 +46,7 @@ import ProfileSheet from "../components/ProfileSheet";
 import AudioPlayer from "../components/AudioPlayer";
 import VoiceRecorder from "../components/VoiceRecorder";
 import { extForMime } from "../services/media";
-import { redirectToCheckout, getSubscriptionStatus, cancelSubscription, resumeSubscription } from "../services/stripe";
+import { redirectToCheckout, getSubscriptionStatus, cancelSubscription, resumeSubscription, restorePurchases } from "../services/stripe";
 import { getDovesRemaining } from "../services/limits";
 import * as api from "../services/api";
 import { resetTours } from "../components/TutorialOverlay";
@@ -294,10 +294,32 @@ function SubscriptionStatusCard({ subStatus, onChange }) {
 }
 
 function SubscriptionPlans({ initialStatus }) {
-  const { state } = useApp();
+  const { state, dispatch } = useApp();
   const [loading, setLoading] = useState(null);
   const [subStatus, setSubStatus] = useState(initialStatus === "active" ? { status: "active" } : null);
   const [error, setError] = useState(null);
+  const [restoring, setRestoring] = useState(false);
+  const [restoreNote, setRestoreNote] = useState("");
+
+  const handleRestore = async () => {
+    setRestoring(true);
+    setError(null);
+    setRestoreNote("");
+    try {
+      const next = await restorePurchases();
+      track("subscription_restore_tapped", { restored: !!next.restored });
+      if (next.restored) {
+        setSubStatus(next);
+        dispatch({ type: "SET_SUBSCRIPTION_STATUS", payload: "active" });
+        setRestoreNote("Agape+ is back on your account.");
+      } else {
+        setRestoreNote("We couldn't find an Agape+ purchase for this account. If you paid with a different email, write to agape_dating@outlook.com and we'll sort it out.");
+      }
+    } catch (err) {
+      setError(err.message);
+    }
+    setRestoring(false);
+  };
 
   useEffect(() => {
     getSubscriptionStatus().then((s) => { if (s) setSubStatus(s); }).catch(() => {});
@@ -375,6 +397,12 @@ function SubscriptionPlans({ initialStatus }) {
           </button>
         ))}
       </div>
+      {subStatus?.status !== "active" && (
+        <button onClick={handleRestore} disabled={restoring} style={{ display: "block", margin: "0 auto", background: "none", border: "none", padding: "10px 12px", fontSize: 13, fontWeight: 700, color: C.primary, cursor: restoring ? "default" : "pointer", opacity: restoring ? 0.6 : 1 }}>
+          {restoring ? "Looking for your purchase…" : "Restore purchase"}
+        </button>
+      )}
+      {restoreNote && <p role="status" style={{ fontSize: 13, color: subStatus?.status === "active" ? "#2E7D32" : C.sub, textAlign: "center", lineHeight: 1.5, margin: "0 8px 4px" }}>{restoreNote}</p>}
       <div style={{ padding: "8px 0" }}>
         <p style={{ fontSize: 10, fontWeight: 600, color: C.sub, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>What you get</p>
         {["15 likes per day", "3 Doves per week", "See everyone who likes you, right away"].map((feat) => (

@@ -120,6 +120,61 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Restore: find this member's paid subscription in Stripe even when the profile lost its link
+    // (missed webhook, cleared customer id, paid while signed in another way). A Stripe customer
+    // counts only if it carries this member's user id, or has this member's login email once that
+    // email is confirmed, and no other live account owns it.
+    if (body.action === "restore") {
+      const candidates = new Map<string, Stripe.Customer>();
+      const stored = await ownCustomerId();
+      if (stored) candidates.set(stored, (await stripe.customers.retrieve(stored)) as Stripe.Customer);
+      try {
+        const found = await stripe.customers.search({ query: `metadata['supabase_user_id']:'${user.id}'`, limit: 10 });
+        for (const c of found.data) candidates.set(c.id, c);
+      } catch (_) {
+        // search unavailable: the email lookup below still runs
+      }
+      const email = (user.email || "").toLowerCase();
+      if (email && user.email_confirmed_at) {
+        const byEmail = await stripe.customers.list({ email, limit: 10 });
+        for (const c of byEmail.data) candidates.set(c.id, c);
+      }
+
+      for (const c of candidates.values()) {
+        const owner = c.metadata?.supabase_user_id;
+        if (owner && owner !== user.id) {
+          const { data: other } = await supabase.from("profiles").select("id").eq("id", owner).maybeSingle();
+          if (other) continue;
+        }
+        const { data: linked } = await supabase.from("profiles").select("id").eq("stripe_customer_id", c.id).neq("id", user.id).limit(1);
+        if (linked?.length) continue;
+
+        const subs = await stripe.subscriptions.list({ customer: c.id, status: "all", limit: 10 });
+        const sub = subs.data.find((s) => s.status === "active" || s.status === "trialing");
+        if (!sub) continue;
+
+        if (owner !== user.id) await stripe.customers.update(c.id, { metadata: { supabase_user_id: user.id } });
+        await supabase
+          .from("profiles")
+          .update({ stripe_customer_id: c.id, subscription_status: "active", subscription_id: sub.id })
+          .eq("id", user.id);
+        return new Response(
+          JSON.stringify({
+            restored: true,
+            status: "active",
+            plan: sub.items.data[0]?.price?.id ?? null,
+            currentPeriodEnd: sub.current_period_end,
+            cancelAtPeriodEnd: sub.cancel_at_period_end,
+            startedAt: sub.start_date,
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      return new Response(JSON.stringify({ restored: false, status: "none", plan: null }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { priceId } = body;
     if (!priceId) throw new Error("Missing priceId");
     if (!ALLOWED_PRICES.includes(priceId)) throw new Error("Unknown plan");
