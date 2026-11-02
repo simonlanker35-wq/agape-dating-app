@@ -19,9 +19,9 @@ const C = { primary: "#B8912A", text: "#1A1612", sub: "#8C857C", border: "#E8E4D
 const TOURS = {
   discover: [
     { selector: 'button[aria-label$="Tap to see why."]', title: "How well you match", text: "The ring shows your compatibility in percent, based on faith, what you both want, lifestyle and shared interests. Tap it to see what stands out." },
-    { selector: 'button[aria-label="Like"]', title: "Like", text: "Like this person. You have 8 likes a day — 15 with Agape+. The number on the button is what's left today." },
-    { selector: 'button[aria-label="Send a Dove"]', title: "Send a Dove", text: "A Dove says you're serious: you're revealed to them instantly, ahead of everyone else. Send it on its own or with a comment. 1 per week, 3 with Agape+." },
-    { selector: ".prompt-heart", title: "Like a prompt", text: "Tap the heart on a prompt to like that exact thing and add a comment. A comment gives them something to answer." },
+    { selector: 'button[aria-label="Like"]', title: "Like", text: "Like this person: pick 3 to 5 things you like about them, then write a comment of at least 3 words. You have 8 likes a day — 15 with Agape+. The number on the button is what's left today." },
+    { selector: 'button[aria-label="Send a Dove"]', title: "Send a Dove", text: "A Dove says you're serious: you're revealed to them instantly, ahead of everyone else. Like a like, it comes with your picks and a comment. 1 per week, 3 with Agape+." },
+    { selector: ".prompt-heart", title: "Like a prompt", text: "Tap the heart on a prompt to like that exact thing. Your comment answers it, so they have something to reply to." },
     { selector: ".discover-skip-btn", title: "Not for you?", text: "Skip and move on — they won't know." },
     { selector: 'button[aria-label="Safety"]', title: "Safety", text: "Report or block anyone, at any time. Reports reach our team." },
     { selector: 'button[aria-label="Filters"]', title: "Filters", text: "Set the age range, distance and denominations you want to see, and preferences such as children or church attendance." },
@@ -33,10 +33,10 @@ const TOURS = {
     { selector: 'button[aria-label="Video call"]', title: "Video call", text: "Rather meet on a call first? Schedule one here — the planning clock pauses until after the call." },
   ],
   standouts: [
-    { full: true, title: "Chosen", text: "Every Wednesday we pick the one profile that matches you best on faith, what you both want, lifestyle and shared interests. Tap the ring to see why. Send them a Dove if you like what you see." },
+    { full: true, title: "Chosen", text: "Every Wednesday we pick the one profile that matches you best on faith, what you both want, lifestyle and shared interests. Tap the ring to see why. Send them a Dove, with your picks and a comment, if you like what you see." },
   ],
   likes: [
-    { full: true, title: "Sparks", text: "People who liked you land here. Your first 10 reveals are free, then one a week — with Agape+ you see everyone. Like back to match." },
+    { full: true, title: "Sparks", text: "People who liked you land here. Your first 10 reveals are free, then one a week — with Agape+ you see everyone. Open one, pick 3 to 5 things you like about them and their photos clear. Like back to match." },
   ],
   "discover-friends": [
     { full: true, title: "Meet Christian friends", text: "Seek now shows people who are here for friendship — men and women near you. Wave at someone you'd like to know; if they wave back, you're friends and can chat." },

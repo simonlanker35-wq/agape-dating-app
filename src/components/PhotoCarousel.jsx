@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from "react";
 
 // Swipeable photos for a full profile view: scroll-snap left and right, bars at the top show where you are,
 // and arrows appear on a computer. Anything passed as children sits on top (back button, name, badges).
-export default function PhotoCarousel({ photos = [], name = "", maxHeight = "60vh", children, topOffset = 14 }) {
+// blurred: the photos are shown out of focus (a Spark before you've picked what you like about them).
+export default function PhotoCarousel({ photos = [], name = "", maxHeight = "60vh", children, topOffset = 14, blurred = false }) {
   const fallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(name || "?")}&size=600&background=F4F2EE&color=B8912A`;
   const list = photos.filter(Boolean).length ? photos.filter(Boolean) : [fallback];
   const scroller = useRef(null);
@@ -46,7 +47,7 @@ export default function PhotoCarousel({ photos = [], name = "", maxHeight = "60v
             alt={i === 0 ? name : `${name}, photo ${i + 1}`}
             draggable={false}
             loading={i === 0 ? "eager" : "lazy"}
-            style={{ flex: "0 0 100%", width: "100%", height: "100%", objectFit: "cover", objectPosition: "50% 20%", scrollSnapAlign: "start", scrollSnapStop: "always", display: "block", userSelect: "none" }}
+            style={{ flex: "0 0 100%", width: "100%", height: "100%", objectFit: "cover", objectPosition: "50% 20%", scrollSnapAlign: "start", scrollSnapStop: "always", display: "block", userSelect: "none", filter: blurred ? "blur(26px)" : "none", transform: blurred ? "scale(1.15)" : "none", transition: "filter 0.6s ease, transform 0.6s ease" }}
             onError={(e) => { if (e.currentTarget.src !== fallback) e.currentTarget.src = fallback; }}
           />
         ))}

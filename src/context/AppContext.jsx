@@ -688,11 +688,11 @@ export function AppProvider({ children }) {
       return profile;
     },
 
-    likeProfile: async (profileId, targetType, targetIndex, comment, isDove) => {
+    likeProfile: async (profileId, targetType, targetIndex, comment, isDove, highlights = []) => {
       const friends = modeRef.current === "friends";
       const kind = api.kindOf(modeRef.current);
-      const res = await api.sendLike(profileId, targetType, targetIndex, comment, friends ? false : isDove, kind);
-      track(friends ? "wave_sent" : "like_sent", { targetType, isDove: !!isDove && !friends, hasComment: !!comment });
+      const res = await api.sendLike(profileId, targetType, targetIndex, comment, friends ? false : isDove, kind, friends ? [] : highlights);
+      track(friends ? "wave_sent" : "like_sent", { targetType, isDove: !!isDove && !friends, hasComment: !!comment, highlights: highlights.length });
       let matchData = null;
       if (res.matched) {
         track(friends ? "friend_connected" : "match_created", { fromDiscover: true });
@@ -728,12 +728,13 @@ export function AppProvider({ children }) {
       dispatch({ type: "SKIP_PROFILE" });
     },
 
-    matchFromLike: async (like) => {
+    // highlights: what you picked about them before accepting (dating Sparks)
+    matchFromLike: async (like, highlights = []) => {
       let res;
       const kind = like.kind || api.kindOf(modeRef.current);
       const friends = kind === "friend";
       try {
-        res = await api.sendLike(like.fromId, "profile", 0, null, false, kind);
+        res = await api.sendLike(like.fromId, "profile", 0, null, false, kind, friends ? [] : highlights);
       } catch (err) {
         if (err.message === "Already liked") {
           // My like exists already; the database creates the match if theirs does too

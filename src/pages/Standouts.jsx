@@ -14,6 +14,7 @@ import Pip from "../components/Pip";
 import ReportSheet from "../components/ReportSheet";
 import { getDovesRemaining, recordDove } from "../services/limits";
 import { track } from "../services/posthog";
+import LikeComposer from "../components/LikeComposer";
 
 function haversine(lat1, lon1, lat2, lon2) {
   const R = 6371;
@@ -36,9 +37,8 @@ export default function Standouts() {
   const [photoIdx, setPhotoIdx] = useState(0);
   const [likeFlash, setLikeFlash] = useState(null);
   const [likeError, setLikeError] = useState("");
-  const [likeChoice, setLikeChoice] = useState(null);
-  const [commentTarget, setCommentTarget] = useState(null);
-  const [commentText, setCommentText] = useState("");
+  // { type, index } while the pick-and-comment sheet for a Dove is open
+  const [composer, setComposer] = useState(null);
   const [cardEnter, setCardEnter] = useState(true);
   const [showReport, setShowReport] = useState(false);
   const [localLikes, setLocalLikes] = useState(new Set());
@@ -157,12 +157,11 @@ export default function Standouts() {
   const photos = profile.photos || [];
   const prompts = (profile.prompts || []).filter((p) => p.prompt && (p.answer || p.voice?.url));
 
-  const handleLike = async (targetType, targetIndex, comment = null) => {
+  const handleLike = async (targetType, targetIndex, comment = null, highlights = []) => {
     if (standoutLikesLeft <= 0) return;
     const flashType = comment ? "comment" : "dove";
     const likedId = profile.id;
-    setCommentTarget(null);
-    setCommentText("");
+    setComposer(null);
     setLikeFlash(flashType);
     recordDove();
     setStandoutLikesLeft(getDovesRemaining(isPremium));
@@ -173,7 +172,7 @@ export default function Standouts() {
     setTimeout(async () => {
       setDoveSentData(doveData);
       try {
-        await actions.likeProfile(likedId, targetType, targetIndex, comment, true);
+        await actions.likeProfile(likedId, targetType, targetIndex, comment, true, highlights);
         setLikeFlash(null);
       } catch (err) {
         console.error("Like failed:", err);
@@ -189,9 +188,7 @@ export default function Standouts() {
   const handleSkip = () => {
     track("chosen_skipped");
     setPhotoIdx(0);
-    setLikeChoice(null);
-    setCommentTarget(null);
-    setCommentText("");
+    setComposer(null);
     setLocalLikes((prev) => new Set(prev).add(profile.id));
     actions.skipProfile(profile.id).catch(() => {});
   };
@@ -218,27 +215,14 @@ export default function Standouts() {
   };
 
   const onDovePress = (type, index) => {
+    if (standoutLikesLeft <= 0) { setLikeError("No Doves left this week"); setTimeout(() => setLikeError(""), 4000); return; }
     track("dove_options_opened", { targetType: type });
-    setLikeChoice({ type, index });
+    setComposer({ type, index });
   };
 
-  const onSendDove = () => {
-    track("dove_sent");
-    handleLike(likeChoice.type, likeChoice.index);
-    setLikeChoice(null);
-  };
-
-  const onAddComment = () => {
-    track("dove_comment_modal_opened");
-    setCommentTarget(likeChoice);
-    setLikeChoice(null);
-  };
-
-  const handleComment = () => {
-    if (commentText.trim()) {
-      track("dove_comment_sent");
-      handleLike(commentTarget.type, commentTarget.index, commentText.trim());
-    }
+  const onComposerSend = ({ comment, highlights }) => {
+    track("dove_comment_sent", { highlights: highlights.length });
+    handleLike(composer.type, composer.index, comment, highlights);
   };
 
   return (
@@ -405,52 +389,14 @@ export default function Standouts() {
         </div>
       </div>
 
-      {likeChoice && (
-        <div data-dismiss className="like-choice-overlay" onClick={() => setLikeChoice(null)}>
-          <div className="like-choice-sheet" onClick={(e) => e.stopPropagation()}>
-            <button className="like-choice-btn dove-choice" onClick={onSendDove}>
-              <DoveIcon size={20} strokeWidth={2} />
-              <span>Send Dove</span>
-            </button>
-            <button className="like-choice-btn comment-choice" onClick={onAddComment}>
-              <MessageCircle size={18} />
-              <span>Add a Comment</span>
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Comment modal */}
-      {commentTarget && (
-        <div data-dismiss className="comment-modal-overlay" onClick={() => { setCommentTarget(null); setCommentText(""); }}>
-          <div className="comment-modal" onClick={(e) => e.stopPropagation()}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, fontSize: 13, color: "#B8912A", fontWeight: 600 }}>
-              <DoveIcon size={18} strokeWidth={2} />
-              Sending with a Dove
-            </div>
-            <h3>
-              {commentTarget.type === "prompt"
-                ? profile.prompts[commentTarget.index]?.prompt
-                : `Say something to ${profile.name}...`}
-            </h3>
-            <p className="comment-hint">A comment gives them something to answer</p>
-            <textarea
-              value={commentText}
-              onChange={(e) => setCommentText(e.target.value)}
-              placeholder="Add a comment…"
-              maxLength={300}
-              autoFocus
-              rows={3}
-            />
-            <button
-              className="send-comment-btn"
-              onClick={handleComment}
-              disabled={!commentText.trim()}
-            >
-              Send Dove with Comment
-            </button>
-          </div>
-        </div>
+      {composer && (
+        <LikeComposer
+          profile={profile}
+          target={composer}
+          doveLocked
+          onSend={onComposerSend}
+          onClose={() => setComposer(null)}
+        />
       )}
 
       {showReport && (

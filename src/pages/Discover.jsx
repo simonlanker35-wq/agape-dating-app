@@ -17,6 +17,7 @@ import ReportSheet from "../components/ReportSheet";
 import { getLikesRemaining, getDovesRemaining, recordLike, recordDove, getWavesRemaining, recordWave, LIMITS } from "../services/limits";
 import * as api from "../services/api";
 import { track } from "../services/posthog";
+import LikeComposer from "../components/LikeComposer";
 
 function haversine(lat1, lon1, lat2, lon2) {
   const R = 6371;
@@ -35,7 +36,8 @@ export default function Discover() {
   const [commentTarget, setCommentTarget] = useState(null);
   const [commentText, setCommentText] = useState("");
   const [showDove, setShowDove] = useState(false);
-  const [doveSheet, setDoveSheet] = useState(false);
+  // Dating likes and Doves: { type, index, isDove } while the pick-and-comment sheet is open
+  const [composer, setComposer] = useState(null);
   const [likeFlash, setLikeFlash] = useState(null);
   const [likeError, setLikeError] = useState("");
   const [cardEnter, setCardEnter] = useState(true);
@@ -155,7 +157,7 @@ export default function Discover() {
     );
   }
 
-  const handleLike = async (targetType, targetIndex, comment = null, isDove = false) => {
+  const handleLike = async (targetType, targetIndex, comment = null, isDove = false, highlights = []) => {
     if (isDove && dovesLeft <= 0) return;
     if (!isDove && likesLeft <= 0) return;
     const flashType = comment ? "comment" : isDove ? "dove" : friends ? "wave" : "heart";
@@ -173,7 +175,7 @@ export default function Discover() {
     setTimeout(async () => {
       setLocalLikes((prev) => new Set(prev).add(likedId));
       try {
-        const res = await actions.likeProfile(likedId, targetType, targetIndex, comment, isDove);
+        await actions.likeProfile(likedId, targetType, targetIndex, comment, isDove, highlights);
         setLikeFlash(null);
 
       } catch (err) {
@@ -182,7 +184,8 @@ export default function Discover() {
         setLocalLikes((prev) => { const n = new Set(prev); n.delete(likedId); return n; });
         // The database refused it because the allowance is used up: show that, and correct the counters
         const limited = api.isLimitError(err);
-        setLikeError(limited ? err.message : "Your like didn't go through — please try again");
+        const rule = /3 to 5 things|at least 3 words/.test(err?.message || "");
+        setLikeError(limited || rule ? err.message : "Your like didn't go through — please try again");
         if (limited) { actions.refreshUsage(); }
         setTimeout(() => setLikeError(""), 4000);
       }
@@ -207,7 +210,25 @@ export default function Discover() {
 
   const onHeartPress = (type, index) => {
     track("like_options_opened", { targetType: type });
-    setLikeChoice({ type, index });
+    // Friends side: a wave is still one tap (or a wave with a comment)
+    if (friends) { if (likesLeft > 0) setLikeChoice({ type, index }); return; }
+    // Dating: every like comes with picks and a comment. Out of likes but a Dove left: send a Dove.
+    if (likesLeft <= 0 && dovesLeft <= 0) { setLikeError("You've used all your likes for today"); setTimeout(() => setLikeError(""), 4000); return; }
+    setComposer({ type, index, isDove: likesLeft <= 0 });
+  };
+
+  const onDovePress = () => {
+    track("dove_button_tapped", { source: "discover" });
+    if (dovesLeft <= 0) { setLikeError("No Doves left this week"); setTimeout(() => setLikeError(""), 4000); return; }
+    setComposer({ type: "profile", index: 0, isDove: true });
+  };
+
+  const onComposerSend = ({ comment, highlights, isDove }) => {
+    track("comment_sent", { isDove, targetType: composer.type, highlights: highlights.length });
+    if (isDove) track("dove_sent", { source: "discover" });
+    const { type, index } = composer;
+    setComposer(null);
+    handleLike(type, index, comment, isDove, highlights);
   };
 
   const onSendHeart = () => {
@@ -220,21 +241,6 @@ export default function Discover() {
     track("comment_modal_opened");
     setCommentTarget(likeChoice);
     setLikeChoice(null);
-  };
-
-  const onSendDove = () => {
-    if (dovesLeft <= 0) return;
-    track("dove_sent", { source: "discover" });
-    setDoveSheet(false);
-    handleLike("profile", 0, null, true);
-  };
-
-  const onDoveWithComment = () => {
-    if (dovesLeft <= 0) return;
-    track("dove_comment_modal_opened", { source: "discover" });
-    setDoveSheet(false);
-    setShowDove(true);
-    setCommentTarget({ type: "profile", index: 0 });
   };
 
 
@@ -379,7 +385,7 @@ export default function Discover() {
               <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
                 <div style={{ display: "flex", gap: 20 }}>
                   <button
-                    onClick={() => likesLeft > 0 && onHeartPress("profile", 0)}
+                    onClick={() => onHeartPress("profile", 0)}
                     aria-label={friends ? "Wave" : "Like"}
                     style={{ width: 56, height: 38, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", background: "#B8912A", opacity: likesLeft > 0 ? 1 : 0.4, border: "none", cursor: "pointer", boxShadow: "0 3px 12px rgba(184,145,42,0.45)", opacity: likesLeft > 0 ? 1 : 0.5, position: "relative" }}
                   >
@@ -388,7 +394,7 @@ export default function Discover() {
                   </button>
                   {!friends && (
                   <button
-                    onClick={() => { track("dove_button_tapped", { source: "discover" }); setDoveSheet(true); }}
+                    onClick={onDovePress}
                     aria-label="Send a Dove"
                     style={{ width: 56, height: 38, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", background: "#B8912A", border: "none", cursor: "pointer", boxShadow: "0 3px 12px rgba(184,145,42,0.45)", opacity: dovesLeft > 0 ? 1 : 0.5, position: "relative" }}
                   >
@@ -479,28 +485,16 @@ export default function Discover() {
         );
       })()}
 
-      {doveSheet && (
-        <div data-dismiss className="like-choice-overlay" onClick={() => setDoveSheet(false)}>
-          <div className="like-choice-sheet" onClick={(e) => e.stopPropagation()}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-              <span style={{ width: 40, height: 40, borderRadius: "50%", background: "#B8912A", color: "white", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><DoveIcon size={20} strokeWidth={2} /></span>
-              <div>
-                <p style={{ fontSize: 16, fontWeight: 700, color: "#1A1612", margin: 0, fontFamily: "'Outfit', system-ui, sans-serif" }}>Send {profile.name} a Dove</p>
-                <p style={{ fontSize: 12, color: "#8C857C", margin: "2px 0 0", fontFamily: "'Outfit', system-ui, sans-serif" }}>
-                  {dovesLeft > 0 ? `${dovesLeft} Dove${dovesLeft === 1 ? "" : "s"} left this week · they see you right away` : "No Doves left this week"}
-                </p>
-              </div>
-            </div>
-            <button className="like-choice-btn dove-choice" onClick={onSendDove} disabled={dovesLeft <= 0} style={{ opacity: dovesLeft <= 0 ? 0.45 : 1 }}>
-              <DoveIcon size={20} strokeWidth={2} />
-              <span>Send Dove</span>
-            </button>
-            <button className="like-choice-btn comment-choice" onClick={onDoveWithComment} disabled={dovesLeft <= 0} style={{ opacity: dovesLeft <= 0 ? 0.45 : 1 }}>
-              <MessageCircle size={18} />
-              <span>Dove with a Comment</span>
-            </button>
-          </div>
-        </div>
+      {composer && (
+        <LikeComposer
+          profile={profile}
+          target={composer}
+          dove={composer.isDove}
+          doveLocked={likesLeft <= 0}
+          dovesLeft={dovesLeft}
+          onSend={onComposerSend}
+          onClose={() => setComposer(null)}
+        />
       )}
 
       {commentTarget && (

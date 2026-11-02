@@ -6,6 +6,7 @@ import * as api from "../services/api";
 import { MessageCircle, Ban, Flag, UserMinus, Calendar, CheckCircle, Clock, Video, Heart, Lock, Flower2, ChevronLeft, Shield, ArrowUp, Utensils, Footprints, Coffee, Mountain, MapPin, Image as ImageIcon, Mic, X, SmilePlus, Reply, Sunrise, Sun, Sunset, Moon } from "lucide-react";
 import AgapeCross from "../components/AgapeCross";
 import DoveIcon from "../components/DoveIcon";
+import { HighlightList } from "../components/HighlightPicker";
 import LocationPicker from "../components/LocationPicker";
 import ReliabilityBadge from "../components/ReliabilityBadge";
 import NotificationPrompt from "../components/NotificationPrompt";
@@ -1370,7 +1371,7 @@ function ChatThread({ match, onBack }) {
                       </div>
                     </div>
                   );
-                })() : (
+                })() : !displayText ? null : (
                 <div
                   onClick={() => startReply(item)}
                   title={canReply(item) ? "Tap to reply" : undefined}
@@ -1392,7 +1393,12 @@ function ChatThread({ match, onBack }) {
                   <p style={{ fontSize: 15, lineHeight: 1.45, fontFamily: FONT, margin: 0, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{displayText}</p>
                 </div>
                 )}
-                {endOfRun && <p style={{ fontSize: 10.5, marginTop: 4, color: C.sub, fontFamily: FONT }}>{formatTime(item.timestamp)}</p>}
+                {item.isComment && item.highlights?.length > 0 && (
+                  <div style={{ maxWidth: "78%", marginTop: displayText ? 6 : 0, padding: "12px 14px", borderRadius: 16, background: C.primarySoft, border: "1px solid #EFE3C4" }}>
+                    <HighlightList title={isMe ? `What you like about ${profile.name}` : `What ${profile.name} likes about you`} items={item.highlights} />
+                  </div>
+                )}
+                {endOfRun &&<p style={{ fontSize: 10.5, marginTop: 4, color: C.sub, fontFamily: FONT }}>{formatTime(item.timestamp)}</p>}
               </div>
             </div>
           );

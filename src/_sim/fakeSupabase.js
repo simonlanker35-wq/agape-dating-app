@@ -145,6 +145,16 @@ export function createFakeBackend() {
           if (used >= lim.likes) throw err(400, "P0001", "LIKE_LIMIT");
         }
         r.is_dove = !!r.is_dove;
+        // like_highlights.sql: dating likes carry 3 to 5 picks and a comment of 3+ words (a like back needs no comment)
+        r.highlights = r.kind === "friend" ? [] : r.highlights || [];
+        if (r.kind !== "friend") {
+          const to = db.profiles.find((p) => p.id === r.to_user) || {};
+          const detailKeys = ["wantsChildren", "lookingFor", "churchAttendance", "prayer", "exercise", "drinking", "smoking", "pets", "education", "relocate"];
+          const available = (to.traits || []).length + (to.interests || []).length + detailKeys.filter((k) => to.details?.[k]).length;
+          if (r.highlights.length > 5 || r.highlights.length < Math.min(3, available)) throw err(400, "P0001", "LIKE_HIGHLIGHTS");
+          const answering = db.likes.some((l) => l.from_user === r.to_user && l.to_user === r.from_user && (l.kind || "date") === "date");
+          if (!answering && (r.comment || "").trim().split(/\s+/).filter(Boolean).length < 3) throw err(400, "P0001", "LIKE_COMMENT");
+        }
         break;
       }
       case "skips": if (r.from_user !== u) throw err(401, "42501", "RLS skips"); break;

@@ -447,6 +447,8 @@ export function limitMessage(msg) {
   if (/DOVE_LIMIT/.test(msg || "")) return "You've used all your Doves for this week";
   if (/REVEAL_LIMIT/.test(msg || "")) return "You've used your reveal for this week";
   if (/WAVE_LIMIT/.test(msg || "")) return "You've used all your waves for today";
+  if (/LIKE_HIGHLIGHTS/.test(msg || "")) return "Pick 3 to 5 things you like about them first";
+  if (/LIKE_COMMENT/.test(msg || "")) return "Add a comment of at least 3 words";
   return msg;
 }
 export function isLimitError(err) { return /LIKE_LIMIT|DOVE_LIMIT|REVEAL_LIMIT|WAVE_LIMIT|all your likes|all your Doves|all your waves|your reveal for this week/.test(err?.message || ""); }
@@ -480,7 +482,8 @@ export async function revealLike(likeId) {
   return true;
 }
 
-export async function sendLike(to, targetType, targetIndex, comment = null, isDove = false, kind = "date") {
+// highlights: the 3 to 5 things picked about them (dating likes only)
+export async function sendLike(to, targetType, targetIndex, comment = null, isDove = false, kind = "date", highlights = []) {
   const user = await currentUser();
   if (kind === "friend") isDove = false;
 
@@ -506,8 +509,11 @@ export async function sendLike(to, targetType, targetIndex, comment = null, isDo
     is_dove: isDove || false,
   };
   if (!kindless) row.kind = kind;
+  if (kind === "date" && highlights?.length) row.highlights = highlights.slice(0, 5);
   let { error } = await withTimeout(supabase.from("likes").insert(row), 20000);
   if (error && missingColumn(error, "kind")) { delete row.kind; ({ error } = await withTimeout(supabase.from("likes").insert(row), 20000)); }
+  // like_highlights.sql not run yet: the like still goes through, without the picks
+  if (error && missingColumn(error, "highlights")) { delete row.highlights; ({ error } = await withTimeout(supabase.from("likes").insert(row), 20000)); }
   if (error) throw new Error(limitMessage(error.message));
 
   // Any like from them to me of the same kind (heart, comment or dove) makes this a match
@@ -633,6 +639,7 @@ export async function getLikesReceived(mode = "date") {
       targetType: like.target_type,
       targetIndex: like.target_index,
       comment: like.comment,
+      highlights: like.highlights || [],
       isDove: like.is_dove,
       timestamp: new Date(like.created_at).getTime(),
     };
@@ -726,24 +733,25 @@ export async function getMessages(matchId) {
 
   const mapped = (messages || []).map(mapMessage);
 
-  // Prepend like comments as opening messages in chat
+  // Prepend like comments and picks ("what I like about you") as opening messages in chat
   try {
     const { data: match } = await supabase.from("matches").select("user1, user2").eq("id", matchId).single();
     if (match) {
-      const { data: likes } = await supabase
+      const { data: rows } = await supabase
         .from("likes")
-        .select("from_user, comment, is_dove, target_type, created_at")
+        .select("*")
         .or(`and(from_user.eq.${match.user1},to_user.eq.${match.user2}),and(from_user.eq.${match.user2},to_user.eq.${match.user1})`)
-        .not("comment", "is", null)
         .order("created_at", { ascending: true });
-      if (likes?.length > 0) {
+      const likes = (rows || []).filter((l) => l.comment || l.highlights?.length);
+      if (likes.length > 0) {
         const likeMessages = likes.map((like) => ({
           id: `like-${like.from_user}`,
-          text: (like.is_dove ? "🕊️ " : "") + like.comment,
+          text: like.comment ? (like.is_dove ? "🕊️ " : "") + like.comment : "",
           sender: like.from_user,
           timestamp: new Date(like.created_at).getTime(),
           read: true,
           isComment: true,
+          highlights: like.highlights || [],
           targetType: like.target_type,
           isDove: like.is_dove,
         }));

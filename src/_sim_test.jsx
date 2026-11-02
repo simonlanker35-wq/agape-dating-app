@@ -4,6 +4,7 @@ import * as api from "./services/api";
 import { scoreProfile, rankProfiles, mostCompatible } from "./utils/algorithm";
 import { computeDeadline, FIVE_DAYS, NUDGE_BONUS, CALL_GRACE, COOLDOWN_48H } from "./utils/deadline";
 import { setServerUsage, getLikesRemaining, getDovesRemaining, getRevealsRemaining } from "./services/limits";
+import { highlightGroups, highlightsNeeded } from "./utils/highlights";
 
 const be = createFakeBackend();
 be.install();
@@ -14,6 +15,8 @@ const expectThrow = async (name, fn, re) => {
   try { await fn(); check(name, false, "no error thrown"); }
   catch (e) { check(name, re ? re.test(e.message || "") : true, e.message); }
 };
+// What a member picks about a profile before liking it (3 to 5 of their values, goals, lifestyle, interests)
+const picksFor = (p, n = 4) => highlightGroups(p).flatMap((g) => g.items).slice(0, Math.max(n, highlightsNeeded(p)));
 const safe = async (name, fn) => { try { return await fn(); } catch (e) { check(name, false, e.message); return undefined; } };
 
 // ── 200 accounts ──
@@ -59,23 +62,31 @@ async function run() {
     const prem = me.subscription_status === "active";
     const limit = prem ? 15 : 8;
     liked[n] = [];
+    // The rules, checked while likes are still left today (a refused like uses nothing)
+    const ruleT = n <= 20 && disc.find((p) => highlightsNeeded(p) >= 3 && !be.db.likes.some((l) => l.from_user === p.id && l.to_user === me.id));
+    if (ruleT) {
+      await expectThrow(`like without picks refused ${n}`, () => api.sendLike(ruleT.id, "profile", 0, "Hello, lovely profile here", false, "date", []), /3 to 5 things/);
+      await expectThrow(`like with 2 picks refused ${n}`, () => api.sendLike(ruleT.id, "profile", 0, "Hello, lovely profile here", false, "date", picksFor(ruleT).slice(0, 2)), /3 to 5 things/);
+      await expectThrow(`like with a 2-word comment refused ${n}`, () => api.sendLike(ruleT.id, "profile", 0, "Hi there", false, "date", picksFor(ruleT)), /at least 3 words/);
+      await expectThrow(`like without a comment refused ${n}`, () => api.sendLike(ruleT.id, "profile", 0, null, false, "date", picksFor(ruleT)), /at least 3 words/);
+    }
     let k = 0;
     for (const p of disc) {
       if (k >= limit) break;
-      const comment = k === 1 ? "Love your prompt!" : null;
-      const res = await safe(`like ${n}→${p.name}`, () => api.sendLike(p.id, k === 1 ? "prompt" : "profile", 0, comment, false));
+      const comment = k === 1 ? "Love your prompt, tell me more" : "Hello, lovely profile here";
+      const res = await safe(`like ${n}→${p.name}`, () => api.sendLike(p.id, k === 1 ? "prompt" : "profile", 0, comment, false, "date", picksFor(p)));
       if (res) { liked[n].push(p.id); k++; }
     }
-    if (disc.length > limit) await expectThrow(`like limit ${n} (${limit})`, () => api.sendLike(disc[limit].id, "profile", 0, null, false), /all your likes/);
+    if (disc.length > limit) await expectThrow(`like limit ${n} (${limit})`, () => api.sendLike(disc[limit].id, "profile", 0, "Hello, lovely profile here", false, "date", picksFor(disc[limit])), /all your likes/);
     if (disc[0]) await expectThrow(`double like ${n}`, () => api.sendLike(disc[0].id, "profile", 0, null, false), /Already liked/);
     const doveTarget = disc[limit + 1] || disc[disc.length - 1];
     if (doveTarget && !liked[n].includes(doveTarget.id)) {
-      const d = await safe(`dove ${n}`, () => api.sendLike(doveTarget.id, "profile", 0, "A Dove for you", true));
+      const d = await safe(`dove ${n}`, () => api.sendLike(doveTarget.id, "profile", 0, "A Dove for you", true, "date", picksFor(doveTarget)));
       if (d) liked[n].push(doveTarget.id);
       const second = disc.find((p) => !liked[n].includes(p.id));
       if (second) {
-        if (prem) { const d2 = await safe(`dove 2 premium ${n}`, () => api.sendLike(second.id, "profile", 0, null, true)); if (d2) liked[n].push(second.id); }
-        else await expectThrow(`dove limit free ${n}`, () => api.sendLike(second.id, "profile", 0, null, true), /all your Doves/);
+        if (prem) { const d2 = await safe(`dove 2 premium ${n}`, () => api.sendLike(second.id, "profile", 0, "Another Dove for you", true, "date", picksFor(second))); if (d2) liked[n].push(second.id); }
+        else await expectThrow(`dove limit free ${n}`, () => api.sendLike(second.id, "profile", 0, "Another Dove for you", true, "date", picksFor(second)), /all your Doves/);
       }
     }
     const skipT = disc.find((p) => !liked[n].includes(p.id));
@@ -103,6 +114,7 @@ async function run() {
     check(`sparks ${n}: count ${likes.length} = ${expected}`, likes.length === expected);
     // unlocked likes carry the sender's profile; locked ones carry no name, photo or sender id
     check(`sparks ${n}: sender profiles loaded`, likes.every((l) => l.locked || (l.profile && l.profile.name)));
+    check(`sparks ${n}: picks arrive with each open Spark`, likes.filter((l) => !l.locked).every((l) => Array.isArray(l.highlights) && l.highlights.length >= 3 && l.highlights.length <= 5));
     check(`sparks ${n}: locked likes hide who`, likes.filter((l) => l.locked).every((l) => !l.profile.name && !l.profile.photos.length && !l.fromUser));
     if (likes.length >= 2) {
       // ten starter reveals for everyone, then one a week for free members
@@ -124,7 +136,9 @@ async function run() {
     let left = usage.likesLimit - usage.likesUsed;
     for (const l of likes.slice(0, 2)) {
       if (left <= 0) break;
-      const res = await safe(`like back ${n}`, () => api.sendLike(l.fromId, "profile", 0, null, false));
+      if (!l.profile?.name) continue;
+      await expectThrow(`like back without picks refused ${n}`, () => api.sendLike(l.fromId, "profile", 0, null, false, "date", []), /3 to 5 things/);
+      const res = await safe(`like back ${n}`, () => api.sendLike(l.fromId, "profile", 0, null, false, "date", picksFor(l.profile, 3)));
       left--;
       if (res) { check(`match created ${n}↔`, res.matched && res.matchId, JSON.stringify(res)); (matchesOf[n] ||= []).push(res.matchId); }
     }
@@ -150,6 +164,9 @@ async function run() {
     check("badge rule: unread from them", mb?.lastMessage && mb.lastMessage.sender === a && mb.lastMessage.read === false);
     const msgsB = await api.getMessages(m.id);
     check("partner sees message", msgsB.some((x) => x.id === t1?.id));
+    // Both sides' picks open the chat: the first like (with its comment) and the like back
+    const opening = msgsB.filter((x) => x.isComment);
+    check("chat opens with both people's picks", opening.length === 2 && opening.every((x) => x.highlights.length >= 3) && new Set(opening.map((x) => x.sender)).size === 2, JSON.stringify(opening.map((x) => [x.sender.slice(0, 4), x.highlights.length, !!x.text])));
     const reply = await safe("send reply with media", () => api.sendMessage(m.id, "Nice to meet you", { type: "image", url: "https://ksscosugtbdzgekrszck.supabase.co/storage/v1/object/public/media/x/chat/1.jpg" }, t1?.id));
     check("reply carries replyTo + media", reply?.replyTo === t1?.id && reply?.media?.type === "image");
     await safe("voice note", () => api.sendMessage(m.id, "", { type: "audio", url: "https://ksscosugtbdzgekrszck.supabase.co/storage/v1/object/public/media/x/voice/1.webm", duration: 7 }));
@@ -368,7 +385,7 @@ async function run() {
   check("other side sees the friend too", (await api.getMatches("friends")).some((m) => m.id === back?.matchId));
   check("one side or the other: a friend never shows in dating Seek", !(await api.getDiscover("date")).some((p) => p.id === target.id));
   check("one side or the other: people I waved at are out of dating Seek", !(await api.getDiscover("date")).some((p) => wavesTo.slice(0, 15).some((w) => w.id === p.id)));
-  const dl = await safe("dating like to the same person", () => api.sendLike(target.id, "profile", 0, null, false, "date"));
+  const dl = await safe("dating like to the same person", () => api.sendLike(target.id, "profile", 0, "Hello, lovely profile here", false, "date", picksFor(target)));
   check("dating like is separate from the wave", dl && !dl.matched);
   const nf = await api.updateProfile({ intent: "friends" });
   check("intent saved", nf.intent === "friends");
