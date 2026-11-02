@@ -848,6 +848,9 @@ function ChatThread({ match, onBack }) {
   const friendChat = match.kind === "friend";
   const conversation = state.conversations[match.id];
   const profile = match.profile;
+  // Liked back from Sparks: their photos stay blurred until you open their profile here
+  const photosHidden = state.hiddenPhotos.includes(profile?.id);
+  useEffect(() => { if (viewProfile && profile?.id) actions.showPhotosOf(profile.id); }, [viewProfile]);
 
 
   useEffect(() => {
@@ -1184,7 +1187,7 @@ function ChatThread({ match, onBack }) {
       }
     },
     meAvatar: state.currentUser?.photos?.[0],
-    themAvatar: profile.photos?.[0],
+    themAvatar: photosHidden ? `https://ui-avatars.com/api/?name=${encodeURIComponent(profile.name || "?")}&size=80&background=F4F2EE&color=B8912A` : profile.photos?.[0],
     themName: profile.name,
   };
 
@@ -1214,7 +1217,7 @@ function ChatThread({ match, onBack }) {
             <button onClick={onBack} aria-label="Back" style={{ width: 36, height: 36, borderRadius: 18, background: "none", border: "none", cursor: "pointer", color: C.text, display: "flex", alignItems: "center", justifyContent: "center", marginLeft: -6 }}>
               <ChevronLeft size={22} strokeWidth={1.8} />
             </button>
-            <img src={profile.photos[0]} alt={profile.name} onClick={() => setViewProfile(true)} style={{ width: 36, height: 36, borderRadius: "50%", objectFit: "cover", objectPosition: "50% 20%", cursor: "pointer", flexShrink: 0 }} onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${profile.name}&size=72&background=F4F2EE&color=B8912A`; }} />
+            <img src={profile.photos[0]} alt={profile.name} onClick={() => setViewProfile(true)} style={{ width: 36, height: 36, borderRadius: "50%", objectFit: "cover", objectPosition: "50% 20%", cursor: "pointer", flexShrink: 0, filter: photosHidden ? "blur(5px)" : "none" }} onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${profile.name}&size=72&background=F4F2EE&color=B8912A`; }} />
             <div style={{ flex: 1, minWidth: 0, cursor: "pointer" }} {...pressable(() => setViewProfile(true))}>
               <p style={{ fontWeight: 600, fontSize: 17, lineHeight: 1.15, color: C.text, fontFamily: SERIF, margin: 0, display: "flex", alignItems: "center", gap: 5 }}>
                 <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{profile.name}</span>
@@ -1767,7 +1770,7 @@ export default function Matches() {
                 <div style={{ position: "relative", flexShrink: 0 }}>
                   {profile.placeholder
                     ? <div style={{ width: 88, height: 88, borderRadius: "50%", background: C.surface }} />
-                    : <img src={profile.photos[0]} alt={profile.name} style={{ width: 88, height: 88, borderRadius: "50%", objectFit: "cover", objectPosition: "50% 20%", display: "block" }} onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${profile.name}&size=88&background=random`; }} />}
+                    : <img src={profile.photos[0]} alt={profile.name} style={{ width: 88, height: 88, borderRadius: "50%", objectFit: "cover", objectPosition: "50% 20%", display: "block", filter: state.hiddenPhotos.includes(profile.id) ? "blur(9px)" : "none" }} onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${profile.name}&size=88&background=random`; }} />}
                   {hasUnread && <div style={{ position: "absolute", inset: -3, borderRadius: "50%", border: `3px solid ${C.primary}`, pointerEvents: "none" }} />}
                   {api.isOnline(profile.lastActive) && <div title="Online now" style={{ position: "absolute", bottom: 4, right: 4, width: 14, height: 14, borderRadius: "50%", background: "#22C55E", border: `2.5px solid ${hasUnread ? C.primarySoft : C.bg}` }} />}
                 </div>

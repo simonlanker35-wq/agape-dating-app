@@ -36,7 +36,7 @@ const TOURS = {
     { full: true, title: "Chosen", text: "Every Wednesday we pick the one profile that matches you best on faith, what you both want, lifestyle and shared interests. Tap the ring to see why. Send them a Dove, with your picks and a comment, if you like what you see." },
   ],
   likes: [
-    { full: true, title: "Sparks", text: "People who liked you land here. Your first 10 reveals are free, then one a week — with Agape+ you see everyone. Open one, pick 3 to 5 things you like about them and their photos clear. Like back to match." },
+    { full: true, title: "Sparks", text: "People who liked you land here. Your first 10 reveals are free, then one a week — with Agape+ you see everyone. Open one, pick 3 to 5 things you like about them and like back. You see their photos in the chat, by opening their profile." },
   ],
   "discover-friends": [
     { full: true, title: "Meet Christian friends", text: "Seek now shows people who are here for friendship — men and women near you. Wave at someone you'd like to know; if they wave back, you're friends and can chat." },

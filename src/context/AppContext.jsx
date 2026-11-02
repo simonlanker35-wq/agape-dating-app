@@ -39,6 +39,9 @@ const initialState = {
   verificationsLoaded: false,
   usage: null,
   matchesLoaded: false,
+  // People you liked back from Sparks whose photos you haven't opened yet: their photos stay blurred
+  // in Messages until you open their profile in the chat (kept per account on this device)
+  hiddenPhotos: [],
   openChatId: null,
   needsProfile: false,
   passwordRecovery: false,
@@ -122,8 +125,14 @@ function reducer(state, action) {
       // last one we had so the chat does not disappear from the list for a polling interval
       const prev = new Map((state.matches || []).map((m) => [m.id, m]));
       const merged = (action.payload || []).map((m) => (!m.profile && prev.get(m.id)?.profile ? { ...m, profile: prev.get(m.id).profile } : m));
-      return { ...state, matches: merged, matchesLoaded: true };
+      // Someone you're matched with no longer belongs in Seek (the loaded list is otherwise kept until the next refresh)
+      const matched = new Set(merged.map((m) => m.profileId));
+      const profiles = state.profiles.some((p) => matched.has(p.id)) ? state.profiles.filter((p) => !matched.has(p.id)) : state.profiles;
+      return { ...state, matches: merged, matchesLoaded: true, profiles };
     }
+
+    case "SET_HIDDEN_PHOTOS":
+      return { ...state, hiddenPhotos: action.payload };
 
     case "SET_VERIFICATIONS":
       return { ...state, myVerifications: action.payload, verificationsLoaded: true };
@@ -537,6 +546,30 @@ export function AppProvider({ children }) {
     if (fresh) dispatch({ type: "SHOW_REVIEW", payload: { kind: fresh, status: v[fresh].status, note: v[fresh].note || "", url: v[fresh].url } });
   }, [state.myVerifications, state.verificationsLoaded, state.currentUser?.id, state.reviewAlert]);
 
+  const hiddenPhotosKey = (uid) => `agape_hidden_photos_${uid}`;
+  useEffect(() => {
+    const uid = state.currentUser?.id;
+    if (!uid) return;
+    let list = [];
+    try { list = JSON.parse(localStorage.getItem(hiddenPhotosKey(uid)) || "[]"); } catch (_) {}
+    dispatch({ type: "SET_HIDDEN_PHOTOS", payload: Array.isArray(list) ? list : [] });
+  }, [state.currentUser?.id]);
+  const saveHiddenPhotos = (list) => {
+    const uid = state.currentUser?.id;
+    try { if (uid) localStorage.setItem(hiddenPhotosKey(uid), JSON.stringify(list.slice(-500))); } catch (_) {}
+    dispatch({ type: "SET_HIDDEN_PHOTOS", payload: list });
+  };
+  // A match you don't need celebrating (the "It's a match" screen would show their photo)
+  const markMatchSeen = (matchId) => {
+    const uid = state.currentUser?.id;
+    if (!uid || !matchId) return;
+    const key = `agape_seen_matches_${uid}`;
+    try {
+      const seen = JSON.parse(localStorage.getItem(key) || "[]") || [];
+      if (!seen.includes(matchId)) localStorage.setItem(key, JSON.stringify([...seen, matchId].slice(-500)));
+    } catch (_) {}
+  };
+
   // Celebrate every new match, wherever the user is. Matches already known on this device are remembered
   // in localStorage; the first time this runs, existing matches are recorded silently.
   useEffect(() => {
@@ -747,6 +780,12 @@ export function AppProvider({ children }) {
       }
       if (res.matched) {
         track(friends ? "friend_connected" : "match_created", { fromSparks: true });
+        // Dating: no "It's a match" screen and no photo. You go straight to the chat and see their
+        // photos once you open their profile there.
+        if (!friends) {
+          markMatchSeen(res.matchId);
+          if (!state.hiddenPhotos.includes(like.fromId)) saveHiddenPhotos([...state.hiddenPhotos, like.fromId]);
+        }
         api.notifyUser(like.fromId, friends
           ? { title: "You're friends now", body: `${state.currentUser?.name || "Someone"} waved back. Say hello.`, url: "/?tab=matches", tag: "match" }
           : { title: "It's a match", body: `${state.currentUser?.name || "Someone"} liked you back. Say hello and plan a date together.`, url: "/?tab=matches", tag: "match" });
@@ -767,8 +806,14 @@ export function AppProvider({ children }) {
           }
         }
         dispatch({ type: "MATCH_FROM_LIKES", payload: { like, matchData: null } });
+        if (!friends && res.matchId) dispatch({ type: "OPEN_CHAT", payload: res.matchId });
       }
       return res;
+    },
+
+    // Opening someone's profile in the chat shows their photos from then on
+    showPhotosOf: (profileId) => {
+      if (state.hiddenPhotos.includes(profileId)) saveHiddenPhotos(state.hiddenPhotos.filter((id) => id !== profileId));
     },
 
     dismissLike: async (likeId) => {

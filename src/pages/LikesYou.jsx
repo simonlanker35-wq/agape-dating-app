@@ -203,8 +203,9 @@ export default function LikesYou() {
   );
 }
 
-// One Spark opened: their photos stay blurred until you've picked what you like about them,
-// then you accept (with your picks) or decline. Waves on the friends side skip the picking.
+// One Spark opened: you pick what you like about them and accept (with your picks) or decline. Their
+// photos stay blurred here; liking back takes you to the chat, where opening their profile shows them.
+// Waves on the friends side skip the picking and the blur.
 function SparkView({ like, friends, onClose, onDecline, onAccept }) {
   const profile = like.profile;
   const [picks, setPicks] = useState([]);
@@ -215,8 +216,8 @@ function SparkView({ like, friends, onClose, onDecline, onAccept }) {
   return (
     <div role="dialog" aria-label={profile.name} style={{ position: "fixed", inset: 0, maxWidth: 430, margin: "0 auto", zIndex: 300, background: C.bg, display: "flex", flexDirection: "column", fontFamily: FONT }}>
       <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
-        {/* While blurred the photo is half height: the picks are the first thing to do */}
-        <PhotoCarousel photos={profile.photos} name={profile.name} maxHeight={ready ? "56vh" : "28vh"} blurred={!ready}>
+        {/* Dating: the photos stay blurred and small here. They're seen only after liking back, by opening the profile in the chat. */}
+        <PhotoCarousel photos={profile.photos} name={profile.name} maxHeight={friends ? "56vh" : "28vh"} blurred={!friends}>
           <button aria-label="Close" onClick={onClose} style={{ zIndex: 3, position: "absolute", top: "max(40px, calc(env(safe-area-inset-top, 0px) + 28px))", left: 16, width: 36, height: 36, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.4)", backdropFilter: "blur(10px)", border: "none", cursor: "pointer" }}>
             <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2.5}><polyline points="15 18 9 12 15 6" /></svg>
           </button>
@@ -237,7 +238,7 @@ function SparkView({ like, friends, onClose, onDecline, onAccept }) {
             <div style={{ borderRadius: 18, padding: 16, border: `1.5px solid ${ready ? C.border : C.primary}` }}>
               <p style={{ fontFamily: SERIF, fontSize: 19, fontWeight: 600, color: C.text, margin: "0 0 4px" }}>What do you like about {profile.name}?</p>
               <p style={{ fontSize: 13, color: C.sub, margin: "0 0 14px", lineHeight: 1.45 }}>
-                Pick {needed === HIGHLIGHTS_MAX ? needed : `${needed} to ${HIGHLIGHTS_MAX}`}. Their photos clear once you've picked {needed}, and {profile.name} sees what you chose if you like back.
+                Pick {needed === HIGHLIGHTS_MAX ? needed : `${needed} to ${HIGHLIGHTS_MAX}`}. {profile.name} sees what you chose. You'll see their photos in your chat once you've liked back.
               </p>
               <HighlightPicker profile={profile} selected={picks} onChange={setPicks} />
             </div>
