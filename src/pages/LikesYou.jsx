@@ -1,7 +1,7 @@
 import { useApp } from "../context/AppContext";
 import { pressable } from "../utils/a11y";
-import { useState, useEffect, useRef } from "react";
-import { Lock, UserPlus, Eye } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Lock, UserPlus } from "lucide-react";
 import Pip from "../components/Pip";
 import AudioPlayer from "../components/AudioPlayer";
 import VerifiedBadge from "../components/VerifiedBadge";
@@ -208,7 +208,6 @@ export default function LikesYou() {
 function SparkView({ like, friends, onClose, onDecline, onAccept }) {
   const profile = like.profile;
   const [picks, setPicks] = useState([]);
-  const pickerRef = useRef(null);
   const needed = friends ? 0 : highlightsNeeded(profile);
   const ready = picks.length >= needed;
   const prompts = (profile.prompts || []).filter((p) => p.prompt && (p.answer || p.voice?.url));
@@ -216,16 +215,11 @@ function SparkView({ like, friends, onClose, onDecline, onAccept }) {
   return (
     <div role="dialog" aria-label={profile.name} style={{ position: "fixed", inset: 0, maxWidth: 430, margin: "0 auto", zIndex: 300, background: C.bg, display: "flex", flexDirection: "column", fontFamily: FONT }}>
       <div style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
-        <PhotoCarousel photos={profile.photos} name={profile.name} maxHeight="56vh" blurred={!ready}>
+        {/* While blurred the photo is half height: the picks are the first thing to do */}
+        <PhotoCarousel photos={profile.photos} name={profile.name} maxHeight={ready ? "56vh" : "28vh"} blurred={!ready}>
           <button aria-label="Close" onClick={onClose} style={{ zIndex: 3, position: "absolute", top: "max(40px, calc(env(safe-area-inset-top, 0px) + 28px))", left: 16, width: 36, height: 36, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.4)", backdropFilter: "blur(10px)", border: "none", cursor: "pointer" }}>
             <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2.5}><polyline points="15 18 9 12 15 6" /></svg>
           </button>
-          {!ready && (
-            <button onClick={() => pickerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
-              style={{ position: "absolute", zIndex: 3, top: "42%", left: "50%", transform: "translate(-50%, -50%)", display: "inline-flex", alignItems: "center", gap: 8, padding: "11px 16px", borderRadius: 9999, border: "1px solid rgba(255,255,255,0.35)", background: "rgba(0,0,0,0.45)", backdropFilter: "blur(6px)", color: "#fff", fontSize: 13.5, fontWeight: 600, fontFamily: FONT, cursor: "pointer", whiteSpace: "nowrap" }}>
-              <Eye size={16} /> Pick {needed} things you like to see {profile.name}
-            </button>
-          )}
           <div style={{ position: "absolute", zIndex: 2, bottom: 18, left: 16, right: 16 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <span style={{ color: "white", fontSize: 28, fontWeight: 600, fontFamily: SERIF }}>{profile.name}</span>
@@ -239,6 +233,16 @@ function SparkView({ like, friends, onClose, onDecline, onAccept }) {
         </PhotoCarousel>
 
         <div style={{ padding: "18px 16px 24px", display: "flex", flexDirection: "column", gap: 14 }}>
+          {!friends && (
+            <div style={{ borderRadius: 18, padding: 16, border: `1.5px solid ${ready ? C.border : C.primary}` }}>
+              <p style={{ fontFamily: SERIF, fontSize: 19, fontWeight: 600, color: C.text, margin: "0 0 4px" }}>What do you like about {profile.name}?</p>
+              <p style={{ fontSize: 13, color: C.sub, margin: "0 0 14px", lineHeight: 1.45 }}>
+                Pick {needed === HIGHLIGHTS_MAX ? needed : `${needed} to ${HIGHLIGHTS_MAX}`}. Their photos clear once you've picked {needed}, and {profile.name} sees what you chose if you like back.
+              </p>
+              <HighlightPicker profile={profile} selected={picks} onChange={setPicks} />
+            </div>
+          )}
+
           {/* What they sent: their comment and what they like about you */}
           {(like.comment || like.highlights?.length > 0 || like.isDove) && (
             <div style={{ borderRadius: 18, padding: 16, background: C.primarySoft, border: "1px solid #EFE3C4", display: "flex", flexDirection: "column", gap: 12 }}>
@@ -261,21 +265,11 @@ function SparkView({ like, friends, onClose, onDecline, onAccept }) {
             </div>
           ))}
 
-          {friends ? (
-            profile.interests?.length > 0 && (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8, padding: "4px 0" }}>
-                {profile.interests.map((v) => (
-                  <span key={v} style={{ fontSize: 12, fontWeight: 600, padding: "6px 12px", borderRadius: 9999, background: C.surface, color: C.sub }}>{v}</span>
-                ))}
-              </div>
-            )
-          ) : (
-            <div ref={pickerRef} style={{ scrollMarginTop: 16, borderRadius: 18, padding: 16, border: `1.5px solid ${ready ? C.border : C.primary}` }}>
-              <p style={{ fontFamily: SERIF, fontSize: 19, fontWeight: 600, color: C.text, margin: "0 0 4px" }}>What do you like about {profile.name}?</p>
-              <p style={{ fontSize: 13, color: C.sub, margin: "0 0 14px", lineHeight: 1.45 }}>
-                Pick {needed === HIGHLIGHTS_MAX ? needed : `${needed} to ${HIGHLIGHTS_MAX}`}. Their photos clear once you've picked {needed}, and {profile.name} sees what you chose if you like back.
-              </p>
-              <HighlightPicker profile={profile} selected={picks} onChange={setPicks} />
+          {friends && profile.interests?.length > 0 && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, padding: "4px 0" }}>
+              {profile.interests.map((v) => (
+                <span key={v} style={{ fontSize: 12, fontWeight: 600, padding: "6px 12px", borderRadius: 9999, background: C.surface, color: C.sub }}>{v}</span>
+              ))}
             </div>
           )}
         </div>

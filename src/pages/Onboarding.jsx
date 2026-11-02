@@ -304,9 +304,11 @@ export default function Onboarding() {
     }, 150);
   }, [step]);
 
+  const stepDir = useRef(1);
   const goNext = () => {
     if (step < STEPS.length - 1) {
       track("onboarding_step_completed", { step: STEPS[step], stepNumber: step });
+      stepDir.current = 1;
       let next = step + 1;
       // Email already known (email or Google/Apple sign-up) — don't ask again
       if (STEPS[next] === "email" && EMAIL_RE.test(form.email)) next += 1;
@@ -318,8 +320,27 @@ export default function Onboarding() {
   };
 
   const goBack = () => {
-    if (step > 0) setStep(step - 1);
+    if (step > 0) { stepDir.current = -1; setStep(step - 1); }
   };
+
+  // Only phone sign-ups are asked for an email. Email, Google and Apple accounts already have one,
+  // so the step is passed over in whichever direction you were going. The account is checked, not
+  // just the form, because the form can lose the email (e.g. after opening the confirmation link).
+  const [emailStepReady, setEmailStepReady] = useState(false);
+  useEffect(() => {
+    if (STEPS[step] !== "email") { setEmailStepReady(false); return; }
+    let live = true;
+    actions.getSessionUser().then((u) => {
+      if (!live) return;
+      if (u?.email) {
+        setForm((f) => ({ ...f, email: f.email || u.email }));
+        setStep((s) => (STEPS[s] === "email" ? s + stepDir.current : s));
+      } else {
+        setEmailStepReady(true);
+      }
+    }).catch(() => { if (live) setEmailStepReady(true); });
+    return () => { live = false; };
+  }, [step]);
 
   const handleSendOtp = async () => {
     setSubmitting(true);
@@ -1329,6 +1350,7 @@ export default function Onboarding() {
 
   // ---- EMAIL ----
   if (currentStep === "email") {
+    if (!emailStepReady) return null; // checking whether the account already has an email
     return (
       <Wrap {...wrapProps}>
         <h2 style={{ color: S.text, fontSize: 30, fontWeight: 800, marginBottom: 8, fontFamily: "'Outfit', system-ui, sans-serif" }}>Your email?</h2>
