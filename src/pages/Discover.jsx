@@ -56,6 +56,13 @@ export default function Discover() {
     const n = Math.max(0, Math.min(count - 1, i));
     el.scrollTo({ left: n * el.clientWidth, behavior: "smooth" });
   };
+  // Tap the left or right half of the photo to go back or forward, as in Chosen (swiping works too)
+  const onPhotoTap = (e, count) => {
+    const el = photoStrip.current;
+    if (!el || count < 2) return;
+    const r = el.getBoundingClientRect();
+    goToPhoto(photoIdx + (e.clientX - r.left < r.width / 2 ? -1 : 1), count);
+  };
   const [likeChoice, setLikeChoice] = useState(null);
   const [doveBrowse, setDoveBrowse] = useState(false); // keep browsing for a Dove after the daily likes are gone
   const [localSkips, setLocalSkips] = useState(new Set());
@@ -286,7 +293,7 @@ export default function Discover() {
         {/* Hero photo — full bleed with overlay */}
         <div className="hero-section">
           <div className="hero-photo-block">
-            <div ref={photoStrip} onScroll={onPhotoScroll} className="photo-carousel hero-photo-strip">
+            <div ref={photoStrip} onScroll={onPhotoScroll} onClick={(e) => onPhotoTap(e, photos.length)} className="photo-carousel hero-photo-strip">
               {(photos.length ? photos : [null]).map((src, i) => (
                 <img
                   key={i}
