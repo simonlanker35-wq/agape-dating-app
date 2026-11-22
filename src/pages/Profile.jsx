@@ -47,6 +47,7 @@ import AudioPlayer from "../components/AudioPlayer";
 import VoiceRecorder from "../components/VoiceRecorder";
 import { extForMime } from "../services/media";
 import { redirectToCheckout, getSubscriptionStatus, cancelSubscription, resumeSubscription, restorePurchases } from "../services/stripe";
+import { isNative } from "../utils/native";
 import { getDovesRemaining } from "../services/limits";
 import * as api from "../services/api";
 import { resetTours } from "../components/TutorialOverlay";
@@ -366,7 +367,15 @@ function SubscriptionPlans({ initialStatus }) {
           <p style={{ fontSize: 13, color: "#D32F2F" }}>{error}</p>
         </div>
       )}
-      <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 4 }}>
+      {/* Store apps: Apple and Google require their own in-app purchase, which comes in a later version.
+          Until then the app sells nothing and does not point to the website for buying. */}
+      {isNative && subStatus?.status !== "active" && (
+        <div style={{ borderRadius: 16, padding: 16, background: C.card, border: `1px solid ${C.border}`, marginTop: 4 }}>
+          <p style={{ fontSize: 14, fontWeight: 700, color: C.text, margin: 0 }}>Coming soon in the app</p>
+          <p style={{ fontSize: 13, color: C.sub, marginTop: 6, lineHeight: 1.5 }}>Agape+ can't be bought in this version of the app yet. Everything else works as usual.</p>
+        </div>
+      )}
+      {!isNative && <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 4 }}>
         {PLANS.map((plan) => (
           <button
             key={plan.name}
@@ -404,8 +413,8 @@ function SubscriptionPlans({ initialStatus }) {
             </div>
           </button>
         ))}
-      </div>
-      {subStatus?.status !== "active" && (
+      </div>}
+      {!isNative && subStatus?.status !== "active" && (
         <button onClick={handleRestore} disabled={restoring} style={{ display: "block", margin: "0 auto", background: "none", border: "none", padding: "10px 12px", fontSize: 13, fontWeight: 700, color: C.primary, cursor: restoring ? "default" : "pointer", opacity: restoring ? 0.6 : 1 }}>
           {restoring ? "Looking for your purchase…" : "Restore purchase"}
         </button>

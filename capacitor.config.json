@@ -1,0 +1,12 @@
+{
+  "appId": "net.agapeapp.app",
+  "appName": "Agape",
+  "webDir": "dist",
+  "backgroundColor": "#1A1612",
+  "android": {
+    "allowMixedContent": false
+  },
+  "ios": {
+    "contentInset": "never"
+  }
+}

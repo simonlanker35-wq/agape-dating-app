@@ -1,9 +1,11 @@
 import { savePushSubscription, deletePushSubscription } from "./api";
+import { isNative } from "../utils/native";
 
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY || "BFu5T8VazpR1qoXJC9yT2hWXQ7-rWTzOZL5ntmEuWw3NbAdxM3ts0uuLEKBpLqqwEEGlcSRTPvk0g_Oz_CvqC7A";
 
+// Web push is for the website only; the store apps will use native notifications
 export function isPushSupported() {
-  return typeof window !== "undefined" && "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+  return !isNative && typeof window !== "undefined" && "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
 }
 
 export function isIOS() {
@@ -16,7 +18,7 @@ export function isStandalone() {
 
 // On iPhone, web push only works once the app is added to the Home Screen
 export function needsHomeScreenInstall() {
-  return isIOS() && !isStandalone();
+  return !isNative && isIOS() && !isStandalone();
 }
 
 export function getPermission() {

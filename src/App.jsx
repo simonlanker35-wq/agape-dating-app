@@ -1,5 +1,7 @@
 import { passwordProblem, isLeakedPassword, PASSWORD_HINT, LEAKED_MESSAGE } from "./utils/password";
-import { closeTopLayerOnEscape } from "./utils/a11y";
+import { closeTopLayerOnEscape, goBackInApp } from "./utils/a11y";
+import { initNative } from "./utils/native";
+import { completeNativeSignIn } from "./services/api";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { AppProvider, useApp } from "./context/AppContext";
 import Navigation from "./components/Navigation";
@@ -129,6 +131,16 @@ function AppContent() {
   useEffect(() => {
     document.addEventListener("keydown", closeTopLayerOnEscape);
     return () => document.removeEventListener("keydown", closeTopLayerOnEscape);
+  }, []);
+  // Store apps only: finish Google sign-in coming back from the browser; Android back button
+  useEffect(() => {
+    initNative({
+      onAuthUrl: async (url) => {
+        try { await completeNativeSignIn(url); window.location.reload(); }
+        catch (err) { window.alert(err.message || "Sign-in failed. Please try again."); }
+      },
+      onBack: goBackInApp,
+    });
   }, []);
 
   const hideSplash = useCallback(() => setSplashGone(true), []);

@@ -16,12 +16,26 @@ export function pressable(onClick, label) {
 
 // Escape closes the topmost sheet or popup, the same as tapping outside it. Backdrops opt in with
 // a data-dismiss attribute; the one with the highest z-index (latest on a tie) is "clicked".
-export function closeTopLayerOnEscape(e) {
-  if (e.key !== "Escape") return;
+export function closeTopLayer() {
   let top = null, topZ = -Infinity;
   for (const el of document.querySelectorAll("[data-dismiss]")) {
     const z = parseInt(getComputedStyle(el).zIndex, 10) || 0;
     if (z >= topZ) { top = el; topZ = z; }
   }
-  if (top) { e.preventDefault(); top.click(); }
+  if (top) top.click();
+  return !!top;
+}
+
+export function closeTopLayerOnEscape(e) {
+  if (e.key !== "Escape") return;
+  if (closeTopLayer()) e.preventDefault();
+}
+
+// Android back button: close the open sheet, else press the screen's own Back arrow.
+// Returns false when there is nothing to go back to (the app then goes to the background).
+export function goBackInApp() {
+  if (closeTopLayer()) return true;
+  const back = [...document.querySelectorAll('[aria-label="Back"]')].reverse().find((el) => el.offsetParent !== null && !el.disabled);
+  if (back) { back.click(); return true; }
+  return false;
 }

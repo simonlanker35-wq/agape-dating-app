@@ -1,3 +1,4 @@
+import { isNative, publicOrigin, NATIVE_AUTH_REDIRECT, openInSystemBrowser } from "../utils/native";
 import { supabase } from "./supabase";
 import { geocodeCity } from "./geo";
 
@@ -200,13 +201,39 @@ export async function signInWithEmail(email, password) {
 export const login = signInWithEmail;
 
 export async function signUpWithEmail(email, password) {
-  const { data, error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: window.location.origin } });
+  const { data, error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: publicOrigin() } });
   if (error) throw new Error(error.message);
   return { confirmed: !!data.session, user: data.user };
 }
 
 export async function signInWithProvider(provider) {
+  if (isNative) {
+    // In the app: sign in through the system browser, which hands back via net.agapeapp.app://auth
+    const { data, error } = await supabase.auth.signInWithOAuth({ provider, options: { redirectTo: NATIVE_AUTH_REDIRECT, skipBrowserRedirect: true } });
+    if (error) throw new Error(error.message);
+    await openInSystemBrowser(data.url);
+    return;
+  }
   const { error } = await supabase.auth.signInWithOAuth({ provider, options: { redirectTo: window.location.origin } });
+  if (error) throw new Error(error.message);
+}
+
+// The browser came back into the app after a Google sign-in: turn the link into a session
+export async function completeNativeSignIn(url) {
+  const u = new URL(url);
+  const hash = new URLSearchParams(u.hash.replace(/^#/, ""));
+  const code = u.searchParams.get("code");
+  const failure = u.searchParams.get("error_description") || hash.get("error_description");
+  if (failure) throw new Error(failure);
+  if (code) {
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    if (error) throw new Error(error.message);
+    return;
+  }
+  const access_token = hash.get("access_token");
+  const refresh_token = hash.get("refresh_token");
+  if (!access_token || !refresh_token) throw new Error("Sign-in was not completed. Please try again.");
+  const { error } = await supabase.auth.setSession({ access_token, refresh_token });
   if (error) throw new Error(error.message);
 }
 
@@ -214,7 +241,7 @@ export async function signInWithProvider(provider) {
 // created with a phone number (their email lives on the profile, not on the login).
 export async function sendPasswordResetEmail(email) {
   const clean = String(email || "").trim().toLowerCase();
-  const redirectTo = window.location.origin;
+  const redirectTo = publicOrigin();
   let unreachable = false;
   try {
     const { data, error } = await withTimeout(
