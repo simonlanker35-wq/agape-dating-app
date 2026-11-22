@@ -99,11 +99,14 @@ function BackIcon() {
   );
 }
 
-function Toggle({ on, onToggle }) {
+// visual=true draws the switch only, for rows where the whole row is the tap target
+function Toggle({ on, onToggle, visual = false }) {
+  const Tag = visual ? "span" : "button";
   return (
-    <button
-      onClick={onToggle}
+    <Tag
+      {...(visual ? { "aria-hidden": true } : { onClick: onToggle, role: "switch", "aria-checked": !!on })}
       style={{
+        display: "block",
         position: "relative",
         flexShrink: 0,
         width: 44,
@@ -128,7 +131,7 @@ function Toggle({ on, onToggle }) {
           transition: "all 0.2s",
         }}
       />
-    </button>
+    </Tag>
   );
 }
 
@@ -141,7 +144,7 @@ function SettingsRow({ icon, label, sub, onPress, danger, toggle }) {
         {sub && <p style={{ fontSize: 12, color: C.sub, marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sub}</p>}
       </div>
       {toggle ? (
-        <Toggle on={toggle.on} onToggle={toggle.onToggle} />
+        <Toggle on={toggle.on} visual />
       ) : (
         <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={C.sub} strokeWidth={2}>
           <polyline points="9 18 15 12 9 6" />
@@ -150,11 +153,16 @@ function SettingsRow({ icon, label, sub, onPress, danger, toggle }) {
     </>
   );
 
+  // The whole row flips the switch, not just the small switch on the right
   if (toggle) {
     return (
-      <div style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", borderBottom: `1px solid ${C.border}` }}>
+      <button
+        role="switch" aria-checked={!!toggle.on} aria-label={label}
+        onClick={toggle.onToggle}
+        style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", background: "none", border: "none", borderBottom: `1px solid ${C.border}`, textAlign: "left", cursor: "pointer", fontFamily: "inherit" }}
+      >
         {inner}
-      </div>
+      </button>
     );
   }
 
@@ -665,12 +673,17 @@ function SettingsScreen({ onBack, initialSection = null }) {
                       if ((currentUser?.intent || "date") === o.value) return;
                       track("intent_changed", { intent: o.value });
                       try {
+                        setSaveError("");
                         const updated = await actions.updateProfile({ intent: o.value, details: { ...(currentUser?.details || {}), intentChosen: true } });
                         dispatch({ type: "SET_USER", payload: updated });
-                      } catch (_) {}
+                      } catch (err) {
+                        track("intent_change_failed", { intent: o.value, error: err?.message });
+                        setSaveError(/fetch|load failed|network|timed out/i.test(err?.message || "") ? "Couldn't save. Check your connection and try again." : "Couldn't save that. Please try again.");
+                      }
                     } }} />
                 ))}
               </div>
+              {saveError && <p role="alert" style={{ fontSize: 13, color: "#EF4444", padding: "8px 4px 0", margin: 0 }}>{saveError}</p>}
               <p style={{ fontSize: 12, color: C.sub, padding: "8px 4px 0", lineHeight: 1.5 }}>People who are only here for friends do not appear in dating and are not shown to daters. Dating likes and friend waves are kept apart.</p>
             </div>
           )}
@@ -981,7 +994,7 @@ function SettingsScreen({ onBack, initialSection = null }) {
             <SettingsRow icon={I.user} label="Personal info" sub="Name, phone, denomination" onPress={() => setSection("account")} />
             <SettingsRow icon={I.cross} label="Faith preferences" sub="Only show my denomination" onPress={() => setSection("faith")} />
             <SettingsRow icon={I.sparkle} label="Invite a friend" sub="7 days of Agape+ for you both" onPress={() => setSection("invite")} />
-            <SettingsRow icon={I.user} label="Here for" sub={{ date: "Dating", friends: "Meeting friends", both: "Dating and friends" }[currentUser?.intent || "date"]} onPress={() => setSection("intent")} />
+            <SettingsRow icon={I.user} label="Here for" sub={{ date: "Dating", friends: "Meeting friends", both: "Dating and friends" }[currentUser?.intent || "date"]} onPress={() => { setSaveError(""); setSection("intent"); }} />
             <SettingsRow icon={I.mapPin} label="Location" sub="Distance, visibility" onPress={() => setSection("location")} />
           </div>
         </div>
