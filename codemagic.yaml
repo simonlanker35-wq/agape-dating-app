@@ -1,0 +1,76 @@
+# Cloud builds for the Agape store apps (https://codemagic.io). Nothing secret lives in this file:
+# signing keys and store access are stored in Codemagic's own settings and referenced by name.
+workflows:
+  # Test build for Android: an installable APK, signed with a throwaway debug key. No store account needed.
+  android-test:
+    name: Android test APK
+    instance_type: linux_x2
+    max_build_duration: 30
+    environment:
+      node: 22
+      java: 21
+    scripts:
+      - name: Install and build the web app
+        script: npm ci && npm run build
+      - name: Copy it into the Android project
+        script: npx cap sync android
+      - name: Point Gradle at the Android SDK
+        script: echo "sdk.dir=$ANDROID_SDK_ROOT" > "$CM_BUILD_DIR/android/local.properties"
+      - name: Build APK
+        script: cd android && ./gradlew assembleDebug
+    artifacts:
+      - android/app/build/outputs/apk/**/*.apk
+
+  # Store build for Google Play. Needs the upload key saved in Codemagic as "agape_upload_key".
+  android-release:
+    name: Android release (Google Play)
+    instance_type: linux_x2
+    max_build_duration: 40
+    environment:
+      android_signing:
+        - agape_upload_key
+      node: 22
+      java: 21
+    scripts:
+      - name: Install and build the web app
+        script: npm ci && npm run build
+      - name: Copy it into the Android project
+        script: npx cap sync android
+      - name: Point Gradle at the Android SDK
+        script: echo "sdk.dir=$ANDROID_SDK_ROOT" > "$CM_BUILD_DIR/android/local.properties"
+      - name: Build app bundle
+        script: cd android && ./gradlew bundleRelease
+    artifacts:
+      - android/app/build/outputs/bundle/**/*.aab
+
+  # Store build for the App Store, uploaded to TestFlight. Needs the App Store Connect API key
+  # saved in Codemagic as the integration "agape_app_store" (created once Apple approves the account).
+  ios-release:
+    name: iOS release (TestFlight)
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    integrations:
+      app_store_connect: agape_app_store
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: net.agapeapp.app
+      node: 22
+      xcode: latest
+    scripts:
+      - name: Install and build the web app
+        script: npm ci && npm run build
+      - name: Copy it into the iOS project
+        script: npx cap sync ios
+      - name: Use the signing profiles
+        script: xcode-project use-profiles
+      - name: Number this build
+        script: cd ios/App && agvtool new-version -all "$BUILD_NUMBER"
+      - name: Build IPA
+        script: xcode-project build-ipa --project "ios/App/App.xcodeproj" --scheme "App"
+    artifacts:
+      - build/ios/ipa/*.ipa
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
