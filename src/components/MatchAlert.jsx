@@ -1,4 +1,5 @@
 import { useApp } from "../context/AppContext";
+import { initialsAvatar } from "../utils/avatar";
 import AgapeCross from "./AgapeCross";
 import VerifiedBadge from "./VerifiedBadge";
 import Pip from "./Pip";
@@ -60,17 +61,17 @@ export default function MatchAlert() {
         <div className="match-photos">
           <div className="pulse-ring">
             <img
-              src={myPhoto || `https://ui-avatars.com/api/?name=${encodeURIComponent(myName)}&size=200&background=FBF5E6&color=B8912A`}
+              src={myPhoto || initialsAvatar(myName)}
               alt="You"
-              onError={(e) => { e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(myName)}&size=200&background=FBF5E6&color=B8912A`; }}
+              onError={(e) => { e.currentTarget.src = initialsAvatar(myName); }}
             />
           </div>
           <span className="match-sparkle">✦</span>
           <div className="pulse-ring">
             <img
-              src={them.photos?.[0] || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&size=200&background=FBF5E6&color=B8912A`}
+              src={them.photos?.[0] || initialsAvatar(name)}
               alt={name}
-              onError={(e) => { e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&size=200&background=FBF5E6&color=B8912A`; }}
+              onError={(e) => { e.currentTarget.src = initialsAvatar(name); }}
             />
           </div>
         </div>

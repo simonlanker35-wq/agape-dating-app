@@ -16,6 +16,7 @@ import PasswordInput from "./components/PasswordInput";
 import TutorialOverlay from "./components/TutorialOverlay";
 import ModeSwitch from "./components/ModeSwitch";
 import IntentPrompt from "./components/IntentPrompt";
+import FaithConsentPrompt from "./components/FaithConsentPrompt";
 import RoseAlert from "./components/RoseAlert";
 import MatchAlert from "./components/MatchAlert";
 import ReviewAlert from "./components/ReviewAlert";
@@ -191,6 +192,7 @@ function AppContent() {
       <RoseAlert />
       <ReviewAlert />
       <IntentPrompt />
+      <FaithConsentPrompt />
       <Notice />
       {splash}
     </div>

@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from "react";
+import { initialsAvatar } from "../utils/avatar";
 import { useApp } from "../context/AppContext";
 import { pressable } from "../utils/a11y";
 import { Heart, X, MessageCircle, Ban, Flag, Star } from "lucide-react";
@@ -249,7 +250,7 @@ export default function Standouts() {
               alt={`${profile.name}'s photo`}
               className="hero-photo"
               onError={(e) => {
-                e.target.src = `https://ui-avatars.com/api/?name=${profile.name}&size=400&background=random`;
+                e.target.src = initialsAvatar(profile.name);
               }}
             />
 

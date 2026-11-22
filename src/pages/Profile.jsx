@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { initialsAvatar } from "../utils/avatar";
 import { useApp } from "../context/AppContext";
 import { pressable } from "../utils/a11y";
 import { compressPhoto, sendTestPush, getPhotoOriginals, savePhotoOriginals, downscaleDataUrl, uploadMedia, deleteAccount } from "../services/api";
@@ -48,6 +49,7 @@ import VoiceRecorder from "../components/VoiceRecorder";
 import { extForMime } from "../services/media";
 import { redirectToCheckout, getSubscriptionStatus, cancelSubscription, resumeSubscription, restorePurchases } from "../services/stripe";
 import { isNative } from "../utils/native";
+import { PRIVACY_POLICY, PRIVACY_UPDATED } from "../data/privacyPolicy";
 import { getDovesRemaining } from "../services/limits";
 import * as api from "../services/api";
 import { resetTours } from "../components/TutorialOverlay";
@@ -860,16 +862,17 @@ function SettingsScreen({ onBack, initialSection = null }) {
           )}
           {section === "privacypolicy" && (
             <div style={{ borderRadius: 16, padding: 20, background: C.card }}>
-              <p style={{ fontSize: 14, lineHeight: 1.7, color: C.text }}>
-                We store what you give us: your profile, photos and voice answers, prompts, preferences and filters, your phone number or email, your location, and your messages, photos and voice notes in chats. Your location is shown to others only as a city and a rounded distance. Verification selfies are seen by the Agape team only until they are approved.
-              </p>
-              <p style={{ fontSize: 14, lineHeight: 1.7, color: C.text, marginTop: 12 }}>
-                To run Agape we rely on a few providers who process data on our behalf: Supabase (database and file storage, EU), Stripe (payments), Twilio (SMS codes), Resend (emails), OpenStreetMap (place search) and PostHog (usage statistics, EU). We do not sell your data and do not share it for advertising.
-              </p>
-              <p style={{ fontSize: 14, lineHeight: 1.7, color: C.text, marginTop: 12 }}>
-                You can delete your account under Settings → Delete account. This removes your profile, files, matches, messages and login right away; backups are cleared within 30 days. Reports you were involved in may be kept for safety reasons. For questions, write to agape_dating@outlook.com.
-              </p>
-              <p style={{ fontSize: 12, color: C.sub, marginTop: 16 }}>Last updated: October 2026</p>
+              {PRIVACY_POLICY.map((sec, i) => (
+                <div key={sec.title} style={{ marginTop: i ? 18 : 0 }}>
+                  <p style={{ fontSize: 15, fontWeight: 700, color: C.text, margin: "0 0 6px" }}>{sec.title}</p>
+                  {sec.body.map((line, j) => line.startsWith("• ") ? (
+                    <p key={j} style={{ fontSize: 14, lineHeight: 1.6, color: C.text, margin: "4px 0 0", paddingLeft: 14, textIndent: -10 }}>{"• "}{line.slice(2)}</p>
+                  ) : (
+                    <p key={j} style={{ fontSize: 14, lineHeight: 1.7, color: C.text, margin: j ? "8px 0 0" : 0 }}>{line}</p>
+                  ))}
+                </div>
+              ))}
+              <p style={{ fontSize: 12, color: C.sub, marginTop: 18 }}>Last updated: {PRIVACY_UPDATED}</p>
             </div>
           )}
           {section === "location" && (
@@ -1399,7 +1402,7 @@ export default function Profile() {
               src={currentUser.photos?.[0]}
               alt="Me"
               style={{ position: "absolute", top: 6, left: 6, width: 58, height: 58, borderRadius: "50%", objectFit: "cover", objectPosition: "50% 20%", display: "block", background: C.card }}
-              onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${currentUser.name}&size=200&background=F4F2EE&color=B8912A`; }}
+              onError={(e) => { e.target.src = initialsAvatar(currentUser.name); }}
             />
             <span style={{ position: "absolute", bottom: -1, right: -1, width: 22, height: 22, borderRadius: "50%", background: C.text, border: `2px solid ${C.surface}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
               <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
@@ -1576,7 +1579,7 @@ export default function Profile() {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
               {photos.slice(0, 4).map((url, i) => (
                 <div key={i} style={{ position: "relative", aspectRatio: "3/4", borderRadius: 12, overflow: "hidden", border: i === 0 ? `2px solid ${C.primary}` : `1px solid ${C.border}` }}>
-                  <img src={url} alt={`Photo ${i + 1}`} style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${currentUser.name}&size=200&background=random`; }} />
+                  <img src={url} alt={`Photo ${i + 1}`} style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={(e) => { e.target.src = initialsAvatar(currentUser.name); }} />
                   {i === 0 && (
                     <span style={{ position: "absolute", bottom: 4, left: 4, fontSize: 9, fontWeight: 700, padding: "2px 6px", borderRadius: 6, background: C.primary, color: "white", textTransform: "uppercase" }}>Main</span>
                   )}

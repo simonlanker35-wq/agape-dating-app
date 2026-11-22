@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
+import { initialsAvatar } from "../utils/avatar";
 
 // Swipeable photos for a full profile view: scroll-snap left and right, bars at the top show where you are,
 // and arrows appear on a computer. Anything passed as children sits on top (back button, name, badges).
 // blurred: the photos are shown out of focus (a Spark before you've picked what you like about them).
 export default function PhotoCarousel({ photos = [], name = "", maxHeight = "60vh", children, topOffset = 14, blurred = false }) {
-  const fallback = `https://ui-avatars.com/api/?name=${encodeURIComponent(name || "?")}&size=600&background=F4F2EE&color=B8912A`;
+  const fallback = initialsAvatar(name || "?");
   const list = photos.filter(Boolean).length ? photos.filter(Boolean) : [fallback];
   const scroller = useRef(null);
   const [idx, setIdx] = useState(0);

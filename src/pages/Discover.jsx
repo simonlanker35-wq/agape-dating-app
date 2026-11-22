@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from "react";
+import { initialsAvatar } from "../utils/avatar";
 import { useApp } from "../context/AppContext";
 import { pressable } from "../utils/a11y";
 import { Heart, X, MessageCircle, Ban, Flag, UserPlus } from "lucide-react";
@@ -297,13 +298,13 @@ export default function Discover() {
               {(photos.length ? photos : [null]).map((src, i) => (
                 <img
                   key={i}
-                  src={src || `https://ui-avatars.com/api/?name=${profile.name}&size=400&background=random`}
+                  src={src || initialsAvatar(profile.name)}
                   alt={i === 0 ? `${profile.name}'s photo` : `${profile.name}'s photo ${i + 1}`}
                   className="hero-photo"
                   draggable={false}
                   loading={i === 0 ? "eager" : "lazy"}
                   onError={(e) => {
-                    e.target.src = `https://ui-avatars.com/api/?name=${profile.name}&size=400&background=random`;
+                    e.target.src = initialsAvatar(profile.name);
                   }}
                 />
               ))}

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { FAITH_CONSENT_INTRO, FAITH_CONSENT_USE, FAITH_CONSENT_WITHDRAW, FAITH_CONSENT_CHECKBOX } from "../data/consent";
 import { useApp } from "../context/AppContext";
 import { PROMPT_CATEGORIES, TRAITS_POOL, LOOKING_FOR_POOL, DENOMINATIONS } from "../data/profiles";
 import { ChevronRight, ChevronLeft, Sparkles, Church, X, Check, Plus, Camera, ZoomIn, ZoomOut } from "lucide-react";
@@ -1170,12 +1171,9 @@ export default function Onboarding() {
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", flex: 1 }}>
           <Church size={40} style={{ color: S.primary, marginBottom: 16 }} />
           <h2 style={{ color: S.text, fontSize: 26, fontWeight: 800, marginBottom: 12, fontFamily: "'Outfit', system-ui, sans-serif" }}>Faith-Based Matching</h2>
-          <p style={{ color: S.sub, fontSize: 14, lineHeight: 1.6, marginBottom: 12, maxWidth: 340 }}>
-            Agape is a Christian dating app. To connect you with people who share your faith, we collect and process information about your religious beliefs, including your denomination.
-          </p>
-          <p style={{ color: S.sub, fontSize: 14, lineHeight: 1.6, marginBottom: 24, maxWidth: 340 }}>
-            Your denomination is shown on your profile and used to find people who share your faith.
-          </p>
+          <p style={{ color: S.sub, fontSize: 14, lineHeight: 1.6, marginBottom: 12, maxWidth: 340 }}>{FAITH_CONSENT_INTRO}</p>
+          <p style={{ color: S.sub, fontSize: 14, lineHeight: 1.6, marginBottom: 12, maxWidth: 340 }}>{FAITH_CONSENT_USE}</p>
+          <p style={{ color: S.sub, fontSize: 13, lineHeight: 1.6, marginBottom: 24, maxWidth: 340 }}>{FAITH_CONSENT_WITHDRAW}</p>
           <button
             onClick={() => setFaithConsent(!faithConsent)}
             style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: 16, background: S.surface, borderRadius: 12, cursor: "pointer", border: `1.5px solid ${faithConsent ? S.primary : S.border}`, textAlign: "left", width: "100%", maxWidth: 360 }}
@@ -1183,7 +1181,7 @@ export default function Onboarding() {
             <div style={{ width: 22, height: 22, minWidth: 22, borderRadius: 6, border: `2px solid ${faithConsent ? S.primary : S.border}`, background: faithConsent ? S.primary : "transparent", display: "flex", alignItems: "center", justifyContent: "center", marginTop: 1 }}>
               {faithConsent && <Check size={14} color="#000" />}
             </div>
-            <span style={{ fontSize: 14, lineHeight: 1.5, color: S.text }}>I consent to the processing of my religious beliefs for matching purposes</span>
+            <span style={{ fontSize: 14, lineHeight: 1.5, color: S.text }}>{FAITH_CONSENT_CHECKBOX}</span>
           </button>
         </div>
         <BigBtn onClick={goNext} disabled={!faithConsent}>Continue</BigBtn>

@@ -315,6 +315,13 @@ export function createFakeBackend() {
         m.reactions = r;
         return r;
       }
+      case "record_faith_consent": {
+        const p = profileOf(u);
+        if (!p) return null;
+        p.faith_consent_at = nowIso();
+        p.faith_consent_version = String(args.p_version || "").slice(0, 20);
+        return p.faith_consent_at;
+      }
       default: state.unsupported.push(`rpc ${fn}`); throw err(404, "PGRST202", `Could not find the function public.${fn} in the schema cache`);
     }
   };

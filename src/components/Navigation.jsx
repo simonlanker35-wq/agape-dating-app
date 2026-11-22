@@ -1,4 +1,5 @@
 import { useApp } from "../context/AppContext";
+import { initialsAvatar } from "../utils/avatar";
 import { Compass, Heart, MessageCircle, User, Zap } from "lucide-react";
 import DoveIcon from "./DoveIcon";
 import AgapeCross from "./AgapeCross";
@@ -96,7 +97,7 @@ export default function Navigation() {
               >
                 <div className="nav-icon-wrapper">
                   <img
-                    src={state.user?.photos?.[0] || `https://ui-avatars.com/api/?name=${state.user?.name || "Me"}&size=48&background=random`}
+                    src={state.user?.photos?.[0] || initialsAvatar(state.user?.name || "Me")}
                     alt="Me"
                     className="nav-me-photo"
                   />

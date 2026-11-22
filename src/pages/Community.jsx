@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { initialsAvatar } from "../utils/avatar";
 import { ChevronLeft, MessageCircle, Plus, Trash2, Flag, RefreshCw, Send, X, UserPlus, Check } from "lucide-react";
 import { useApp } from "../context/AppContext";
 import { pressable } from "../utils/a11y";
@@ -94,10 +95,10 @@ function timeAgo(ts) {
 
 function Avatar({ profile, size = 36, onClick }) {
   const name = profile?.name || "?";
-  const src = profile?.photos?.[0] || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&size=96&background=F4F2EE&color=B8912A`;
+  const src = profile?.photos?.[0] || initialsAvatar(name);
   return (
     <img src={src} alt={name} onClick={onClick} style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover", objectPosition: "50% 20%", flexShrink: 0, cursor: onClick ? "pointer" : "default", background: C.surface }}
-      onError={(e) => { e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&size=96&background=F4F2EE&color=B8912A`; }} />
+      onError={(e) => { e.currentTarget.src = initialsAvatar(name); }} />
   );
 }
 

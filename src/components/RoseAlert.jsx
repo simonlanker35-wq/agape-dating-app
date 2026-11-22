@@ -1,4 +1,5 @@
 import { Flower2 } from "lucide-react";
+import { initialsAvatar } from "../utils/avatar";
 import { useApp } from "../context/AppContext";
 import { track } from "../services/posthog";
 
@@ -25,7 +26,7 @@ export default function RoseAlert() {
       <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 340, background: C.bg, borderRadius: 24, padding: "28px 24px 20px", textAlign: "center", boxShadow: "0 24px 60px rgba(0,0,0,0.3)", animation: "sheetSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1)" }}>
         <div style={{ position: "relative", width: 96, height: 96, margin: "0 auto 16px" }}>
           {photo ? (
-            <img src={photo} alt={name} onError={(e) => { e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&size=96&background=FBF5E6&color=B8912A`; }} style={{ width: 96, height: 96, borderRadius: "50%", objectFit: "cover", objectPosition: "50% 20%", display: "block", border: `3px solid ${C.primarySoft}` }} />
+            <img src={photo} alt={name} onError={(e) => { e.currentTarget.src = initialsAvatar(name); }} style={{ width: 96, height: 96, borderRadius: "50%", objectFit: "cover", objectPosition: "50% 20%", display: "block", border: `3px solid ${C.primarySoft}` }} />
           ) : (
             <div style={{ width: 96, height: 96, borderRadius: "50%", background: C.primarySoft }} />
           )}

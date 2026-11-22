@@ -1,5 +1,6 @@
 import { isNative, publicOrigin, NATIVE_AUTH_REDIRECT, openInSystemBrowser } from "../utils/native";
 import { supabase } from "./supabase";
+import { FAITH_CONSENT_VERSION } from "../data/consent";
 import { geocodeCity } from "./geo";
 
 
@@ -176,7 +177,22 @@ export async function createProfile(data) {
   }
   if (profileError) throw new Error(profileError.message);
 
+  // The member ticked the faith consent during sign-up: store when (database clock) and which text
+  const consentAt = await recordFaithConsent();
+  if (consentAt) Object.assign(profile, { faith_consent_at: consentAt, faith_consent_version: FAITH_CONSENT_VERSION });
+
   return mapProfileToUser(profile, user.phone);
+}
+
+// Stores the consent to processing religious beliefs. Returns the stored time, or null when the
+// database does not have the function yet (before supabase/faith_consent.sql is run).
+export async function recordFaithConsent() {
+  const { data, error } = await supabase.rpc("record_faith_consent", { p_version: FAITH_CONSENT_VERSION });
+  if (error) {
+    if (error.code === "PGRST202" || /could not find the function/i.test(error.message || "")) return null;
+    throw new Error(error.message);
+  }
+  return data || null;
 }
 
 export async function register(data) {
@@ -1181,6 +1197,8 @@ function mapProfileToUser(p, authPhone) {
     height: p.height,
     gender: p.gender,
     denomination: p.denomination,
+    // undefined while the database has no consent columns; null = signed up before consent was recorded
+    faithConsentAt: p.faith_consent_at,
     job: p.job,
     school: p.school,
     location: parseLocation(p),
