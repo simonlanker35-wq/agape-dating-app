@@ -88,6 +88,23 @@ const LIFESTYLE_CATEGORIES = [
 const DEV_TEST = false;
 // Apple sign-in needs an Apple Developer account and the provider set up in Supabase; hidden until then
 const APPLE_SIGN_IN_ENABLED = false;
+
+// Country code to start phone fields with, from the device's time zone (Swiss phones get +41, Polish +48 ...)
+const TZ_DIAL = {
+  "Europe/Warsaw": "+48", "Europe/Zurich": "+41", "Europe/Berlin": "+49", "Europe/Vienna": "+43",
+  "Europe/London": "+44", "Europe/Paris": "+33", "Europe/Rome": "+39", "Europe/Madrid": "+34",
+  "Europe/Amsterdam": "+31", "Europe/Stockholm": "+46", "Europe/Oslo": "+47", "Europe/Copenhagen": "+45",
+  "Europe/Lisbon": "+351", "Europe/Prague": "+420", "Europe/Budapest": "+36", "Europe/Bucharest": "+40",
+  "Europe/Sofia": "+359",
+};
+const DEFAULT_DIAL = (() => {
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+    return TZ_DIAL[tz] || (tz.startsWith("America/") ? "+1" : "+48");
+  } catch { return "+48"; }
+})();
+const LOGIN_METHOD_KEY = "agape_login_method";
+const savedLoginMethod = () => { try { return localStorage.getItem(LOGIN_METHOD_KEY) === "phone" ? "phone" : "email"; } catch { return "email"; } };
 const CROP_ASPECT = 3 / 4;
 
 // "+46 070-123 45 67" -> "+46701234567": strip formatting and the trunk 0 many Europeans type after the country code
@@ -171,7 +188,7 @@ export default function Onboarding() {
   const { state, actions } = useApp();
   const [step, setStep] = useState(0);
   const [mode, setMode] = useState("signup");
-  const [countryCode, setCountryCode] = useState("+48");
+  const [countryCode, setCountryCode] = useState(DEFAULT_DIAL);
   const [phoneNum, setPhoneNum] = useState("");
   const [showCountryPicker, setShowCountryPicker] = useState(false);
   const [otpDigits, setOtpDigits] = useState(["", "", "", "", "", ""]);
@@ -181,7 +198,16 @@ export default function Onboarding() {
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
   const [passwordError, setPasswordError] = useState("");
-  const [loginPhone, setLoginPhone] = useState("+48");
+  const [loginMethod, setLoginMethod] = useState(savedLoginMethod);
+  const [loginPhone, setLoginPhone] = useState(() => (savedLoginMethod() === "phone" ? DEFAULT_DIAL : ""));
+  // Switch the sign-in field between email and phone; a value of the wrong kind is cleared
+  const chooseLoginMethod = (m) => {
+    setLoginMethod(m);
+    setLoginError("");
+    setLoginPhone((v) => (m === "email" ? (v.includes("@") ? v : "") : (v.includes("@") || !v.trim() ? DEFAULT_DIAL : v)));
+  };
+  // Fill the sign-in field from another screen (after sign-up or a reset) and pick the matching tab
+  const fillLogin = (v) => { setLoginMethod(v.includes("@") ? "email" : "phone"); setLoginPhone(v); };
   const [loginPassword, setLoginPassword] = useState("");
   const [loginError, setLoginError] = useState("");
   const [faithConsent, setFaithConsent] = useState(false);
@@ -230,7 +256,7 @@ export default function Onboarding() {
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const cropBoxRef = useRef(null);
   const [resetStep, setResetStep] = useState("phone");
-  const [resetPhone, setResetPhone] = useState("+48");
+  const [resetPhone, setResetPhone] = useState("");
   const [resetError, setResetError] = useState("");
   const [resendWait, setResendWait] = useState(0); // seconds until another reset email can be requested
   useEffect(() => {
@@ -610,7 +636,7 @@ export default function Onboarding() {
     }
   };
 
-  const loginIsEmail = loginPhone.includes("@");
+  const loginIsEmail = loginMethod === "email" || loginPhone.includes("@");
 
   const handleLoginSubmit = async () => {
     if (loginPhone.trim().length < 5 || loginPassword.length < 6) return;
@@ -621,6 +647,7 @@ export default function Onboarding() {
       const result = loginIsEmail
         ? await actions.loginWithEmail(loginPhone.trim(), loginPassword)
         : await actions.loginWithPhone(normalizePhone(loginPhone), loginPassword);
+      try { localStorage.setItem(LOGIN_METHOD_KEY, loginIsEmail ? "email" : "phone"); } catch { /* private mode */ }
       if (result?.needsProfile) {
         setMode("signup");
         setStep(STEPS.indexOf("consent"));
@@ -745,12 +772,27 @@ export default function Onboarding() {
           <span style={{ fontSize: 12, color: S.sub, fontFamily: "'Outfit', system-ui, sans-serif" }}>or</span>
           <div style={{ flex: 1, height: 1, background: S.border }} />
         </div>
+        <div role="tablist" aria-label="Sign in with" style={{ display: "flex", width: "100%", background: S.surface, border: `1.5px solid ${S.border}`, borderRadius: 12, padding: 4, marginBottom: 12, boxSizing: "border-box" }}>
+          {[["email", "Email"], ["phone", "Phone number"]].map(([m, label]) => (
+            <button
+              key={m} role="tab" aria-selected={loginMethod === m}
+              onClick={() => chooseLoginMethod(m)}
+              style={{ flex: 1, padding: "10px 0", borderRadius: 9, border: "none", cursor: "pointer", fontSize: 15, fontWeight: 700, fontFamily: "'Outfit', system-ui, sans-serif", background: loginMethod === m ? S.primary : "transparent", color: loginMethod === m ? "#1A1612" : S.sub }}
+            >{label}</button>
+          ))}
+        </div>
         <input
-          type="text" inputMode="email" value={loginPhone} onChange={(e) => setLoginPhone(e.target.value)}
-          placeholder="Phone number or email"
+          key={loginMethod}
+          type={loginMethod === "email" ? "email" : "tel"} inputMode={loginMethod === "email" ? "email" : "tel"}
+          value={loginPhone} onChange={(e) => setLoginPhone(e.target.value)}
+          placeholder={loginMethod === "email" ? "Your email" : "Phone number, e.g. +41 79 123 45 67"}
+          aria-label={loginMethod === "email" ? "Email" : "Phone number"}
           style={{ width: "100%", padding: "16px", background: S.surface, border: `1.5px solid ${S.border}`, borderRadius: 12, fontSize: 18, color: S.text, outline: "none", fontFamily: "'Outfit', system-ui, sans-serif", marginBottom: 10, boxSizing: "border-box" }}
-          autoComplete="username" autoCapitalize="none" autoCorrect="off"
+          autoComplete={loginMethod === "email" ? "email" : "tel"} autoCapitalize="none" autoCorrect="off"
         />
+        {loginMethod === "phone" && (
+          <p style={{ color: S.sub, fontSize: 12.5, margin: "-4px 0 10px", alignSelf: "flex-start" }}>Signed up with email? Tap «Email» above.</p>
+        )}
         <PasswordInput
           value={loginPassword} onChange={setLoginPassword}
           onKeyDown={(e) => e.key === "Enter" && handleLoginSubmit()}
@@ -764,7 +806,7 @@ export default function Onboarding() {
         <BigBtn onClick={handleLoginSubmit} disabled={submitting || loginPhone.trim().length < 5 || loginPassword.length < 6} style={{ marginTop: 24 }}>
           {submitting ? "Signing in…" : "Sign in"}
         </BigBtn>
-        <button onClick={() => { track("forgot_password_tapped"); setMode("reset"); setResetStep("phone"); setResetPhone(loginPhone || "+48"); setResetError(""); setLoginError(""); }} style={{ background: "none", border: "none", color: S.primary, fontSize: 14, fontWeight: 600, marginTop: 18, cursor: "pointer" }}>
+        <button onClick={() => { track("forgot_password_tapped"); setMode("reset"); setResetStep("phone"); setResetPhone(loginPhone.trim() === DEFAULT_DIAL ? "" : loginPhone); setResetError(""); setLoginError(""); }} style={{ background: "none", border: "none", color: S.primary, fontSize: 14, fontWeight: 600, marginTop: 18, cursor: "pointer" }}>
           Forgot password?
         </button>
         <button onClick={() => { track("login_switch_to_signup"); setMode("signup"); setLoginError(""); }} style={{ background: "none", border: "none", color: S.sub, fontSize: 15, fontWeight: 600, marginTop: 8, cursor: "pointer" }}>
@@ -789,7 +831,7 @@ export default function Onboarding() {
             <>
               <h2 style={{ color: S.text, fontSize: 28, fontWeight: 800, marginBottom: 8, fontFamily: "'Outfit', system-ui, sans-serif" }}>Check your inbox</h2>
               <p style={{ color: S.sub, fontSize: 14, marginBottom: 28, lineHeight: 1.5 }}>We sent a confirmation link to <span style={{ color: S.text, fontWeight: 600 }}>{emailSignup.email}</span>. Open it, then come back and sign in.</p>
-              <BigBtn onClick={() => { setMode("login"); setLoginPhone(emailSignup.email); }} style={{ marginTop: 0 }}>Go to sign in</BigBtn>
+              <BigBtn onClick={() => { setMode("login"); fillLogin(emailSignup.email); }} style={{ marginTop: 0 }}>Go to sign in</BigBtn>
             </>
           ) : (
             <>
@@ -851,7 +893,7 @@ export default function Onboarding() {
           )}
           {resetStep === "emailSent" && (
             <>
-              <BigBtn onClick={() => { setMode("login"); setLoginPhone(resetPhone.trim()); }} style={{ marginTop: 0 }}>Back to sign in</BigBtn>
+              <BigBtn onClick={() => { setMode("login"); fillLogin(resetPhone.trim()); }} style={{ marginTop: 0 }}>Back to sign in</BigBtn>
               <button
                 onClick={handleResetSendOtp}
                 disabled={submitting || resendWait > 0}
