@@ -2,11 +2,11 @@
 // Unknown or self-written denominations get a plain cross.
 
 const PATHS = {
-  // keys of Peter, crossed
+  // crucifix: a wide outlined cross (thin line) with the figure of Christ inside
   catholic: [
-    "M15.6 15.6 5 5", "M7 7 5 9", "M9 9l-1.5 1.5",
-    "M8.4 15.6 19 5", "M17 7l2 2", "M15 9l1.5 1.5",
-    { circle: [6.5, 17.5, 2.5] }, { circle: [17.5, 17.5, 2.5] },
+    { thin: "M9.5 1.5h5v4h6.5v5h-6.5v12h-5v-12H3v-5h6.5z" },
+    { fill: "M4.6 7.1 12 7.9l7.4-.8v1.3l-6.3.9-.2 4.7-.5 6.5h-.8l-.5-6.5-.2-4.7-6.3-.9z" },
+    { fillCircle: [12, 4.6, 1.15] },
   ],
   // three-bar cross with the slanted foot bar
   orthodox: ["M12 2v20", "M9.5 5h5", "M6 9h12", "M8.5 15l7 2.5"],
@@ -68,9 +68,13 @@ export default function DenominationIcon({ denomination, size = 16, color = "cur
       strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false"
       style={{ flexShrink: 0, display: "inline-block", verticalAlign: "-0.15em", ...style }}
     >
-      {parts.map((p, i) => (typeof p === "string"
-        ? <path key={i} d={p} />
-        : <circle key={i} cx={p.circle[0]} cy={p.circle[1]} r={p.circle[2]} />))}
+      {parts.map((p, i) => {
+        if (typeof p === "string") return <path key={i} d={p} />;
+        if (p.thin) return <path key={i} d={p.thin} strokeWidth={strokeWidth * 0.7} />;
+        if (p.fill) return <path key={i} d={p.fill} fill={color} stroke="none" />;
+        if (p.fillCircle) return <circle key={i} cx={p.fillCircle[0]} cy={p.fillCircle[1]} r={p.fillCircle[2]} fill={color} stroke="none" />;
+        return <circle key={i} cx={p.circle[0]} cy={p.circle[1]} r={p.circle[2]} />;
+      })}
     </svg>
   );
 }
