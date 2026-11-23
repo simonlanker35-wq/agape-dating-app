@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import DenominationIcon from "../components/DenominationIcon";
 import { initialsAvatar } from "../utils/avatar";
 import { useApp } from "../context/AppContext";
 import { pressable } from "../utils/a11y";
@@ -1420,7 +1421,7 @@ export default function Profile() {
               {currentUser.isVerified ? <VerifiedBadge size={20} /> : <VerifiedBadge size={20} empty />}
             </div>
             <p style={{ color: C.sub, fontSize: 12, fontFamily: FONT, margin: "3px 0 0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {currentUser.denomination}{currentUser.location?.city ? ` · ${currentUser.location.city}` : ""}
+              {currentUser.denomination && <DenominationIcon denomination={currentUser.denomination} size={13} style={{ marginRight: 4 }} />}{currentUser.denomination}{currentUser.location?.city ? ` · ${currentUser.location.city}` : ""}
             </p>
             <p style={{ color: C.primary, fontSize: 11, fontWeight: 600, fontFamily: FONT, margin: "4px 0 0" }}>{computeCompleteness(currentUser).pct}% complete</p>
           </div>

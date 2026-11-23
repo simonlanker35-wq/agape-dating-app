@@ -1,4 +1,5 @@
 import { useState } from "react";
+import DenominationIcon from "./DenominationIcon";
 import { X } from "lucide-react";
 import { DETAIL_FIELDS } from "../data/profiles";
 import NumberField from "./NumberField";
@@ -93,8 +94,8 @@ export default function FilterSheet({ filters, onApply, onClose }) {
           <div className="filter-label">Denomination</div>
           <div className="filter-chips">
             {MAIN_DENOMINATIONS.map((d) => (
-              <button key={d} className={`filter-chip ${denominations.includes(d) ? "active" : ""}`} onClick={() => toggleDenom(d)}>
-                {d}
+              <button key={d} className={`filter-chip ${denominations.includes(d) ? "active" : ""}`} onClick={() => toggleDenom(d)} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                <DenominationIcon denomination={d} size={14} /> {d}
               </button>
             ))}
             {(() => {
@@ -144,8 +145,9 @@ export default function FilterSheet({ filters, onApply, onClose }) {
                         key={d}
                         className={`filter-chip ${denominations.includes(d) ? "active" : ""}`}
                         onClick={() => { toggleDenom(d); setPopup(null); }}
+                        style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
                       >
-                        {d}
+                        <DenominationIcon denomination={d} size={14} /> {d}
                       </button>
                     ))}
                   </div>

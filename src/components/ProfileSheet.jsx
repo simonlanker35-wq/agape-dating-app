@@ -1,4 +1,5 @@
 import { createPortal } from "react-dom";
+import DenominationIcon from "./DenominationIcon";
 import { ChevronLeft, MapPin, Ban, Flag } from "lucide-react";
 import VerifiedBadge from "./VerifiedBadge";
 import AudioPlayer from "./AudioPlayer";
@@ -34,7 +35,7 @@ export default function ProfileSheet({ profile, onClose, actions = [], onReport,
             </p>
             <p style={{ margin: "6px 0 0", fontSize: 13.5, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", opacity: 0.95 }}>
               {profile.location && <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><MapPin size={13} /> {profile.location}</span>}
-              {profile.denomination && <span>· ✝ {profile.denomination}</span>}
+              {profile.denomination && <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>· <DenominationIcon denomination={profile.denomination} size={13} /> {profile.denomination}</span>}
               {profile.job && <span>· {profile.job}</span>}
               {profile.points > 0 && <span>· ✦ {profile.points} community points</span>}
             </p>

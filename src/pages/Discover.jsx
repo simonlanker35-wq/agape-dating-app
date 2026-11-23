@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from "react";
+import DenominationIcon from "../components/DenominationIcon";
 import { initialsAvatar } from "../utils/avatar";
 import { useApp } from "../context/AppContext";
 import { pressable } from "../utils/a11y";
@@ -384,7 +385,7 @@ export default function Discover() {
                   )}
                   {profile.location && profile.denomination && <span className="id-dot">·</span>}
                   {profile.denomination && (
-                    <span className="id-detail">✝ {profile.denomination}</span>
+                    <span className="id-detail" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><DenominationIcon denomination={profile.denomination} size={14} /> {profile.denomination}</span>
                   )}
                   {profile.reliability?.dates > 0 && <span className="id-dot">·</span>}
                   {profile.reliability?.dates > 0 && <ReliabilityBadge reliability={profile.reliability} light />}

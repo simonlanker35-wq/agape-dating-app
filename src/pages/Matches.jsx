@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from "react";
+import DenominationIcon from "../components/DenominationIcon";
 import { initialsAvatar } from "../utils/avatar";
 import { createPortal } from "react-dom";
 import { useApp } from "../context/AppContext";
@@ -1662,7 +1663,7 @@ function ChatThread({ match, onBack }) {
                 {profile.isVerified && <VerifiedBadge size={20} label />}
                 {!friendChat && <CompatibilityRing profile={profile} size={44} light style={{ marginLeft: "auto" }} />}
               </div>
-              <p style={{ color: "rgba(255,255,255,0.7)", fontSize: 12, marginTop: 4 }}>{profile.denomination}{profile.location ? ` · ${profile.location}` : ""}</p>
+              <p style={{ color: "rgba(255,255,255,0.7)", fontSize: 12, marginTop: 4 }}>{profile.denomination && <DenominationIcon denomination={profile.denomination} size={12} style={{ marginRight: 4 }} />}{profile.denomination}{profile.location ? ` · ${profile.location}` : ""}</p>
               {profile.reliability?.dates > 0 && <div style={{ marginTop: 8 }}><ReliabilityBadge reliability={profile.reliability} light /></div>}
             </div>
           </PhotoCarousel>
@@ -1780,7 +1781,7 @@ export default function Matches() {
                     <span style={{ display: "flex", alignItems: "baseline", gap: 8, minWidth: 0, overflow: "hidden" }}>
                       <span style={{ fontWeight: hasUnread ? 700 : 600, fontSize: 19, color: C.text, fontFamily: SERIF, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", flexShrink: 0, maxWidth: "62%" }}>{profile.name}</span>
                       {profile.isVerified && <VerifiedBadge size={19} style={{ marginLeft: -3 }} />}
-                      {profile.denomination && <span style={{ fontSize: 12, color: C.primary, fontWeight: 600, fontFamily: FONT, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", minWidth: 0, flexShrink: 1 }}>· {profile.denomination}</span>}
+                      {profile.denomination && <span style={{ fontSize: 12, color: C.primary, fontWeight: 600, fontFamily: FONT, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", minWidth: 0, flexShrink: 1 }}>· <DenominationIcon denomination={profile.denomination} size={12} /> {profile.denomination}</span>}
                     </span>
                     <span style={{ fontSize: 11, color: hasUnread ? C.primary : C.sub, fontWeight: hasUnread ? 700 : 400, fontFamily: FONT, flexShrink: 0, marginLeft: 8 }}>{lastMsg ? formatTime(lastMsg.timestamp) : ""}</span>
                   </div>

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import DenominationIcon from "../components/DenominationIcon";
 import { initialsAvatar } from "../utils/avatar";
 import { ChevronLeft, MessageCircle, Plus, Trash2, Flag, RefreshCw, Send, X, UserPlus, Check } from "lucide-react";
 import { useApp } from "../context/AppContext";
@@ -108,7 +109,7 @@ function Byline({ profile, when, mine }) {
       <span style={{ fontWeight: 700, color: C.text, fontFamily: SERIF, fontSize: 14, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", flexShrink: 0, maxWidth: 120 }}>{mine ? "You" : profile?.name || "Member"}</span>
       {profile?.isVerified && <VerifiedBadge size={13} />}
       {profile?.points > 0 && <span title="Community points" style={{ color: C.primary, fontWeight: 700, whiteSpace: "nowrap" }}>✦ {profile.points}</span>}
-      {profile?.denomination && <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", minWidth: 0 }}>· {profile.denomination}</span>}
+      {profile?.denomination && <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", minWidth: 0 }}>· <DenominationIcon denomination={profile.denomination} size={12} /> {profile.denomination}</span>}
       {profile?.location && <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", minWidth: 0 }}>· {profile.location}</span>}
       <span style={{ whiteSpace: "nowrap" }}>· {timeAgo(when)}</span>
     </div>

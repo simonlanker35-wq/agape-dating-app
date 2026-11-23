@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import DenominationIcon from "../components/DenominationIcon";
 import { FAITH_CONSENT_INTRO, FAITH_CONSENT_USE, FAITH_CONSENT_WITHDRAW, FAITH_CONSENT_CHECKBOX } from "../data/consent";
 import { useApp } from "../context/AppContext";
 import { PROMPT_CATEGORIES, TRAITS_POOL, LOOKING_FOR_POOL, DENOMINATIONS } from "../data/profiles";
@@ -1362,7 +1363,7 @@ export default function Onboarding() {
                 borderStyle: d === "Different" && !customDenom ? "dashed" : "solid",
               }}
             >
-              <Church size={16} style={{ color: form.denomination === d ? S.primary : S.sub, flexShrink: 0 }} />
+              <DenominationIcon denomination={d} size={20} color={form.denomination === d ? S.primary : S.sub} />
               {d === "Different" ? (
                 <input
                   type="text" value={customDenom}

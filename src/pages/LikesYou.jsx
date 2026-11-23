@@ -1,4 +1,5 @@
 import { useApp } from "../context/AppContext";
+import DenominationIcon from "../components/DenominationIcon";
 import { pressable } from "../utils/a11y";
 import { useState, useEffect } from "react";
 import { Lock, UserPlus } from "lucide-react";
@@ -228,7 +229,7 @@ function SparkView({ like, friends, onClose, onDecline, onAccept }) {
               {profile.isVerified && <VerifiedBadge size={20} label />}
               {!friends && <CompatibilityRing profile={profile} size={44} light style={{ marginLeft: "auto" }} />}
             </div>
-            <p style={{ color: "rgba(255,255,255,0.75)", fontSize: 12, marginTop: 4 }}>{profile.denomination}{profile.location ? ` · ${profile.location}` : ""}</p>
+            <p style={{ color: "rgba(255,255,255,0.75)", fontSize: 12, marginTop: 4 }}>{profile.denomination && <DenominationIcon denomination={profile.denomination} size={12} style={{ marginRight: 4 }} />}{profile.denomination}{profile.location ? ` · ${profile.location}` : ""}</p>
             {profile.reliability?.dates > 0 && <div style={{ marginTop: 8 }}><ReliabilityBadge reliability={profile.reliability} light /></div>}
           </div>
         </PhotoCarousel>
